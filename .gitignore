@@ -1,44 +1,40 @@
-# OS/editor
-.DS_Store
-.idea/
-.vscode/
-*.swp
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/
 
-# Build outputs
-bin/
+# Node / Next.js
+node_modules/
+.pnpm-store/
+.next/
+out/
 dist/
 build/
 coverage/
-
-# Node
-node_modules/
-.pnpm-store/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Go
-*.test
-*.out
+# IDE
+.idea/
+*.iml
+.vscode/
+*.suo
+*.user
+*.swp
 
-# Runtime state and large local artifacts
-/data/*
-!/data/db/
-!/data/projects/
-!/data/snapshots/
-!/data/db/.gitkeep
-!/data/projects/.gitkeep
-!/data/snapshots/.gitkeep
-/infra/firecracker/base-image/*.img
-/infra/firecracker/base-image/out/
-/infra/firecracker/kernel/*
-!/infra/firecracker/kernel/.gitkeep
-/infra/firecracker/overlays/*
-!/infra/firecracker/overlays/.gitkeep
-/infra/firecracker/snapshots/*
-!/infra/firecracker/snapshots/.gitkeep
+# OS
+.DS_Store
+Thumbs.db
 
 # Secrets
+*.pem
+*.key
 .env
 .env.*
 cloudflared-token.txt
+.env.local
+.env*.local

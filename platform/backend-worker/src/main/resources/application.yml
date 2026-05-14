@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: mesha-worker
+
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+  data:
+    redis:
+      url: ${REDIS_URL}
+
+server:
+  port: ${PORT:8081}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  pattern:
+    console: '{"timestamp":"%d{ISO8601}","level":"%level","logger":"%logger","message":"%msg"}%n'
+
+mesha:
+  blocks:
+    api-url: ${BLOCKS_API_URL}
+    api-key: ${BLOCKS_API_KEY}
+  github:
+    app-id: ${GITHUB_APP_ID}
+    private-key: ${GITHUB_APP_PRIVATE_KEY}
+    webhook-secret: ${GITHUB_WEBHOOK_SECRET}
