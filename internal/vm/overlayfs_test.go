@@ -33,6 +33,16 @@ func (f *fakeMounter) IsMounted(target string) (bool, error) {
 	return f.mounted[target], nil
 }
 
+func (f *fakeMounter) ListMountedPaths() (map[string]struct{}, error) {
+	paths := make(map[string]struct{}, len(f.mounted))
+	for k, v := range f.mounted {
+		if v {
+			paths[k] = struct{}{}
+		}
+	}
+	return paths, nil
+}
+
 func TestMountSessionCreatesIsolatedOverlay(t *testing.T) {
 	t.Parallel()
 

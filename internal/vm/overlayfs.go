@@ -61,6 +61,8 @@ type Mounter interface {
 	Mount(MountSpec) error
 	Unmount(target string) error
 	IsMounted(target string) (bool, error)
+	// ListMountedPaths returns all currently mounted targets keyed for O(1) lookup.
+	ListMountedPaths() (map[string]struct{}, error)
 }
 
 // OverlayFSManager creates, mounts, unmounts, and garbage-collects session
@@ -266,7 +268,14 @@ func (m *OverlayFSManager) CleanupOrphanedLayers(activeSessionIDs []string) ([]s
 		return nil, fmt.Errorf("read overlay root: %w", err)
 	}
 
+	// Read mount info once to avoid O(N*M) scans of /proc/self/mountinfo.
+	mountedPaths, err := m.mounter.ListMountedPaths()
+	if err != nil {
+		return nil, fmt.Errorf("list mounted paths: %w", err)
+	}
+
 	var removed []string
+	var errs []error
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
@@ -278,16 +287,25 @@ func (m *OverlayFSManager) CleanupOrphanedLayers(activeSessionIDs []string) ([]s
 		if _, ok := active[sessionID]; ok {
 			continue
 		}
-		if err := m.UnmountSession(sessionID); err != nil {
-			return removed, err
+		overlay, err := m.sessionOverlay(sessionID)
+		if err != nil {
+			errs = append(errs, err)
+			continue
 		}
-		if err := m.RemoveSessionUnmounted(sessionID); err != nil {
-			return removed, err
+		if _, isMounted := mountedPaths[overlay.MergedDir]; isMounted {
+			if err := m.mounter.Unmount(overlay.MergedDir); err != nil {
+				errs = append(errs, fmt.Errorf("unmount orphan %q: %w", sessionID, err))
+				continue
+			}
+		}
+		if err := os.RemoveAll(filepath.Dir(overlay.UpperDir)); err != nil {
+			errs = append(errs, fmt.Errorf("remove orphan %q: %w", sessionID, err))
+			continue
 		}
 		removed = append(removed, sessionID)
 	}
 
-	return removed, nil
+	return removed, errors.Join(errs...)
 }
 
 func (m *OverlayFSManager) sessionOverlay(sessionID string) (SessionOverlay, error) {
@@ -343,31 +361,43 @@ func (systemMounter) IsMounted(target string) (bool, error) {
 	return mountInfoContains("/proc/self/mountinfo", target)
 }
 
+func (systemMounter) ListMountedPaths() (map[string]struct{}, error) {
+	return parseMountedPathSet("/proc/self/mountinfo")
+}
+
 func mountInfoContains(mountInfoPath, target string) (bool, error) {
-	target, err := filepath.Abs(target)
+	// target is already absolute from manager config initialization
+	paths, err := parseMountedPathSet(mountInfoPath)
 	if err != nil {
 		return false, err
 	}
+	_, ok := paths[target]
+	return ok, nil
+}
+
+func parseMountedPathSet(mountInfoPath string) (map[string]struct{}, error) {
 	file, err := os.Open(mountInfoPath)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	defer file.Close()
 
+	paths := make(map[string]struct{})
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		fields := strings.Fields(scanner.Text())
-		if len(fields) >= 5 && unescapeMountInfoPath(fields[4]) == target {
-			return true, nil
+		if len(fields) >= 5 {
+			paths[unescapeMountInfoPath(fields[4])] = struct{}{}
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return false, err
+		return nil, err
 	}
-	return false, nil
+	return paths, nil
 }
 
+var mountInfoReplacer = strings.NewReplacer(`\040`, " ", `\011`, "\t", `\012`, "\n", `\134`, `\`)
+
 func unescapeMountInfoPath(path string) string {
-	replacer := strings.NewReplacer(`\040`, " ", `\011`, "\t", `\012`, "\n", `\134`, `\`)
-	return replacer.Replace(path)
+	return mountInfoReplacer.Replace(path)
 }
