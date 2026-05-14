@@ -21,7 +21,7 @@ Backend implementation packages are split by responsibility:
 - `internal/session/` for the session state machine and lifecycle coordination.
 - `internal/idle/` for inactivity tracking and auto-pause triggers.
 - `internal/firecracker/` for Firecracker API client code and Unix socket interactions.
-- `internal/vm/` for higher-level VM pool, snapshot, restore, and OverlayFS orchestration.
+- `internal/vm/` for higher-level VM pool, snapshot, restore, and OverlayFS orchestration. It currently includes an OverlayFS manager that mounts a shared read-only base rootfs and creates isolated per-session upper/work/merged directories.
 - `internal/terminal/` for WebSocket-to-vsock terminal bridging.
 
 ## `deploy/`
@@ -38,7 +38,7 @@ Firecracker-specific runtime assets and workflows live here:
 
 - `base-image/` for shared Alpine rootfs image build outputs.
 - `kernel/` for Firecracker-compatible kernels.
-- `overlays/` for per-session OverlayFS upper layers.
+- `overlays/` for per-session OverlayFS upper, work, and merged directories managed by `internal/vm`.
 - `snapshots/` for memory and device snapshots.
 - `vsock/` for notes or helpers around host-to-guest terminal channels.
 
