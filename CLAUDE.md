@@ -33,3 +33,13 @@ Follow these practices for git:
 - Prefer fetching specific branches: git fetch origin <branch-name>
 - If network failures occur, retry up to 4 times with exponential backoff (2s, 4s, 8s, 16s)
 - For pulls use: git pull origin <branch-name>
+
+## Jira Project Information
+
+The MESHA repository (szerzogabor/mesha) has its Jira tickets tracked under the **MESH** project key (not a separate MESHA project).
+
+When checking Jira tickets:
+- Use the `/jira` skill to establish a connection
+- Search for `project = MESH` to find mesha-related tickets
+- The Mesh project Kanban board contains all active development work for this repository
+- Jira instance: https://szerzogabor.atlassian.net
