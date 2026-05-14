@@ -140,6 +140,8 @@ cat > "$OUT_DIR/build-rootfs-inside-container.sh" <<'BUILDER'
 #!/bin/sh
 set -eu
 
+apk add --no-cache e2fsprogs
+
 ROOTFS=/rootfs
 ALPINE_REPOSITORY="$1"
 ALPINE_VERSION="$2"
@@ -148,7 +150,7 @@ BUILD_EPOCH="$4"
 IMAGE_SIZE_MB="$5"
 IMAGE_NAME="$6"
 
-RELEASE_MINOR="${ALPINE_VERSION%.*}"
+RELEASE_MINOR=$(echo "$ALPINE_VERSION" | cut -d. -f1,2)
 MAIN_REPO="$ALPINE_REPOSITORY/v$RELEASE_MINOR/main"
 COMMUNITY_REPO="$ALPINE_REPOSITORY/v$RELEASE_MINOR/community"
 
@@ -289,8 +291,8 @@ if [[ "$ENGINE" == "podman" ]]; then
   ENGINE_ARGS=(run --rm --privileged -v "$STAGING_DIR:/rootfs:Z" -v "$OUT_DIR:/out:Z" -v "$OUT_DIR/build-rootfs-inside-container.sh:/build-rootfs.sh:ro,Z" "alpine:$ALPINE_VERSION" /build-rootfs.sh "$ALPINE_REPOSITORY" "$ALPINE_VERSION" "$CLAUDE_CODE_VERSION" "$BUILD_EPOCH" "$IMAGE_SIZE_MB" "$IMAGE_NAME")
 fi
 
+trap 'rm -f "$OUT_DIR/build-rootfs-inside-container.sh"' EXIT
 "$ENGINE" "${ENGINE_ARGS[@]}"
-rm -f "$OUT_DIR/build-rootfs-inside-container.sh"
 IMAGE_SHA256="$(sha256sum "$IMAGE_PATH" | awk '{print $1}')"
 IMAGE_BYTES="$(stat -c '%s' "$IMAGE_PATH")"
 NODE_VERSION="$(cat "$STAGING_DIR/etc/mesha-base-node-version")"
