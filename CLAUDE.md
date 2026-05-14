@@ -2,10 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Jira / Ticket Workflow
-
-Use the `/work-ticket` skill to pick up and implement tickets. All Jira access details, the ticket lifecycle workflow, PR monitoring rules, and review comment handling are defined there.
-
 ## Git Development Branch Requirements
 
 You are working on the following feature branches:
