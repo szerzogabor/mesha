@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git checkout *)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(git push -u origin *)",
+      "Bash(./scripts/jira.sh *)",
+      "Bash(mkdir *)",
+      "Bash(touch *)",
+      "Bash(ls)",
+      "Bash(ls *)",
+      "Skill(commit-commands:commit-push-pr)",
+      "mcp__8aeeb1be-f9ee-4a21-adba-bb69881d62fb__atlassianUserInfo",
+      "mcp__8aeeb1be-f9ee-4a21-adba-bb69881d62fb__getAccessibleAtlassianResources",
+      "mcp__8aeeb1be-f9ee-4a21-adba-bb69881d62fb__searchJiraIssuesUsingJql",
+      "mcp__8aeeb1be-f9ee-4a21-adba-bb69881d62fb__getJiraIssue",
+      "mcp__8aeeb1be-f9ee-4a21-adba-bb69881d62fb__getTransitionsForJiraIssue",
+      "mcp__8aeeb1be-f9ee-4a21-adba-bb69881d62fb__transitionJiraIssue",
+      "mcp__8aeeb1be-f9ee-4a21-adba-bb69881d62fb__addCommentToJiraIssue",
+      "mcp__8aeeb1be-f9ee-4a21-adba-bb69881d62fb__editJiraIssue",
+      "mcp__8aeeb1be-f9ee-4a21-adba-bb69881d62fb__createJiraIssue",
+      "mcp__8aeeb1be-f9ee-4a21-adba-bb69881d62fb__getJiraProjectIssueTypesMetadata",
+      "mcp__8aeeb1be-f9ee-4a21-adba-bb69881d62fb__getJiraIssueTypeMetaWithFields",
+      "mcp__8aeeb1be-f9ee-4a21-adba-bb69881d62fb__lookupJiraAccountId",
+      "mcp__github__create_pull_request",
+      "mcp__github__list_pull_requests",
+      "mcp__github__subscribe_pr_activity",
+      "mcp__github__pull_request_read"
+    ]
+  }
+}
