@@ -40,6 +40,6 @@ The MESHA repository (szerzogabor/mesha) has its Jira tickets tracked under the 
 
 When checking Jira tickets:
 - Use the `/jira` skill to establish a connection
-- Search for `project = MESH` to find MESHA-related tickets
+- Search for `project = MESHA` to find MESHA-related tickets
 - The MESH project Kanban board contains all active development work for this repository
 - Jira instance: https://szerzogabor.atlassian.net
