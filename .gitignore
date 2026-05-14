@@ -30,6 +30,7 @@ yarn-error.log*
 !/data/projects/.gitkeep
 !/data/snapshots/.gitkeep
 /infra/firecracker/base-image/*.img
+/infra/firecracker/base-image/out/
 /infra/firecracker/kernel/*
 !/infra/firecracker/kernel/.gitkeep
 /infra/firecracker/overlays/*
