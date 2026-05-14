@@ -2,7 +2,26 @@
 
 `internal/vm` owns host-side VM lifecycle helpers. The current implementation
 provides the OverlayFS session filesystem manager used by the orchestrator before
-Firecracker starts a microVM.
+Firecracker starts a microVM, plus a generic pre-warmed VM pool used to keep idle
+Firecracker instances ready for low-latency session startup.
+
+## Pre-warmed VM pool
+
+`WarmPool` maintains a configurable number of idle VMs through a
+`WarmVMFactory`. Production wiring can implement the factory with Firecracker
+boot and teardown calls, while unit tests can use an in-memory fake.
+
+The pool is safe for concurrent callers:
+
+- `Start` asynchronously creates idle VMs until `DesiredIdle` is reached.
+- `Allocate` hands out a single idle VM to one caller, falls back to on-demand
+  creation when the idle pool is temporarily empty, and triggers automatic
+  replenishment after consuming a warm VM.
+- `Release` either returns a reusable VM to the idle pool or destroys it when it
+  is dirty, not reusable, or would exceed the configured idle target.
+- failed background pre-warm attempts are retried after `ReplenishInterval`.
+- `Close` cancels pending creates, waits for in-flight pool operations, and
+  destroys idle VMs so shutdown does not leak pre-warmed instances.
 
 ## OverlayFS layout
 
