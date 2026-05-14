@@ -1,0 +1,43 @@
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Build outputs
+bin/
+dist/
+build/
+coverage/
+
+# Node
+node_modules/
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Go
+*.test
+*.out
+
+# Runtime state and large local artifacts
+/data/*
+!/data/db/
+!/data/projects/
+!/data/snapshots/
+!/data/db/.gitkeep
+!/data/projects/.gitkeep
+!/data/snapshots/.gitkeep
+/infra/firecracker/base-image/*.img
+/infra/firecracker/kernel/*
+!/infra/firecracker/kernel/.gitkeep
+/infra/firecracker/overlays/*
+!/infra/firecracker/overlays/.gitkeep
+/infra/firecracker/snapshots/*
+!/infra/firecracker/snapshots/.gitkeep
+
+# Secrets
+.env
+.env.*
+cloudflared-token.txt
