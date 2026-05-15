@@ -6,6 +6,9 @@ services:
     branch: main
     autoDeploy: true
     healthCheckPath: /actuator/health
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
     buildFilter:
       paths:
         - render.yaml
