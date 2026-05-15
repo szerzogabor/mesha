@@ -23,6 +23,8 @@ services:
     envVars:
       - key: PORT
         value: "10000"
+      - key: SERVER_PORT
+        value: "10000"
       - key: DB_HOST
         fromDatabase:
           name: mesha-db
