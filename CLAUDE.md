@@ -43,3 +43,12 @@ When checking Jira tickets:
 - Search for `project = MESHA` to find MESHA-related tickets
 - The MESH project Kanban board contains all active development work for this repository
 - Jira instance: https://szerzogabor.atlassian.net
+
+## Linear Ticket Workflow Rules
+
+All AI agents (Claude Code, Codex, Gemini, etc.) working on this repository MUST follow these rules when working with Linear tickets:
+
+1. **Start working only on tickets in "to do" status** - Do not begin work on tickets that have any other status
+2. **Move ticket to "In Progress" when starting** - Immediately after beginning work on a ticket, update its status to "In Progress"
+
+These rules ensure proper ticket lifecycle management and prevent conflicts with other developers.
