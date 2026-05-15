@@ -1,4 +1,14 @@
+databases:
+  - name: mesha-db
+    databaseName: mesha
+    user: mesha
+
 services:
+  - type: redis
+    name: mesha-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+
   - type: web
     name: mesha-backend-api
     env: docker
@@ -13,14 +23,33 @@ services:
     envVars:
       - key: PORT
         value: "10000"
-      - key: DATABASE_URL
-        sync: false
-      - key: DATABASE_USERNAME
-        sync: false
-      - key: DATABASE_PASSWORD
-        sync: false
+      - key: SERVER_PORT
+        value: "10000"
+      - key: DB_HOST
+        fromDatabase:
+          name: mesha-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: mesha-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: mesha-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: mesha-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: mesha-db
+          property: password
       - key: REDIS_URL
-        sync: false
+        fromService:
+          name: mesha-redis
+          type: redis
+          property: connectionString
 
   - type: worker
     name: mesha-backend-worker
@@ -33,14 +62,31 @@ services:
         - render.yaml
         - platform/backend-worker/**
     envVars:
-      - key: DATABASE_URL
-        sync: false
-      - key: DATABASE_USERNAME
-        sync: false
-      - key: DATABASE_PASSWORD
-        sync: false
+      - key: DB_HOST
+        fromDatabase:
+          name: mesha-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: mesha-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: mesha-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: mesha-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: mesha-db
+          property: password
       - key: REDIS_URL
-        sync: false
+        fromService:
+          name: mesha-redis
+          type: redis
+          property: connectionString
       - key: BLOCKS_API_URL
         sync: false
       - key: BLOCKS_API_KEY
