@@ -1,0 +1,61 @@
+services:
+  - type: web
+    name: mesha-backend-api
+    env: java
+    rootDir: platform/backend-api
+    buildCommand: mvn clean package -DskipTests
+    startCommand: java -jar target/backend-api-0.0.1-SNAPSHOT.jar
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /actuator/health
+    buildFilter:
+      paths:
+        - render.yaml
+        - platform/backend-api/**
+    envVars:
+      - key: JAVA_VERSION
+        value: "21"
+      - key: PORT
+        value: "10000"
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_USERNAME
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
+      - key: REDIS_URL
+        sync: false
+
+  - type: worker
+    name: mesha-backend-worker
+    env: java
+    rootDir: platform/backend-worker
+    buildCommand: mvn clean package -DskipTests
+    startCommand: java -jar target/backend-worker-0.0.1-SNAPSHOT.jar
+    branch: main
+    autoDeploy: true
+    buildFilter:
+      paths:
+        - render.yaml
+        - platform/backend-worker/**
+    envVars:
+      - key: JAVA_VERSION
+        value: "21"
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_USERNAME
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: BLOCKS_API_URL
+        sync: false
+      - key: BLOCKS_API_KEY
+        sync: false
+      - key: GITHUB_APP_ID
+        sync: false
+      - key: GITHUB_APP_PRIVATE_KEY
+        sync: false
+      - key: GITHUB_WEBHOOK_SECRET
+        sync: false
