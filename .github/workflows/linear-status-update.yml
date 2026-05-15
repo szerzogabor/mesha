@@ -1,0 +1,77 @@
+name: Linear Status Update on Deployment
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+    branches:
+      - main
+
+jobs:
+  update-linear:
+    name: Mark Linear ticket as Deployed
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Find merged PR for commit
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SHA="${{ github.event.workflow_run.head_sha }}"
+          PR_NUMBER=$(gh api "repos/${{ github.repository }}/commits/$SHA/pulls" \
+            --jq '.[0].number // empty')
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No PR found for commit $SHA — skipping Linear update"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          BRANCH=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" \
+            --jq '.head.ref')
+          TITLE=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" \
+            --jq '.title')
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+
+      - name: Extract Linear ticket ID
+        id: ticket
+        if: steps.pr.outputs.found == 'true'
+        run: |
+          SEARCH_TEXT="${{ steps.pr.outputs.branch }} ${{ steps.pr.outputs.title }}"
+          TICKET_ID=$(echo "$SEARCH_TEXT" | grep -oiE '[A-Z]+-[0-9]+' | head -1 | tr '[:lower:]' '[:upper:]')
+          if [ -z "$TICKET_ID" ]; then
+            echo "No Linear ticket ID found in branch name or PR title — skipping"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "id=$TICKET_ID" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update Linear ticket to Deployed
+        if: steps.ticket.outputs.found == 'true'
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          TICKET_ID="${{ steps.ticket.outputs.id }}"
+          echo "Updating Linear ticket $TICKET_ID to Deployed..."
+          RESPONSE=$(curl -s -X POST https://api.linear.app/graphql \
+            -H "Authorization: $LINEAR_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"query\": \"mutation { issueUpdate(id: \\\"$TICKET_ID\\\", input: { stateId: \\\"96d35c40-2197-4b8b-9a52-ea9b18f907e3\\\" }) { success issue { identifier state { name } } } }\"
+            }")
+          echo "Linear API response: $RESPONSE"
+          SUCCESS=$(echo "$RESPONSE" | jq -r '.data.issueUpdate.success // false')
+          if [ "$SUCCESS" != "true" ]; then
+            echo "::error::Failed to update Linear ticket $TICKET_ID"
+            echo "Response: $RESPONSE"
+            exit 1
+          fi
+          STATE=$(echo "$RESPONSE" | jq -r '.data.issueUpdate.issue.state.name')
+          echo "Successfully updated $TICKET_ID to state: $STATE"
