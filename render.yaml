@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: mesha-backend-api
+    env: java
+    rootDir: platform/backend-api
+    buildCommand: mvn clean package
+    startCommand: java -jar target/*.jar
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: JAVA_VERSION
+        value: "21"
+
+  - type: worker
+    name: mesha-backend-worker
+    env: java
+    rootDir: platform/backend-worker
+    buildCommand: mvn clean package
+    startCommand: java -jar target/*.jar
+    branch: main
+    autoDeploy: true
+    envVars:
+      - key: JAVA_VERSION
+        value: "21"
