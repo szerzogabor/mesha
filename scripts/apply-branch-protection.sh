@@ -5,7 +5,15 @@
 
 set -euo pipefail
 
-REPO="${1:-szerzogabor/mesha}"
+if [[ -n "${1:-}" ]]; then
+  REPO="$1"
+else
+  REPO="$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || true)"
+  if [[ -z "${REPO}" ]]; then
+    echo "Unable to auto-detect repository. Pass it explicitly as owner/repo."
+    exit 1
+  fi
+fi
 
 echo "Applying branch protection rules to ${REPO} main..."
 
@@ -15,13 +23,17 @@ gh api "repos/${REPO}/branches/main/protection" \
   --input - <<'EOF'
 {
   "required_status_checks": {
-    "strict": false,
-    "contexts": ["build"]
+    "strict": true,
+    "checks": [
+      {
+        "context": "build"
+      }
+    ]
   },
   "enforce_admins": true,
   "required_pull_request_reviews": {
     "required_approving_review_count": 1,
-    "dismiss_stale_reviews": false,
+    "dismiss_stale_reviews": true,
     "require_code_owner_reviews": false
   },
   "restrictions": null,

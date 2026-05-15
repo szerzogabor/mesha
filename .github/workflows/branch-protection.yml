@@ -17,13 +17,17 @@ jobs:
             --input - <<'EOF'
           {
             "required_status_checks": {
-              "strict": false,
-              "contexts": ["build"]
+              "strict": true,
+              "checks": [
+                {
+                  "context": "build"
+                }
+              ]
             },
             "enforce_admins": true,
             "required_pull_request_reviews": {
               "required_approving_review_count": 1,
-              "dismiss_stale_reviews": false,
+              "dismiss_stale_reviews": true,
               "require_code_owner_reviews": false
             },
             "restrictions": null,
