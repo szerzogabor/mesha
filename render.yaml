@@ -9,6 +9,9 @@ services:
     name: mesha-redis
     plan: free
     maxmemoryPolicy: allkeys-lru
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
 
   - type: web
     name: mesha-backend-api
@@ -63,6 +66,9 @@ services:
     rootDir: platform/backend-worker
     branch: main
     autoDeploy: true
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
     buildFilter:
       paths:
         - render.yaml
