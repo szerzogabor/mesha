@@ -53,7 +53,7 @@ services:
           type: redis
           property: connectionString
 
-  - type: worker
+  - type: web
     name: mesha-backend-worker
     env: docker
     plan: free
@@ -65,6 +65,8 @@ services:
         - render.yaml
         - platform/backend-worker/**
     envVars:
+      - key: PORT
+        value: "10000"
       - key: DB_HOST
         fromDatabase:
           name: mesha-db
