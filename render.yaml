@@ -2,6 +2,7 @@ databases:
   - name: mesha-db
     databaseName: mesha
     user: mesha
+    plan: free
 
 services:
   - type: redis
@@ -12,6 +13,7 @@ services:
   - type: web
     name: mesha-backend-api
     env: docker
+    plan: free
     rootDir: platform/backend-api
     branch: main
     autoDeploy: true
@@ -54,6 +56,7 @@ services:
   - type: worker
     name: mesha-backend-worker
     env: docker
+    plan: free
     rootDir: platform/backend-worker
     branch: main
     autoDeploy: true
