@@ -3,8 +3,6 @@ name: Vercel Frontend CD
 on:
   push:
     branches: [main]
-    paths:
-      - "platform/frontend/**"
   pull_request:
     paths:
       - "platform/frontend/**"
