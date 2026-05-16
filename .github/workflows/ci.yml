@@ -8,6 +8,9 @@ on:
 jobs:
   changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend-api: ${{ steps.filter.outputs.backend-api }}
@@ -80,7 +83,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      statuses: write
     steps:
       - name: Check all builds passed
         run: |
@@ -96,19 +98,3 @@ jobs:
             fi
           done
           echo "All applicable builds passed (skipped services had no relevant changes)."
-
-      - name: Override Vercel commit status for non-frontend PRs
-        if: >
-          github.event_name == 'pull_request' &&
-          needs.build-frontend.result == 'skipped'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh api \
-            --method POST \
-            -H "Accept: application/vnd.github+json" \
-            /repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }} \
-            -f state=success \
-            -f context=Vercel \
-            -f description="Deployments handled by GitHub Actions" \
-            -f target_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
