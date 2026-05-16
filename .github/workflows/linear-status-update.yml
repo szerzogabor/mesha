@@ -60,8 +60,14 @@ jobs:
         run: |
           TICKET_ID="${{ steps.ticket.outputs.id }}"
           echo "Updating Linear ticket $TICKET_ID to Deployed..."
+
+          if [ -z "$LINEAR_API_KEY" ]; then
+            echo "::warning title=Linear Update Skipped::LINEAR_API_KEY secret is not configured. Add a Linear personal API key (from https://linear.app/settings/api) as a GitHub Actions secret named LINEAR_API_KEY to enable automatic ticket status updates."
+            exit 0
+          fi
+
           RESPONSE=$(curl -s -X POST https://api.linear.app/graphql \
-            -H "Authorization: $LINEAR_API_KEY" \
+            -H "Authorization: Bearer $LINEAR_API_KEY" \
             -H "Content-Type: application/json" \
             -d "{
               \"query\": \"mutation { issueUpdate(id: \\\"$TICKET_ID\\\", input: { stateId: \\\"96d35c40-2197-4b8b-9a52-ea9b18f907e3\\\" }) { success issue { identifier state { name } } } }\"
