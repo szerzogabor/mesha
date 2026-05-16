@@ -6,15 +6,31 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  changes:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      statuses: write
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend-api: ${{ steps.filter.outputs.backend-api }}
+      backend-worker: ${{ steps.filter.outputs.backend-worker }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'platform/frontend/**'
+            backend-api:
+              - 'platform/backend-api/**'
+            backend-worker:
+              - 'platform/backend-worker/**'
 
-      # FRONTEND
+  build-frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -26,7 +42,12 @@ jobs:
         working-directory: ./platform/frontend
         run: npm run build
 
-      # BACKEND API
+  build-backend-api:
+    needs: changes
+    if: needs.changes.outputs.backend-api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Setup Java
         uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
         with:
@@ -36,13 +57,50 @@ jobs:
         working-directory: ./platform/backend-api
         run: mvn clean package -DskipTests
 
-      # BACKEND WORKER
+  build-backend-worker:
+    needs: changes
+    if: needs.changes.outputs.backend-worker == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Setup Java
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: 21
       - name: Build backend-worker
         working-directory: ./platform/backend-worker
         run: mvn clean package -DskipTests
 
-      - name: Override Vercel commit status
-        if: github.event_name == 'pull_request'
+  # Aggregator job — always runs so branch protection check "build" is always satisfied.
+  # Fails if any service build failed; passes (or skips) when no relevant paths changed.
+  build:
+    needs: [build-frontend, build-backend-api, build-backend-worker]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+      - name: Check all builds passed
+        run: |
+          results=(
+            "${{ needs.build-frontend.result }}"
+            "${{ needs.build-backend-api.result }}"
+            "${{ needs.build-backend-worker.result }}"
+          )
+          for result in "${results[@]}"; do
+            if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
+              echo "A service build failed or was cancelled: $result"
+              exit 1
+            fi
+          done
+          echo "All applicable builds passed (skipped services had no relevant changes)."
+
+      - name: Override Vercel commit status for non-frontend PRs
+        if: >
+          github.event_name == 'pull_request' &&
+          needs.build-frontend.result == 'skipped'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
