@@ -65,11 +65,15 @@ jobs:
 
       - name: Build project (production)
         if: github.ref == 'refs/heads/main' && steps.vercel-secrets.outputs.configured == 'true'
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         working-directory: ./platform/frontend
 
       - name: Build project (preview)
         if: github.ref != 'refs/heads/main' && steps.vercel-secrets.outputs.configured == 'true'
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
         run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
         working-directory: ./platform/frontend
 
