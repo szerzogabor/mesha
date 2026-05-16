@@ -16,7 +16,7 @@ export default async function DashboardLayout({
       <UserSync />
       <header className="h-14 border-b bg-white flex items-center justify-between px-6 shrink-0">
         <span className="font-semibold text-lg tracking-tight">Mesha</span>
-        <UserButton afterSignOutUrl="/" />
+        <UserButton />
       </header>
       <div className="flex-1 overflow-auto">{children}</div>
     </div>
