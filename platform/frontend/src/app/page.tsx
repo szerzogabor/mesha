@@ -3,8 +3,13 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
 export default async function Home() {
-  const { userId } = await auth();
-  if (userId) redirect("/dashboard");
+  try {
+    const { userId } = await auth();
+    if (userId) redirect("/dashboard");
+  } catch {
+    // auth() throws when clerkMiddleware() didn't run (e.g., misconfigured keys).
+    // Fall through to render the public landing page.
+  }
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8 bg-white">
