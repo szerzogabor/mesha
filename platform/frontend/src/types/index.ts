@@ -1,25 +1,8 @@
-export interface User {
-  id: string;
-  email: string;
-  name?: string;
-  createdAt: string;
-}
-
-export type WorkspaceRole = "OWNER" | "ADMIN" | "DEVELOPER" | "VIEWER";
-
 export interface Workspace {
   id: string;
   name: string;
   slug: string;
   createdAt: string;
-}
-
-export interface WorkspaceMember {
-  id: string;
-  userId: string;
-  email: string;
-  name?: string;
-  role: WorkspaceRole;
 }
 
 export interface Project {
