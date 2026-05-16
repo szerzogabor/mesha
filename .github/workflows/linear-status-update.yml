@@ -66,8 +66,15 @@ jobs:
             exit 0
           fi
 
+          # Personal API keys (lin_api_*) are sent bare; OAuth tokens (lin_oauth_*) need Bearer prefix
+          if [[ "$LINEAR_API_KEY" == lin_oauth_* ]]; then
+            AUTH_HEADER="Bearer $LINEAR_API_KEY"
+          else
+            AUTH_HEADER="$LINEAR_API_KEY"
+          fi
+
           RESPONSE=$(curl -s -X POST https://api.linear.app/graphql \
-            -H "Authorization: Bearer $LINEAR_API_KEY" \
+            -H "Authorization: $AUTH_HEADER" \
             -H "Content-Type: application/json" \
             -d "{
               \"query\": \"mutation { issueUpdate(id: \\\"$TICKET_ID\\\", input: { stateId: \\\"96d35c40-2197-4b8b-9a52-ea9b18f907e3\\\" }) { success issue { identifier state { name } } } }\"
