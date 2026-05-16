@@ -57,6 +57,7 @@ Pick the oldest one. Do not start work on tickets in any other status.
 
 - Make all changes on the feature branch.
 - Commit frequently with messages that explain *why*, not just what.
+- Use TDD for implementing a ticket 
 
 ### 3. Finish
 
