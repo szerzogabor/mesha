@@ -25,27 +25,27 @@ public class LabelController {
     }
 
     @GetMapping
-    @PreAuthorize("@workspaceSecurity.isMember(authentication, #workspaceId)")
-    public ResponseEntity<List<LabelDto>> list(@PathVariable String workspaceId) {
-        List<LabelDto> labels = labelService.listByWorkspace(UUID.fromString(workspaceId))
+    @PreAuthorize("@workspaceSecurity.isMember(authentication, #workspaceId.toString())")
+    public ResponseEntity<List<LabelDto>> list(@PathVariable UUID workspaceId) {
+        List<LabelDto> labels = labelService.listByWorkspace(workspaceId)
             .stream().map(LabelDto::from).toList();
         return ResponseEntity.ok(labels);
     }
 
     @PostMapping
-    @PreAuthorize("@workspaceSecurity.isMember(authentication, #workspaceId)")
-    public ResponseEntity<LabelDto> create(@PathVariable String workspaceId,
+    @PreAuthorize("@workspaceSecurity.isMember(authentication, #workspaceId.toString())")
+    public ResponseEntity<LabelDto> create(@PathVariable UUID workspaceId,
                                             @CurrentUser User user,
                                             @Valid @RequestBody CreateLabelRequest req) {
-        LabelDto label = LabelDto.from(labelService.create(UUID.fromString(workspaceId), req));
+        LabelDto label = LabelDto.from(labelService.create(workspaceId, req));
         return ResponseEntity.status(HttpStatus.CREATED).body(label);
     }
 
     @DeleteMapping("/{labelId}")
-    @PreAuthorize("@workspaceSecurity.isAdminOrAbove(authentication, #workspaceId)")
-    public ResponseEntity<Void> delete(@PathVariable String workspaceId,
+    @PreAuthorize("@workspaceSecurity.isAdminOrAbove(authentication, #workspaceId.toString())")
+    public ResponseEntity<Void> delete(@PathVariable UUID workspaceId,
                                         @PathVariable UUID labelId) {
-        labelService.delete(UUID.fromString(workspaceId), labelId);
+        labelService.delete(workspaceId, labelId);
         return ResponseEntity.noContent().build();
     }
 }

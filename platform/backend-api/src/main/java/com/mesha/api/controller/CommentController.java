@@ -40,7 +40,7 @@ public class CommentController {
     public ResponseEntity<Void> delete(@PathVariable UUID issueId,
                                         @PathVariable UUID commentId,
                                         @CurrentUser User user) {
-        commentService.delete(commentId, user);
+        commentService.delete(issueId, commentId, user);
         return ResponseEntity.noContent().build();
     }
 }

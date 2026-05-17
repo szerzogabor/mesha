@@ -12,16 +12,8 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
     @Query("""
            SELECT c FROM Comment c
            LEFT JOIN FETCH c.author
-           WHERE c.issue.id = :issueId AND c.parent IS NULL
+           WHERE c.issue.id = :issueId
            ORDER BY c.createdAt ASC
            """)
-    List<Comment> findTopLevelByIssueId(@Param("issueId") UUID issueId);
-
-    @Query("""
-           SELECT c FROM Comment c
-           LEFT JOIN FETCH c.author
-           WHERE c.parent.id = :parentId
-           ORDER BY c.createdAt ASC
-           """)
-    List<Comment> findRepliesByParentId(@Param("parentId") UUID parentId);
+    List<Comment> findAllByIssueId(@Param("issueId") UUID issueId);
 }

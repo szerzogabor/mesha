@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,6 +28,7 @@ public class IssueController {
     }
 
     @GetMapping
+    @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
     public ResponseEntity<PagedResponse<IssueDto>> list(
             @PathVariable UUID projectId,
             @RequestParam(required = false) IssueStatus status,
@@ -41,6 +43,7 @@ public class IssueController {
     }
 
     @PostMapping
+    @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
     public ResponseEntity<IssueDto> create(@PathVariable UUID projectId,
                                             @CurrentUser User user,
                                             @Valid @RequestBody CreateIssueRequest req) {
@@ -49,12 +52,14 @@ public class IssueController {
     }
 
     @GetMapping("/{issueId}")
+    @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
     public ResponseEntity<IssueDto> get(@PathVariable UUID projectId,
                                          @PathVariable UUID issueId) {
         return ResponseEntity.ok(IssueDto.from(issueService.getById(issueId)));
     }
 
     @PatchMapping("/{issueId}")
+    @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
     public ResponseEntity<IssueDto> update(@PathVariable UUID projectId,
                                             @PathVariable UUID issueId,
                                             @CurrentUser User user,
@@ -64,6 +69,7 @@ public class IssueController {
     }
 
     @DeleteMapping("/{issueId}")
+    @PreAuthorize("@workspaceSecurity.isProjectAdminOrAbove(authentication, #projectId.toString())")
     public ResponseEntity<Void> delete(@PathVariable UUID projectId,
                                         @PathVariable UUID issueId) {
         issueService.delete(issueId);
@@ -71,6 +77,7 @@ public class IssueController {
     }
 
     @GetMapping("/{issueId}/activity")
+    @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
     public ResponseEntity<List<ActivityEventDto>> getActivity(@PathVariable UUID projectId,
                                                                @PathVariable UUID issueId) {
         List<ActivityEventDto> events = activityService.getForIssue(issueId)

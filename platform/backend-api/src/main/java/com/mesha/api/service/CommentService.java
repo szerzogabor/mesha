@@ -11,7 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class CommentService {
@@ -53,19 +55,34 @@ public class CommentService {
     }
 
     public List<CommentDto> listThreaded(UUID issueId) {
-        List<Comment> topLevel = commentRepository.findTopLevelByIssueId(issueId);
-        return topLevel.stream().map(c -> {
-            List<CommentDto> replies = commentRepository.findRepliesByParentId(c.getId())
-                .stream().map(CommentDto::from).toList();
-            return CommentDto.fromWithReplies(c, replies);
-        }).toList();
+        List<Comment> all = commentRepository.findAllByIssueId(issueId);
+
+        Map<UUID, List<Comment>> childrenByParent = all.stream()
+            .filter(c -> c.getParent() != null)
+            .collect(Collectors.groupingBy(c -> c.getParent().getId()));
+
+        return all.stream()
+            .filter(c -> c.getParent() == null)
+            .map(c -> buildDto(c, childrenByParent))
+            .toList();
+    }
+
+    private CommentDto buildDto(Comment comment, Map<UUID, List<Comment>> childrenByParent) {
+        List<CommentDto> replies = childrenByParent.getOrDefault(comment.getId(), List.of())
+            .stream()
+            .map(c -> buildDto(c, childrenByParent))
+            .toList();
+        return CommentDto.fromWithReplies(comment, replies);
     }
 
     @Transactional
-    public void delete(UUID commentId, User requestingUser) {
+    public void delete(UUID issueId, UUID commentId, User requestingUser) {
         Comment comment = commentRepository.findById(commentId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found"));
-        if (comment.getAuthor() == null || !comment.getAuthor().getId().equals(requestingUser.getId())) {
+        if (!comment.getIssue().getId().equals(issueId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Comment does not belong to this issue");
+        }
+        if (comment.getAuthor() != null && !comment.getAuthor().getId().equals(requestingUser.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not the comment author");
         }
         commentRepository.delete(comment);

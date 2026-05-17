@@ -1,6 +1,7 @@
 package com.mesha.api.security;
 
 import com.mesha.api.model.WorkspaceRole;
+import com.mesha.api.repository.ProjectRepository;
 import com.mesha.api.repository.WorkspaceMemberRepository;
 import com.mesha.api.repository.UserRepository;
 import org.springframework.security.core.Authentication;
@@ -18,11 +19,14 @@ public class WorkspaceSecurityService {
 
     private final WorkspaceMemberRepository memberRepository;
     private final UserRepository userRepository;
+    private final ProjectRepository projectRepository;
 
     public WorkspaceSecurityService(WorkspaceMemberRepository memberRepository,
-                                    UserRepository userRepository) {
+                                    UserRepository userRepository,
+                                    ProjectRepository projectRepository) {
         this.memberRepository = memberRepository;
         this.userRepository = userRepository;
+        this.projectRepository = projectRepository;
     }
 
     public boolean hasAnyRole(Authentication auth, String workspaceId, WorkspaceRole... roles) {
@@ -43,5 +47,17 @@ public class WorkspaceSecurityService {
         return hasAnyRole(auth, workspaceId,
             WorkspaceRole.OWNER, WorkspaceRole.ADMIN,
             WorkspaceRole.DEVELOPER, WorkspaceRole.VIEWER);
+    }
+
+    public boolean isProjectMember(Authentication auth, String projectId) {
+        return projectRepository.findById(UUID.fromString(projectId))
+            .map(p -> isMember(auth, p.getWorkspace().getId().toString()))
+            .orElse(false);
+    }
+
+    public boolean isProjectAdminOrAbove(Authentication auth, String projectId) {
+        return projectRepository.findById(UUID.fromString(projectId))
+            .map(p -> isAdminOrAbove(auth, p.getWorkspace().getId().toString()))
+            .orElse(false);
     }
 }

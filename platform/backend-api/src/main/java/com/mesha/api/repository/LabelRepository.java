@@ -8,4 +8,5 @@ import java.util.UUID;
 public interface LabelRepository extends JpaRepository<Label, UUID> {
     List<Label> findAllByWorkspaceIdOrderByNameAsc(UUID workspaceId);
     boolean existsByWorkspaceIdAndName(UUID workspaceId, String name);
+    List<Label> findAllByIdInAndWorkspace_Id(List<UUID> ids, UUID workspaceId);
 }
