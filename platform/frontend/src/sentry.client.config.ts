@@ -22,8 +22,8 @@ Sentry.init({
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1.0,
 
-  // Structured logs forwarded to Sentry
-  enableLogs: true,
+  // Structured logs forwarded to Sentry (experimental in SDK v8)
+  _experiments: { enableLogs: true },
 
   integrations: [
     Sentry.browserTracingIntegration(),

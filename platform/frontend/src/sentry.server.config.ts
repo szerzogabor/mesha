@@ -12,8 +12,8 @@ Sentry.init({
 
   tracesSampleRate: ENVIRONMENT === "production" ? 0.1 : 1.0,
 
-  // Structured logs forwarded to Sentry
-  enableLogs: true,
+  // Structured logs forwarded to Sentry (experimental in SDK v8)
+  _experiments: { enableLogs: true },
 
   // Capture local variables in stack traces
   includeLocalVariables: true,
