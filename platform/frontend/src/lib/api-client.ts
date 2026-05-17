@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/nextjs";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 function getAuthToken(): string | null {
@@ -13,12 +15,47 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
+  const method = init?.method ?? "GET";
+
   const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText);
-    throw new Error(`API error ${res.status}: ${text}`);
+    let errorBody: string;
+    try {
+      const json = await res.json();
+      errorBody = json?.message ?? json?.error ?? JSON.stringify(json);
+    } catch {
+      errorBody = await res.text().catch(() => res.statusText);
+    }
+    const errorMessage = `API error ${res.status}: ${errorBody}`;
+    const error = new Error(errorMessage);
+
+    // Auth failures get tagged differently for filtering
+    if (res.status === 401 || res.status === 403) {
+      Sentry.addBreadcrumb({
+        type: "http",
+        level: "warning",
+        category: "auth",
+        message: `Auth failure: ${method} ${path} → ${res.status}`,
+        data: { url: path, method, status: res.status },
+      });
+    } else {
+      Sentry.captureException(error, {
+        tags: { "api.path": path, "api.method": method, "api.status": res.status },
+      });
+    }
+
+    Sentry.addBreadcrumb({
+      type: "http",
+      level: "error",
+      category: "fetch",
+      message: errorMessage,
+      data: { url: path, method, status: res.status },
+    });
+
+    throw error;
   }
+
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
