@@ -58,6 +58,7 @@ Pick the oldest one. Do not start work on tickets in any other status.
 - Make all changes on the feature branch.
 - Commit frequently with messages that explain *why*, not just what.
 - Use TDD for implementing a ticket 
+- use this to install vercel tool when working on frontend : "npx plugins add vercel/vercel-plugin" 
 
 ### 3. Finish
 
