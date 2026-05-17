@@ -62,6 +62,7 @@ Pick the oldest one. Do not start work on tickets in any other status.
 
 ### 3. Finish
 
+- For commits and opening PR's use only the "szerzogabor@gmail.com" so Gemini review automatically and vercel deploys in preview environment 
 - Push the branch to origin.
 - Open a Pull Request — title must include the ticket ID, e.g. `[MESH-42] Add user authentication`.
 - Move the Jira ticket to **Human Review** status.
