@@ -11,6 +11,35 @@ export interface Project {
   name: string;
   description?: string;
   createdAt: string;
+  updatedAt: string;
+}
+
+export type IssueStatus = "BACKLOG" | "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
+export type IssuePriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+export type AIAssignmentState = "pending" | "running" | "completed" | "failed";
+export type ActivityEventType =
+  | "ISSUE_CREATED"
+  | "STATUS_CHANGED"
+  | "PRIORITY_CHANGED"
+  | "ASSIGNEE_CHANGED"
+  | "LABEL_ADDED"
+  | "LABEL_REMOVED"
+  | "COMMENT_ADDED"
+  | "TITLE_CHANGED"
+  | "DESCRIPTION_CHANGED";
+
+export interface UserSummary {
+  id: string;
+  email: string;
+  name?: string;
+  createdAt: string;
+}
+
+export interface Label {
+  id: string;
+  workspaceId: string;
+  name: string;
+  color: string;
 }
 
 export interface Issue {
@@ -20,14 +49,42 @@ export interface Issue {
   description?: string;
   status: IssueStatus;
   priority: IssuePriority;
+  assignee?: UserSummary;
+  labels: Label[];
   aiAssignmentState?: AIAssignmentState;
   createdAt: string;
   updatedAt: string;
 }
 
-export type IssueStatus = "open" | "in_progress" | "done" | "cancelled";
-export type IssuePriority = "low" | "medium" | "high" | "urgent";
-export type AIAssignmentState = "pending" | "running" | "completed" | "failed";
+export interface Comment {
+  id: string;
+  issueId: string;
+  body: string;
+  author?: UserSummary;
+  parentId?: string;
+  replies: Comment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ActivityEvent {
+  id: string;
+  issueId: string;
+  user?: UserSummary;
+  eventType: ActivityEventType;
+  oldValue?: string;
+  newValue?: string;
+  createdAt: string;
+}
+
+export interface PagedResponse<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
+}
 
 export interface AISession {
   id: string;
