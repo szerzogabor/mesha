@@ -38,5 +38,3 @@ Sentry.init({
   ],
 });
 
-// Instrument Next.js App Router navigations as Sentry transactions
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

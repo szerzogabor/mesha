@@ -17,46 +17,47 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   const method = init?.method ?? "GET";
 
-  return Sentry.startSpan(
-    { name: `${method} ${path}`, op: "http.client", attributes: { "http.method": method, "http.url": path } },
-    async () => {
-      const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
 
-      if (!res.ok) {
-        const text = await res.text().catch(() => res.statusText);
-        const errorMessage = `API error ${res.status}: ${text}`;
-        const error = new Error(errorMessage);
-
-        // Auth failures get tagged differently for filtering
-        if (res.status === 401 || res.status === 403) {
-          Sentry.addBreadcrumb({
-            type: "http",
-            level: "warning",
-            category: "auth",
-            message: `Auth failure: ${method} ${path} → ${res.status}`,
-            data: { url: path, method, status: res.status },
-          });
-        } else {
-          Sentry.captureException(error, {
-            tags: { "api.path": path, "api.method": method, "api.status": res.status },
-          });
-        }
-
-        Sentry.addBreadcrumb({
-          type: "http",
-          level: "error",
-          category: "fetch",
-          message: errorMessage,
-          data: { url: path, method, status: res.status },
-        });
-
-        throw error;
-      }
-
-      if (res.status === 204) return undefined as T;
-      return res.json() as Promise<T>;
+  if (!res.ok) {
+    let errorBody: string;
+    try {
+      const json = await res.json();
+      errorBody = json?.message ?? json?.error ?? JSON.stringify(json);
+    } catch {
+      errorBody = await res.text().catch(() => res.statusText);
     }
-  );
+    const errorMessage = `API error ${res.status}: ${errorBody}`;
+    const error = new Error(errorMessage);
+
+    // Auth failures get tagged differently for filtering
+    if (res.status === 401 || res.status === 403) {
+      Sentry.addBreadcrumb({
+        type: "http",
+        level: "warning",
+        category: "auth",
+        message: `Auth failure: ${method} ${path} → ${res.status}`,
+        data: { url: path, method, status: res.status },
+      });
+    } else {
+      Sentry.captureException(error, {
+        tags: { "api.path": path, "api.method": method, "api.status": res.status },
+      });
+    }
+
+    Sentry.addBreadcrumb({
+      type: "http",
+      level: "error",
+      category: "fetch",
+      message: errorMessage,
+      data: { url: path, method, status: res.status },
+    });
+
+    throw error;
+  }
+
+  if (res.status === 204) return undefined as T;
+  return res.json() as Promise<T>;
 }
 
 export const apiClient = {
