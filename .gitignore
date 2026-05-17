@@ -39,3 +39,4 @@ Thumbs.db
 cloudflared-token.txt
 .env.local
 .env*.local
+platform/frontend/tsconfig.tsbuildinfo
