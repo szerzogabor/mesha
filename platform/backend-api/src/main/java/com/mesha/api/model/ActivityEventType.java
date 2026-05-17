@@ -1,0 +1,13 @@
+package com.mesha.api.model;
+
+public enum ActivityEventType {
+    ISSUE_CREATED,
+    STATUS_CHANGED,
+    PRIORITY_CHANGED,
+    ASSIGNEE_CHANGED,
+    LABEL_ADDED,
+    LABEL_REMOVED,
+    COMMENT_ADDED,
+    TITLE_CHANGED,
+    DESCRIPTION_CHANGED
+}
