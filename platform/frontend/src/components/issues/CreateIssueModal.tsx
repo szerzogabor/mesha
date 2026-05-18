@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { Modal } from "@/components/ui/Modal";
 import { IssueStatus, IssuePriority } from "@/types";
 
@@ -36,6 +37,7 @@ export function CreateIssueModal({ open, onClose, onSubmit }: CreateIssueModalPr
       setPriority("MEDIUM");
       onClose();
     } catch (err) {
+      Sentry.captureException(err);
       setError(err instanceof Error ? err.message : "Failed to create issue");
     } finally {
       setLoading(false);

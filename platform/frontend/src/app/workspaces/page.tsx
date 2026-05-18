@@ -26,6 +26,7 @@ Sentry.logger.info('User triggered test log', { log_source: 'sentry_test' });
       setSlug("");
       setShowCreate(false);
     } catch (err) {
+      Sentry.captureException(err);
       setCreateError(err instanceof Error ? err.message : "Failed to create workspace");
     }
   };
