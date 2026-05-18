@@ -41,6 +41,7 @@ All AI agents (Claude Code, Codex, Gemini, etc.) working on this repository MUST
 
 1. **Start working only on tickets in "to do" status** - Do not begin work on tickets that have any other status
 2. **Move ticket to "In Progress" when starting** - Immediately after beginning work on a ticket, update its status to "In Progress"
+3. Use wok-ticket skill
 
 These rules ensure proper ticket lifecycle management and prevent conflicts with other developers.
 
