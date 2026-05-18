@@ -57,6 +57,8 @@ services:
           property: connectionString
       - key: CORS_ALLOWED_ORIGINS
         sync: false
+      - key: CLERK_JWKS_URI
+        sync: false
 
   - type: web
     name: mesha-backend-worker

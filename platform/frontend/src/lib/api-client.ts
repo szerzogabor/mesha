@@ -2,13 +2,20 @@ import * as Sentry from "@sentry/nextjs";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
-function getAuthToken(): string | null {
+let _tokenGetter: (() => Promise<string | null>) | null = null;
+
+export function setTokenGetter(getter: () => Promise<string | null>) {
+  _tokenGetter = getter;
+}
+
+async function getAuthToken(): Promise<string | null> {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("mesha_auth_token");
+  if (_tokenGetter) return _tokenGetter();
+  return null;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getAuthToken();
+  const token = await getAuthToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(init?.headers as Record<string, string>),
