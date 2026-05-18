@@ -55,6 +55,8 @@ services:
           name: mesha-redis
           type: redis
           property: connectionString
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
 
   - type: web
     name: mesha-backend-worker
