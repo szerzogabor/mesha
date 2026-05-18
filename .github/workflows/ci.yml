@@ -58,6 +58,8 @@ jobs:
           java-version: 21
       - name: Build backend-api
         working-directory: ./platform/backend-api
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: mvn clean package -DskipTests
 
   build-backend-worker:
