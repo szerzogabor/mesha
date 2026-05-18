@@ -67,6 +67,9 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
             String msg = "request completed status={} durationMs={}";
             if (status >= 500) {
                 log.error(msg, status, durationMs);
+            } else if (status == 401 || status == 403) {
+                // Auth failures are expected; avoid polluting logs/Sentry with warnings
+                log.debug(msg, status, durationMs);
             } else if (status >= 400) {
                 log.warn(msg, status, durationMs);
             } else {
