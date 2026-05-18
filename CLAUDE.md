@@ -35,16 +35,6 @@ Follow these practices for git:
 - If network failures occur, retry up to 4 times with exponential backoff (2s, 4s, 8s, 16s)
 - For pulls use: git pull origin <branch-name>
 
-## Jira Project Information
-
-The MESHA repository (szerzogabor/mesha) has its Jira tickets tracked under the **MESH** project key (not a separate MESHA project).
-
-When checking Jira tickets:
-- Use the `/jira` skill to establish a connection
-- Search for `project = MESHA` to find MESHA-related tickets
-- The MESH project Kanban board contains all active development work for this repository
-- Jira instance: https://szerzogabor.atlassian.net
-
 ## Linear Ticket Workflow Rules
 
 All AI agents (Claude Code, Codex, Gemini, etc.) working on this repository MUST follow these rules when working with Linear tickets:
@@ -58,6 +48,6 @@ These rules ensure proper ticket lifecycle management and prevent conflicts with
 
 All AI agents (Claude Code, Codex, Gemini, etc.) working on this repository MUST follow these rules when creating pull requests:
 
-1. Make sure "szerzogabor@gmail.com" is in the contributor list for every commit
+1. Make sure ONLY "szerzogabor@gmail.com" is in the contributor list for every commit
 
 This ensures additional code review coverage and maintains code quality standards.
