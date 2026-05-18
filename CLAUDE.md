@@ -24,6 +24,7 @@ Remember: All development and final pushes should go to the branches specified a
 Follow these practices for git:
 
 **For git push:**
+- Always use "szerzogabor@gmail.com" as a contributor for commits. This is the ONLY acceptable contributor
 - Always use git push -u origin <branch-name>
 - Only if push fails due to network errors retry up to 4 times with exponential backoff (2s, 4s, 8s, 16s)
 - Example retry logic: try push, wait 2s if failed, try again, wait 4s if failed, try again, etc.
