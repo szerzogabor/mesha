@@ -32,26 +32,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
     // Auth failures get tagged differently for filtering
     if (res.status === 401 || res.status === 403) {
-      Sentry.addBreadcrumb({
-        type: "http",
-        level: "warning",
-        category: "auth",
-        message: `Auth failure: ${method} ${path} → ${res.status}`,
-        data: { url: path, method, status: res.status },
+      Sentry.logger.warn(`Auth failure: ${method} ${path} → ${res.status}`, {
+        url: path,
+        method,
+        status: res.status,
       });
     } else {
+      Sentry.logger.error(errorMessage, { url: path, method, status: res.status });
       Sentry.captureException(error, {
         tags: { "api.path": path, "api.method": method, "api.status": res.status },
       });
     }
-
-    Sentry.addBreadcrumb({
-      type: "http",
-      level: "error",
-      category: "fetch",
-      message: errorMessage,
-      data: { url: path, method, status: res.status },
-    });
 
     throw error;
   }
