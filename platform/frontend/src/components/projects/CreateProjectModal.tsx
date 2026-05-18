@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { Modal } from "@/components/ui/Modal";
 
 interface CreateProjectModalProps {
@@ -26,6 +27,7 @@ export function CreateProjectModal({ open, onClose, onSubmit }: CreateProjectMod
       setDescription("");
       onClose();
     } catch (err) {
+      Sentry.captureException(err);
       setError(err instanceof Error ? err.message : "Failed to create project");
     } finally {
       setLoading(false);
