@@ -60,3 +60,4 @@ All AI agents (Claude Code, Codex, Gemini, etc.) working on this repository MUST
 1. Make sure "szerzogabor@gmail.com" is in the contributor list for every commit
 
 This ensures additional code review coverage and maintains code quality standards.
+-
