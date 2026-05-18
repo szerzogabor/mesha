@@ -1,11 +1,11 @@
 ---
 name: work-ticket
-description: Pick up and implement the next Jira ticket for the Mesh project. Use when the user says "work on the next ticket", "start a ticket", or similar.
+description: Pick up and implement the next Linear ticket for the Mesha project. Use when the user says "work on the next ticket", "start a ticket", or similar.
 ---
 
 # Work Ticket Skill
 
-Execute a Jira ticket end-to-end: find the next Research ticket, implement it, open a PR, and monitor for CI/review activity.
+Execute a Linear ticket end-to-end: find the next Research ticket, implement it, open a PR, and monitor for CI/review activity.
 
 ## Silent Execution
 
@@ -15,36 +15,6 @@ Only produce output for:
 - A question that requires the user's decision before you can continue.
 - An important status note once the work is done, e.g. "Implementation is done, PR #42 is open." or "There was a merge conflict but I resolved it — human review can continue."
 - A blocker you cannot resolve on your own.
-
-## Jira Access
-
-Probe for the Atlassian Rovo MCP connector first:
-
-```
-ToolSearch("atlassianUserInfo", max_results=5)
-```
-
-If found, extract the tool name prefix (e.g. `mcp__a1b2c3d4__atlassianUserInfo` → prefix is `mcp__a1b2c3d4__`), then load the required schemas by substituting the actual UUID:
-
-```
-ToolSearch("select:mcp__<actual-uuid>__getAccessibleAtlassianResources,mcp__<actual-uuid>__searchJiraIssuesUsingJql,mcp__<actual-uuid>__getTransitionsForJiraIssue,mcp__<actual-uuid>__transitionJiraIssue")
-```
-
-Never use the literal string `<actual-uuid>` — replace it with the UUID discovered in the previous step.
-
-Resolve `cloudId` at runtime via `getAccessibleAtlassianResources` — never hardcode it.
-
-If the Rovo connector is not available, fall back to `scripts/jira.sh` (requires `JIRA_API_TOKEN` in the environment). See `jira/jira-mcp-aggregated-analysis.md` for full details on why this fallback exists and what NOT to do (don't loop ToolSearch, don't tell the user to re-authorize, don't add a project-level `.mcp.json` for Atlassian).
-
-## Ticket Selection
-
-Query for tickets in **Research** status, ordered by creation date ascending:
-
-```jql
-project = MESH AND status = "Research" ORDER BY created ASC
-```
-
-Pick the oldest one. Do not start work on tickets in any other status.
 
 ## Workflow
 
@@ -62,10 +32,9 @@ Pick the oldest one. Do not start work on tickets in any other status.
 
 ### 3. Finish
 
-- For commits and opening PR's use only the "szerzogabor@gmail.com" so Gemini review automatically and vercel deploys in preview environment 
 - Push the branch to origin.
 - Open a Pull Request — title must include the ticket ID, e.g. `[MESH-42] Add user authentication`.
-- Move the Jira ticket to **Human Review** status.
+- In case of Backend changes name of the Pull Request has to contain the "[render preview]"
 
 ### Summary Table
 
