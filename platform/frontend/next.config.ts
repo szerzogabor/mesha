@@ -13,9 +13,6 @@ export default withSentryConfig(nextConfig, {
 
   widenClientFileUpload: true,
 
-  // Avoid conflicts with platform-reserved /monitoring endpoint.
-  tunnelRoute: "/error-monitoring",
-
   webpack: {
     treeshake: {
       removeDebugLogging: true,
