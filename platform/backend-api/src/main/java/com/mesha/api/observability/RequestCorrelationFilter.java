@@ -63,7 +63,15 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } finally {
             long durationMs = System.currentTimeMillis() - startTime;
-            log.debug("request completed status={} durationMs={}", response.getStatus(), durationMs);
+            int status = response.getStatus();
+            String msg = "request completed status={} durationMs={}";
+            if (status >= 500) {
+                log.error(msg, status, durationMs);
+            } else if (status >= 400) {
+                log.warn(msg, status, durationMs);
+            } else {
+                log.debug(msg, status, durationMs);
+            }
             MDC.clear();
         }
     }
