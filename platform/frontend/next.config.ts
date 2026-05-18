@@ -9,23 +9,17 @@ export default withSentryConfig(nextConfig, {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+
+  widenClientFileUpload: true,
+
   // Avoid conflicts with platform-reserved /monitoring endpoint.
   tunnelRoute: "/error-monitoring",
 
-  // Upload source maps to Sentry during production builds
-  sourcemaps: {
-    disable: process.env.NODE_ENV !== "production",
+  webpack: {
+    treeshake: {
+      removeDebugLogging: true,
+    },
+    automaticVercelMonitors: true,
   },
-
-  // Suppress Sentry build-time logs
-  silent: !process.env.CI,
-
-  // Automatically tree-shake Sentry SDK logger in production
-  disableLogger: true,
-
-  // Allows Sentry to run automatically in the instrumentation hook
-  autoInstrumentMiddleware: true,
-
-  // Automatically wrap server components
-  autoInstrumentServerFunctions: true,
 });

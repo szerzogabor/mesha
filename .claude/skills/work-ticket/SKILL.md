@@ -66,6 +66,7 @@ Pick the oldest one. Do not start work on tickets in any other status.
 - Push the branch to origin.
 - Open a Pull Request — title must include the ticket ID, e.g. `[MESH-42] Add user authentication`.
 - Move the Jira ticket to **Human Review** status.
+- In case of backend changes use the "[render preview]" label in the title of the PR so render spins up a temprary instance
 
 ### Summary Table
 
