@@ -45,6 +45,30 @@ management:
       exposure:
         include: health,info,metrics
 
+# Sentry observability configuration
+sentry:
+  dsn: ${SENTRY_DSN:https://b63b87ccbf37de2bfa73122d07404172@o4511348602241024.ingest.de.sentry.io/4511410200576080}
+  environment: ${APP_ENV:local}
+  release: ${APP_VERSION:0.0.1-SNAPSHOT}@${GIT_COMMIT:unknown}
+  # Capture 100% of transactions in non-production; tune down in production via env var
+  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:1.0}
+  profile-session-sample-rate: ${SENTRY_PROFILE_SAMPLE_RATE:1.0}
+  profile-lifecycle: TRACE
+  # Forward ERROR+ log events to Sentry automatically
+  logging:
+    enabled: true
+    minimum-event-level: error
+    minimum-breadcrumb-level: info
+  # Attach request headers and IP for context; PII is scrubbed in BeforeSendCallback
+  send-default-pii: true
+  # Tag every event with the service name
+  tags:
+    service: mesha-api
+
+# Structured JSON logging — format handled by logback-spring.xml
 logging:
-  pattern:
-    console: '{"timestamp":"%d{ISO8601}","level":"%level","logger":"%logger","message":"%msg"}%n'
+  level:
+    root: INFO
+    com.mesha: DEBUG
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN

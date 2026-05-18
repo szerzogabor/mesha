@@ -20,6 +20,7 @@
     <properties>
         <java.version>21</java.version>
         <flyway.version>11.19.1</flyway.version>
+        <sentry.version>8.41.0</sentry.version>
     </properties>
 
     <dependencies>
@@ -69,6 +70,31 @@
             <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
         </dependency>
 
+        <!-- Sentry: Spring Boot integration (jakarta namespace for Spring Boot 3) -->
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry-spring-boot-starter-jakarta</artifactId>
+            <version>${sentry.version}</version>
+        </dependency>
+        <!-- Sentry: Logback integration for forwarding log events to Sentry -->
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry-logback</artifactId>
+            <version>${sentry.version}</version>
+        </dependency>
+        <!-- Sentry: async profiler for performance profiling -->
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry-async-profiler</artifactId>
+            <version>${sentry.version}</version>
+        </dependency>
+        <!-- Structured JSON logging via Logstash Logback Encoder -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>7.4</version>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -86,6 +112,27 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!-- Sentry Maven Plugin: uploads source bundles for stack-trace source context -->
+            <plugin>
+                <groupId>io.sentry</groupId>
+                <artifactId>sentry-maven-plugin</artifactId>
+                <version>0.11.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <debugSentryCli>false</debugSentryCli>
+                    <org>ogbar</org>
+                    <project>mesha-java-spring-boot</project>
+                    <authToken>${env.SENTRY_AUTH_TOKEN}</authToken>
+                    <skipSourceBundle>${env.SENTRY_SKIP_SOURCE_BUNDLE}</skipSourceBundle>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>uploadSourceBundle</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
