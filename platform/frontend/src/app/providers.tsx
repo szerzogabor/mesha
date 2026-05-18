@@ -14,6 +14,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
           },
           mutations: {
             onError(error) {
+              Sentry.logger.error("React Query mutation error", {
+                source: "react-query-mutation",
+                errorMessage: error instanceof Error ? error.message : String(error),
+              });
               Sentry.captureException(error, { tags: { source: "react-query-mutation" } });
             },
           },

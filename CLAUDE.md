@@ -6,7 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 You are working on the following feature branches:
 
-- **szerzogabor/mesh**: Develop on branch `claude/copy-mesh-config-files-PaGSp`
 - **szerzogabor/mesha**: Develop on branch `claude/copy-mesh-config-files-PaGSp`
 
 ### Important Instructions:
@@ -24,7 +23,7 @@ Remember: All development and final pushes should go to the branches specified a
 Follow these practices for git:
 
 **For git push:**
-- Always use "szerzogabor@gmail.com" as a contributor for commits. This is the ONLY acceptable contributor
+- Always use "szerzogabor@gmail.com" as a contributor for commits. This is the ONLY acceptable contributor. Remove any other contributor
 - Always use git push -u origin <branch-name>
 - Only if push fails due to network errors retry up to 4 times with exponential backoff (2s, 4s, 8s, 16s)
 - Example retry logic: try push, wait 2s if failed, try again, wait 4s if failed, try again, etc.
@@ -52,3 +51,4 @@ All AI agents (Claude Code, Codex, Gemini, etc.) working on this repository MUST
 1. Make sure ONLY "szerzogabor@gmail.com" is in the contributor list for every commit
 
 This ensures additional code review coverage and maintains code quality standards.
+-

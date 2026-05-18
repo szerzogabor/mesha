@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useWorkspaces, useCreateWorkspace } from "@/hooks/useWorkspaces";
 import { Spinner } from "@/components/ui/Spinner";
 import { Modal } from "@/components/ui/Modal";
+import * as Sentry from "@sentry/nextjs";
 
 export default function WorkspacesPage() {
   const { data: workspaces, isLoading, error } = useWorkspaces();
@@ -14,6 +15,8 @@ export default function WorkspacesPage() {
   const [slug, setSlug] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
 
+Sentry.logger.info('User triggered test log', { log_source: 'sentry_test' });
+  
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateError(null);
@@ -23,6 +26,7 @@ export default function WorkspacesPage() {
       setSlug("");
       setShowCreate(false);
     } catch (err) {
+      Sentry.captureException(err);
       setCreateError(err instanceof Error ? err.message : "Failed to create workspace");
     }
   };
