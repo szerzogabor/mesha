@@ -9,6 +9,8 @@ export default withSentryConfig(nextConfig, {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,
+  // Avoid conflicts with platform-reserved /monitoring endpoint.
+  tunnelRoute: "/error-monitoring",
 
   // Upload source maps to Sentry during production builds
   sourcemaps: {
