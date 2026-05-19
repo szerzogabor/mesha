@@ -1,3 +1,3 @@
-import nextPlugin from 'eslint-config-next'
+import nextConfig from 'eslint-config-next'
 
-export default nextPlugin
+export default nextConfig
