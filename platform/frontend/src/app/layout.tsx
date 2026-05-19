@@ -17,17 +17,15 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <ClerkProvider>
-          <Show when="signed-out">
-            <header className="flex gap-4 justify-end px-8 py-3 border-b bg-white">
+          <header className="flex gap-4 justify-end px-8 py-3 border-b bg-white">
+            <Show when="signed-out">
               <SignInButton />
               <SignUpButton />
-            </header>
-          </Show>
-          <Show when="signed-in">
-            <header className="flex justify-end px-8 py-3 border-b bg-white">
+            </Show>
+            <Show when="signed-in">
               <UserButton />
-            </header>
-          </Show>
+            </Show>
+          </header>
           <Providers>{children}</Providers>
         </ClerkProvider>
       </body>
