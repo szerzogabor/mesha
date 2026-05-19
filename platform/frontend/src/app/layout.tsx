@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ClerkProvider, SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -15,7 +16,18 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Providers>{children}</Providers>
+        <ClerkProvider>
+          <header className="flex gap-4 justify-end px-8 py-3 border-b bg-white">
+            <Show when="signed-out">
+              <SignInButton />
+              <SignUpButton />
+            </Show>
+            <Show when="signed-in">
+              <UserButton />
+            </Show>
+          </header>
+          <Providers>{children}</Providers>
+        </ClerkProvider>
       </body>
     </html>
   );

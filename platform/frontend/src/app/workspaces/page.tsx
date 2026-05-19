@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Show, UserButton } from "@clerk/nextjs";
 import { useWorkspaces, useCreateWorkspace } from "@/hooks/useWorkspaces";
 import { Spinner } from "@/components/ui/Spinner";
 import { Modal } from "@/components/ui/Modal";
@@ -43,12 +44,17 @@ Sentry.logger.info('User triggered test log', { log_source: 'sentry_test' });
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b px-8 py-4 flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">Mesha</h1>
+        <div className="flex items-center gap-3">
         <button
           onClick={() => setShowCreate(true)}
           className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700"
         >
           New Workspace
         </button>
+        <Show when="signed-in">
+          <UserButton />
+        </Show>
+        </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-8 py-12">
