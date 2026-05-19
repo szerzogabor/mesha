@@ -39,6 +39,10 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authenticated");
         }
         String clerkUserId = jwt.getSubject();
-        return userService.getByClerkUserId(clerkUserId);
+        try {
+            return userService.getByClerkUserId(clerkUserId);
+        } catch (IllegalStateException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found, please sync your account");
+        }
     }
 }
