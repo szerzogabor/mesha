@@ -2,8 +2,10 @@ package com.mesha.api.service;
 
 import com.mesha.api.model.User;
 import com.mesha.api.repository.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class UserService {
@@ -33,6 +35,6 @@ public class UserService {
 
     public User getByClerkUserId(String clerkUserId) {
         return userRepository.findByClerkUserId(clerkUserId)
-            .orElseThrow(() -> new IllegalStateException("User not found: " + clerkUserId));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + clerkUserId));
     }
 }
