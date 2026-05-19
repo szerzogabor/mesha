@@ -1,20 +1,67 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useAuth } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
+import { useAuth, useUser } from "@clerk/nextjs";
+import { useEffect, useRef, useState } from "react";
 import * as Sentry from "@sentry/nextjs";
-import { setTokenGetter } from "@/lib/api-client";
+import { apiClient, setTokenGetter } from "@/lib/api-client";
+import { AuthSyncContext, AuthSyncStatus } from "@/lib/auth-sync";
 
-function ClerkTokenBridge() {
+function ClerkTokenBridge({ onStatusChange }: { onStatusChange: (status: AuthSyncStatus) => void }) {
   const { getToken } = useAuth();
+  const { user, isLoaded } = useUser();
+  const syncedUserIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     setTokenGetter(() => getToken());
   }, [getToken]);
+
+  useEffect(() => {
+    if (!isLoaded || !user) {
+      syncedUserIdRef.current = null;
+      onStatusChange("idle");
+      return;
+    }
+
+    if (syncedUserIdRef.current === user.id) {
+      onStatusChange("ready");
+      return;
+    }
+
+    const primaryEmail = user.primaryEmailAddress?.emailAddress;
+    if (!primaryEmail) {
+      Sentry.logger.warn("Skipping user sync because primary email is missing", {
+        userId: user.id,
+      });
+      onStatusChange("ready");
+      return;
+    }
+
+    onStatusChange("syncing");
+
+    apiClient
+      .post("/api/auth/sync", {
+        email: primaryEmail,
+        name: user.fullName,
+      })
+      .then(() => {
+        syncedUserIdRef.current = user.id;
+        onStatusChange("ready");
+      })
+      .catch((error) => {
+        onStatusChange("ready");
+        Sentry.captureException(error, {
+          tags: { source: "auth-sync" },
+          extra: { userId: user.id },
+        });
+      });
+  }, [isLoaded, onStatusChange, user]);
+
   return null;
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  const [authSyncStatus, setAuthSyncStatus] = useState<AuthSyncStatus>("idle");
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -36,9 +83,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <>
-      <ClerkTokenBridge />
+    <AuthSyncContext.Provider value={authSyncStatus}>
+      <ClerkTokenBridge onStatusChange={setAuthSyncStatus} />
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </>
+    </AuthSyncContext.Provider>
   );
 }

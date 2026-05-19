@@ -16,8 +16,6 @@ export default function WorkspacesPage() {
   const [slug, setSlug] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
 
-Sentry.logger.info('User triggered test log', { log_source: 'sentry_test' });
-  
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateError(null);
