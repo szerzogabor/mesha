@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
+import { Show, UserButton } from "@clerk/nextjs";
 import { useWorkspaces, useCreateWorkspace } from "@/hooks/useWorkspaces";
 import { Spinner } from "@/components/ui/Spinner";
 import { Modal } from "@/components/ui/Modal";
@@ -51,7 +51,9 @@ Sentry.logger.info('User triggered test log', { log_source: 'sentry_test' });
         >
           New Workspace
         </button>
-        <UserButton />
+        <Show when="signed-in">
+          <UserButton />
+        </Show>
         </div>
       </header>
 

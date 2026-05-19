@@ -1,7 +1,7 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ClerkProvider, useAuth } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import * as Sentry from "@sentry/nextjs";
 import { setTokenGetter } from "@/lib/api-client";
@@ -36,9 +36,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <ClerkProvider>
+    <>
       <ClerkTokenBridge />
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </ClerkProvider>
+    </>
   );
 }
