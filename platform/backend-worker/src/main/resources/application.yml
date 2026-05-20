@@ -1,6 +1,8 @@
 spring:
   application:
     name: mesha-worker
+  profiles:
+    active: ${ENVIRONMENT:local}
 
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:mesha}
@@ -26,9 +28,21 @@ management:
       exposure:
         include: health,info
 
-logging:
-  pattern:
-    console: '{"timestamp":"%d{ISO8601}","level":"%level","logger":"%logger","message":"%msg"}%n'
+sentry:
+  dsn: ${SENTRY_DSN:https://c2f30f5b2b577059370f00a36ee7476f@o4511348602241024.ingest.de.sentry.io/4511423699877968}
+  environment: ${ENVIRONMENT:local}
+  release: ${SENTRY_RELEASE:${APP_VERSION:0.0.1-SNAPSHOT}}
+  # PII is handled by SentryConfig.BeforeSendCallback — do not enable default PII collection
+  send-default-pii: false
+  logs:
+    enabled: true
+  traces-sample-rate: 1.0
+  profile-session-sample-rate: 1.0
+  profile-lifecycle: TRACE
+  # Attach thread info to events for async worker context
+  attach-threads: true
+  # Instrument Spring Security, scheduled tasks, etc.
+  enable-automatic-session-tracking: false
 
 mesha:
   blocks:
@@ -38,3 +52,39 @@ mesha:
     app-id: ${GITHUB_APP_ID}
     private-key: ${GITHUB_APP_PRIVATE_KEY}
     webhook-secret: ${GITHUB_WEBHOOK_SECRET}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: production
+sentry:
+  traces-sample-rate: 0.1
+  profile-session-sample-rate: 0.1
+
+---
+spring:
+  config:
+    activate:
+      on-profile: staging
+sentry:
+  traces-sample-rate: 0.5
+  profile-session-sample-rate: 0.5
+
+---
+spring:
+  config:
+    activate:
+      on-profile: preview
+sentry:
+  traces-sample-rate: 1.0
+  profile-session-sample-rate: 1.0
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+sentry:
+  traces-sample-rate: 1.0
+  profile-session-sample-rate: 1.0

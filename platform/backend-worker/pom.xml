@@ -19,6 +19,8 @@
 
     <properties>
         <java.version>21</java.version>
+        <sentry.version>8.42.0</sentry.version>
+        <logstash-logback.version>7.4</logstash-logback.version>
     </properties>
 
     <dependencies>
@@ -43,9 +45,41 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- Sentry Spring Boot Starter (Jakarta for Spring Boot 3) -->
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry-spring-boot-starter-jakarta</artifactId>
+            <version>${sentry.version}</version>
+        </dependency>
+
+        <!-- Sentry async profiler -->
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry-async-profiler</artifactId>
+            <version>${sentry.version}</version>
+        </dependency>
+
+        <!-- Sentry Logback integration for breadcrumbs and error capture from logs -->
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry-logback</artifactId>
+            <version>${sentry.version}</version>
+        </dependency>
+
+        <!-- Structured JSON logging -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>${logstash-logback.version}</version>
         </dependency>
 
         <dependency>
@@ -60,6 +94,27 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <!-- Sentry Maven Plugin: uploads source bundle for source context in stack traces -->
+            <plugin>
+                <groupId>io.sentry</groupId>
+                <artifactId>sentry-maven-plugin</artifactId>
+                <version>0.11.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <debugSentryCli>true</debugSentryCli>
+                    <org>ogbar</org>
+                    <project>mesha-worker-java-spring-boot</project>
+                    <authToken>${env.SENTRY_AUTH_TOKEN}</authToken>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>uploadSourceBundle</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
