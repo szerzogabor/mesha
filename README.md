@@ -50,7 +50,6 @@ platform/
 | Frontend Hosting | Vercel |
 | Backend Hosting | Render |
 
----
 
 ## Local Development
 
