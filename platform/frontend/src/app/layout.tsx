@@ -23,9 +23,9 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
+      <body className="bg-white dark:bg-neutral-950 text-gray-900 dark:text-gray-100">
         <ClerkProvider>
-          <header className="flex gap-4 justify-end items-center px-8 py-3 border-b bg-white dark:bg-gray-900 dark:border-gray-800">
+          <header className="flex gap-4 justify-end items-center px-8 py-3 border-b bg-white dark:bg-neutral-900 dark:border-neutral-800">
             <Show when="signed-out">
               <SignInButton />
               <SignUpButton />

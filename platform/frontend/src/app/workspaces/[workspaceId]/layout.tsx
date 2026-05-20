@@ -25,7 +25,7 @@ export default function WorkspaceLayout({
 
   if (!workspace) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-neutral-950">
         <Spinner size="lg" className="text-indigo-600" />
       </div>
     );
@@ -38,7 +38,7 @@ export default function WorkspaceLayout({
         projects={projects}
         onCreateProject={() => setShowCreate(true)}
       />
-      <main className="flex-1 bg-gray-50 dark:bg-gray-950">{children}</main>
+      <main className="flex-1 bg-gray-50 dark:bg-neutral-950">{children}</main>
 
       <CreateProjectModal
         open={showCreate}
