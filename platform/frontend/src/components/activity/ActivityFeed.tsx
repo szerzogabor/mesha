@@ -47,23 +47,23 @@ interface ActivityFeedProps {
 
 export function ActivityFeed({ events }: ActivityFeedProps) {
   if (events.length === 0) {
-    return <p className="text-sm text-gray-400 py-4">No activity yet</p>;
+    return <p className="text-sm text-gray-400 dark:text-gray-500 py-4">No activity yet</p>;
   }
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-gray-700">Activity</h3>
+      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Activity</h3>
       <div className="relative">
-        <div className="absolute left-3 top-0 bottom-0 w-px bg-gray-200" />
+        <div className="absolute left-3 top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700" />
         <ul className="space-y-4">
           {events.map((event) => (
             <li key={event.id} className="flex items-start gap-3 pl-8 relative">
-              <div className="absolute left-1 top-0.5 h-5 w-5 rounded-full bg-gray-100 flex items-center justify-center text-xs text-gray-500">
+              <div className="absolute left-1 top-0.5 h-5 w-5 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs text-gray-500 dark:text-gray-400">
                 {eventIcons[event.eventType] ?? "•"}
               </div>
               <div>
-                <p className="text-sm text-gray-700">{eventDescription(event)}</p>
-                <p className="text-xs text-gray-400">{formatRelativeTime(event.createdAt)}</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300">{eventDescription(event)}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">{formatRelativeTime(event.createdAt)}</p>
               </div>
             </li>
           ))}

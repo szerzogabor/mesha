@@ -22,6 +22,9 @@ export function IssueFilters({
   onPriorityChange,
   onSearchChange,
 }: IssueFiltersProps) {
+  const inputClass =
+    "border dark:border-gray-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:placeholder-gray-500";
+
   return (
     <div className="flex items-center gap-3 flex-wrap">
       <input
@@ -29,7 +32,7 @@ export function IssueFilters({
         placeholder="Search issues..."
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
-        className="border rounded-lg px-3 py-1.5 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        className={`${inputClass} w-48`}
       />
 
       <select
@@ -37,7 +40,7 @@ export function IssueFilters({
         onChange={(e) =>
           onStatusChange((e.target.value as IssueStatus) || undefined)
         }
-        className="border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        className={inputClass}
       >
         <option value="">All statuses</option>
         {STATUSES.map((s) => (
@@ -52,7 +55,7 @@ export function IssueFilters({
         onChange={(e) =>
           onPriorityChange((e.target.value as IssuePriority) || undefined)
         }
-        className="border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        className={inputClass}
       >
         <option value="">All priorities</option>
         {PRIORITIES.map((p) => (

@@ -17,20 +17,20 @@ function CommentItem({ comment, onReply, depth = 0 }: CommentItemProps) {
   const authorName = comment.author?.name || comment.author?.email || "Unknown";
 
   return (
-    <div className={depth > 0 ? "ml-8 border-l-2 border-gray-100 pl-4" : ""}>
+    <div className={depth > 0 ? "ml-8 border-l-2 border-gray-100 dark:border-gray-700 pl-4" : ""}>
       <div className="py-3">
         <div className="flex items-center gap-2 mb-1">
-          <div className="h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-medium text-indigo-700">
+          <div className="h-6 w-6 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-xs font-medium text-indigo-700 dark:text-indigo-400">
             {authorName[0]?.toUpperCase()}
           </div>
-          <span className="text-sm font-medium text-gray-900">{authorName}</span>
-          <span className="text-xs text-gray-400">{formatRelativeTime(comment.createdAt)}</span>
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{authorName}</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">{formatRelativeTime(comment.createdAt)}</span>
         </div>
-        <p className="text-sm text-gray-700 whitespace-pre-wrap">{comment.body}</p>
+        <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{comment.body}</p>
         {depth === 0 && (
           <button
             onClick={() => setReplying(!replying)}
-            className="mt-1 text-xs text-gray-400 hover:text-gray-600"
+            className="mt-1 text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
           >
             Reply
           </button>
@@ -66,11 +66,11 @@ interface CommentThreadProps {
 export function CommentThread({ comments, onAddComment }: CommentThreadProps) {
   return (
     <div>
-      <h3 className="text-sm font-semibold text-gray-700 mb-3">
+      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
         Comments ({comments.length})
       </h3>
 
-      <div className="divide-y divide-gray-100">
+      <div className="divide-y divide-gray-100 dark:divide-gray-800">
         {comments.map((c) => (
           <CommentItem key={c.id} comment={c} onReply={onAddComment} />
         ))}

@@ -49,17 +49,17 @@ export default function ProjectPage({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-6 py-4 bg-white border-b">
+      <div className="px-6 py-4 bg-white dark:bg-gray-900 border-b dark:border-gray-800">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Issues</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Issues</h2>
             {data && (
-              <p className="text-sm text-gray-400">{data.totalElements} total</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500">{data.totalElements} total</p>
             )}
           </div>
           <button
             onClick={() => setShowCreate(true)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors"
           >
             + New Issue
           </button>
@@ -84,14 +84,14 @@ export default function ProjectPage({
 
         {error && (
           <div className="p-6">
-            <div className="p-4 bg-red-50 text-red-700 rounded-lg text-sm">
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg text-sm">
               {error instanceof Error ? error.message : "Failed to load issues"}
             </div>
           </div>
         )}
 
         {data && data.content.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-24 text-gray-400">
+          <div className="flex flex-col items-center justify-center py-24 text-gray-400 dark:text-gray-500">
             <p className="text-lg mb-1">No issues found</p>
             <p className="text-sm">
               {search || status || priority
@@ -102,7 +102,7 @@ export default function ProjectPage({
         )}
 
         {data && data.content.length > 0 && (
-          <div className="bg-white mx-6 mt-4 rounded-xl border divide-y divide-gray-100 overflow-hidden">
+          <div className="bg-white dark:bg-gray-900 mx-6 mt-4 rounded-xl border dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800 overflow-hidden">
             {data.content.map((issue) => (
               <IssueCard
                 key={issue.id}

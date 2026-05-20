@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Project, Workspace } from "@/types";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 interface SidebarProps {
   workspace: Workspace;
@@ -15,8 +16,8 @@ export function Sidebar({ workspace, projects, onCreateProject }: SidebarProps) 
   const pathname = usePathname();
 
   return (
-    <aside className="w-56 min-h-screen bg-gray-900 text-gray-200 flex flex-col">
-      <div className="px-4 py-4 border-b border-gray-700">
+    <aside className="w-56 min-h-screen bg-gray-900 dark:bg-gray-950 text-gray-200 flex flex-col border-r border-gray-800">
+      <div className="px-4 py-4 border-b border-gray-700 dark:border-gray-800">
         <h1 className="font-bold text-white text-lg truncate">{workspace.name}</h1>
         <p className="text-xs text-gray-400 mt-0.5 truncate">{workspace.slug}</p>
       </div>
@@ -28,7 +29,7 @@ export function Sidebar({ workspace, projects, onCreateProject }: SidebarProps) 
           </span>
           <button
             onClick={onCreateProject}
-            className="text-gray-400 hover:text-white text-lg leading-none"
+            className="text-gray-400 hover:text-white text-lg leading-none transition-colors"
             title="New project"
           >
             +
@@ -61,10 +62,11 @@ export function Sidebar({ workspace, projects, onCreateProject }: SidebarProps) 
         </ul>
       </nav>
 
-      <div className="px-4 py-3 border-t border-gray-700">
-        <Link href="/workspaces" className="text-xs text-gray-400 hover:text-white">
+      <div className="px-4 py-3 border-t border-gray-700 dark:border-gray-800 flex items-center justify-between">
+        <Link href="/workspaces" className="text-xs text-gray-400 hover:text-white transition-colors">
           Switch workspace
         </Link>
+        <ThemeToggle />
       </div>
     </aside>
   );

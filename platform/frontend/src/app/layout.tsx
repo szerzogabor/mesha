@@ -14,10 +14,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Anti-flicker: apply stored theme before first paint */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('mesha-theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;if(t==='dark'||(t!=='light'&&d)){document.documentElement.classList.add('dark')}}catch(e){}})();`,
+          }}
+        />
+      </head>
+      <body className="bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
         <ClerkProvider>
-          <header className="flex gap-4 justify-end px-8 py-3 border-b bg-white">
+          <header className="flex gap-4 justify-end items-center px-8 py-3 border-b bg-white dark:bg-gray-900 dark:border-gray-800">
             <Show when="signed-out">
               <SignInButton />
               <SignUpButton />

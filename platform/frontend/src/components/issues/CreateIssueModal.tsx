@@ -16,6 +16,10 @@ interface CreateIssueModalProps {
   }) => Promise<void>;
 }
 
+const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
+const inputClass =
+  "w-full border dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100";
+
 export function CreateIssueModal({ open, onClose, onSubmit }: CreateIssueModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -48,7 +52,7 @@ export function CreateIssueModal({ open, onClose, onSubmit }: CreateIssueModalPr
     <Modal open={open} onClose={onClose} title="Create Issue">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className={labelClass}>
             Title <span className="text-red-500">*</span>
           </label>
           <input
@@ -56,31 +60,29 @@ export function CreateIssueModal({ open, onClose, onSubmit }: CreateIssueModalPr
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Issue title"
-            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className={inputClass}
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Description
-          </label>
+          <label className={labelClass}>Description</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Add a description..."
             rows={3}
-            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            className={`${inputClass} resize-none`}
           />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <label className={labelClass}>Status</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as IssueStatus)}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className={inputClass}
             >
               <option value="BACKLOG">Backlog</option>
               <option value="TODO">Todo</option>
@@ -90,11 +92,11 @@ export function CreateIssueModal({ open, onClose, onSubmit }: CreateIssueModalPr
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+            <label className={labelClass}>Priority</label>
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as IssuePriority)}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className={inputClass}
             >
               <option value="LOW">Low</option>
               <option value="MEDIUM">Medium</option>
@@ -105,21 +107,21 @@ export function CreateIssueModal({ open, onClose, onSubmit }: CreateIssueModalPr
         </div>
 
         {error && (
-          <p className="text-sm text-red-600">{error}</p>
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         )}
 
         <div className="flex justify-end gap-3 pt-2">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-700 border rounded-lg hover:bg-gray-50"
+            className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading || !title.trim()}
-            className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+            className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
           >
             {loading ? "Creating..." : "Create Issue"}
           </button>

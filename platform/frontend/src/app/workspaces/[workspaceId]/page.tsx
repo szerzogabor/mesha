@@ -30,7 +30,7 @@ export default function WorkspacePage({
 
   if (projects && projects.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full py-32 text-gray-400">
+      <div className="flex flex-col items-center justify-center h-full py-32 text-gray-400 dark:text-gray-500">
         <p className="text-lg mb-1">No projects yet</p>
         <p className="text-sm">Create a project using the sidebar.</p>
       </div>
