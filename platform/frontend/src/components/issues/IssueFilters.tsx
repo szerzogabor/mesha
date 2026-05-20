@@ -23,7 +23,7 @@ export function IssueFilters({
   onSearchChange,
 }: IssueFiltersProps) {
   const inputClass =
-    "border dark:border-gray-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:placeholder-gray-500";
+    "border dark:border-gray-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-gray-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:placeholder-gray-500";
 
   return (
     <div className="flex items-center gap-3 flex-wrap">

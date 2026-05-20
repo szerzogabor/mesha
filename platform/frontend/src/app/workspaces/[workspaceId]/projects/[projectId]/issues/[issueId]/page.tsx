@@ -17,7 +17,7 @@ const STATUSES: IssueStatus[] = ["BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DO
 const PRIORITIES: IssuePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
 const selectClass =
-  "w-full border dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100";
+  "w-full border dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-gray-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100";
 
 export default function IssueDetailPage({
   params,
@@ -69,7 +69,7 @@ export default function IssueDetailPage({
                   autoFocus
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="flex-1 text-2xl font-bold border-b-2 border-indigo-500 outline-none py-1 bg-transparent text-gray-900 dark:text-gray-100"
+                  className="flex-1 text-2xl font-bold border-b-2 border-indigo-500 dark:border-gray-500 outline-none py-1 bg-transparent text-gray-900 dark:text-gray-100"
                   onKeyDown={async (e) => {
                     if (e.key === "Enter") {
                       await updateIssue.mutateAsync({ title: editTitle });
@@ -83,7 +83,7 @@ export default function IssueDetailPage({
                     await updateIssue.mutateAsync({ title: editTitle });
                     setEditingTitle(false);
                   }}
-                  className="px-3 py-1 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  className="px-3 py-1 text-sm bg-indigo-600 dark:bg-gray-700 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-gray-600 transition-colors"
                 >
                   Save
                 </button>
@@ -134,7 +134,7 @@ export default function IssueDetailPage({
                   value={editDesc}
                   onChange={(e) => setEditDesc(e.target.value)}
                   rows={6}
-                  className="w-full border dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  className="w-full border dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-gray-500 resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 />
                 <div className="flex gap-2">
                   <button
@@ -142,7 +142,7 @@ export default function IssueDetailPage({
                       await updateIssue.mutateAsync({ description: editDesc });
                       setEditingDesc(false);
                     }}
-                    className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                    className="px-3 py-1.5 text-sm bg-indigo-600 dark:bg-gray-700 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-gray-600 transition-colors"
                   >
                     Save
                   </button>
@@ -178,7 +178,7 @@ export default function IssueDetailPage({
                   onClick={() => setActiveTab(tab)}
                   className={`pb-2 text-sm font-medium capitalize transition-colors ${
                     activeTab === tab
-                      ? "border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400"
+                      ? "border-b-2 border-indigo-600 dark:border-gray-400 text-indigo-600 dark:text-gray-100"
                       : "text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300"
                   }`}
                 >
@@ -250,7 +250,7 @@ export default function IssueDetailPage({
               {issue.assignee ? (
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-xs font-medium text-indigo-700 dark:text-indigo-400">
+                    <div className="h-6 w-6 rounded-full bg-indigo-100 dark:bg-gray-700 flex items-center justify-center text-xs font-medium text-indigo-700 dark:text-gray-300">
                       {(issue.assignee.name || issue.assignee.email)[0]?.toUpperCase()}
                     </div>
                     <span className="text-sm text-gray-700 dark:text-gray-300">

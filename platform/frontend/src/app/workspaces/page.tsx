@@ -11,7 +11,7 @@ import * as Sentry from "@sentry/nextjs";
 
 const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
 const inputClass =
-  "w-full border dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100";
+  "w-full border dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-gray-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100";
 
 export default function WorkspacesPage() {
   const { data: workspaces, isLoading, error } = useWorkspaces();
@@ -51,7 +51,7 @@ export default function WorkspacesPage() {
           <ThemeToggle />
           <button
             onClick={() => setShowCreate(true)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors"
+            className="px-4 py-2 bg-indigo-600 dark:bg-gray-700 text-white rounded-lg text-sm hover:bg-indigo-700 dark:hover:bg-gray-600 transition-colors"
           >
             New Workspace
           </button>
@@ -82,7 +82,7 @@ export default function WorkspacesPage() {
             <Link
               key={ws.id}
               href={`/workspaces/${ws.id}`}
-              className="block p-4 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-500 hover:shadow-sm transition-all"
+              className="block p-4 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 hover:border-indigo-300 dark:hover:border-gray-500 hover:shadow-sm transition-all"
             >
               <p className="font-medium text-gray-900 dark:text-gray-100">{ws.name}</p>
               <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">{ws.slug}</p>
@@ -129,7 +129,7 @@ export default function WorkspacesPage() {
             <button
               type="submit"
               disabled={createWorkspace.isPending}
-              className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 text-sm bg-indigo-600 dark:bg-gray-700 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
             >
               {createWorkspace.isPending ? "Creating..." : "Create"}
             </button>

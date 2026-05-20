@@ -20,7 +20,7 @@ function CommentItem({ comment, onReply, depth = 0 }: CommentItemProps) {
     <div className={depth > 0 ? "ml-8 border-l-2 border-gray-100 dark:border-gray-700 pl-4" : ""}>
       <div className="py-3">
         <div className="flex items-center gap-2 mb-1">
-          <div className="h-6 w-6 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-xs font-medium text-indigo-700 dark:text-indigo-400">
+          <div className="h-6 w-6 rounded-full bg-indigo-100 dark:bg-gray-700 flex items-center justify-center text-xs font-medium text-indigo-700 dark:text-gray-300">
             {authorName[0]?.toUpperCase()}
           </div>
           <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{authorName}</span>

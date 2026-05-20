@@ -32,7 +32,7 @@ export function CommentForm({ onSubmit, parentId, placeholder = "Write a comment
         onChange={(e) => setBody(e.target.value)}
         placeholder={placeholder}
         rows={3}
-        className="w-full border dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 dark:placeholder-gray-500"
+        className="w-full border dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-gray-500 resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 dark:placeholder-gray-500"
       />
       <div className="flex justify-end gap-2">
         {onCancel && (
@@ -47,7 +47,7 @@ export function CommentForm({ onSubmit, parentId, placeholder = "Write a comment
         <button
           type="submit"
           disabled={loading || !body.trim()}
-          className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+          className="px-3 py-1.5 text-sm bg-indigo-600 dark:bg-gray-700 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
         >
           {loading ? "Posting..." : "Comment"}
         </button>

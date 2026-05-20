@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 
 const priorityStyles: Record<IssuePriority, string> = {
   LOW: "text-gray-400 dark:text-gray-500",
-  MEDIUM: "text-blue-500 dark:text-blue-400",
-  HIGH: "text-orange-500 dark:text-orange-400",
-  URGENT: "text-red-600 dark:text-red-400 font-semibold",
+  MEDIUM: "text-blue-500 dark:text-gray-300",
+  HIGH: "text-orange-500 dark:text-gray-200",
+  URGENT: "text-red-600 dark:text-gray-100 font-semibold",
 };
 
 const priorityIcons: Record<IssuePriority, string> = {
