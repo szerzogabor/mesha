@@ -59,10 +59,9 @@ public class WorkflowTracer {
             throw (RuntimeException) e;
         } finally {
             long durationMs = System.currentTimeMillis() - startMs;
-            span.setData("duration_ms", durationMs);
+            span.setData("duration_ms", (double) durationMs);
             span.finish();
-            Sentry.metrics().distribution("worker.operation.duration_ms", durationMs,
-                    "operation:" + operation);
+            Sentry.metrics().distribution("worker.operation.duration_ms", (double) durationMs);
             log.info("operation_complete name={} operation={} duration_ms={} status={}",
                     transactionName, operation, durationMs, span.getStatus());
         }
@@ -81,9 +80,9 @@ public class WorkflowTracer {
         Sentry.configureScope(scope -> {
             scope.setTag("workflow.id", workflowId);
             scope.setTag("orchestration.state", toState);
+            scope.setTag("transition.from", fromState);
         });
-        Sentry.metrics().count("workflow.state_transition", 1.0,
-                "from:" + fromState, "to:" + toState);
+        Sentry.metrics().count("workflow.state_transition", 1.0);
         log.info("orchestration_transition workflow_id={} from={} to={}",
                 workflowId, fromState, toState);
     }
@@ -99,13 +98,12 @@ public class WorkflowTracer {
         Sentry.withScope(scope -> {
             scope.setTag("ai.provider", provider);
             scope.setTag("ai.operation", operation);
-            scope.setExtra("retry.count", retryCount);
+            scope.setExtra("retry.count", String.valueOf(retryCount));
             scope.setLevel(SentryLevel.ERROR);
             Sentry.captureException(error);
         });
 
-        Sentry.metrics().count("ai.provider.failure", 1.0,
-                "provider:" + provider, "operation:" + operation);
+        Sentry.metrics().count("ai.provider.failure", 1.0);
 
         log.error("ai_provider_failure provider={} operation={} retry_count={}",
                 provider, operation, retryCount, error);
@@ -124,12 +122,12 @@ public class WorkflowTracer {
         Sentry.withScope(scope -> {
             scope.setTag("ai.provider", provider);
             scope.setTag("session.id", sessionId);
-            scope.setExtra("poll.attempt", pollAttempt);
+            scope.setExtra("poll.attempt", String.valueOf(pollAttempt));
             scope.setLevel(SentryLevel.WARNING);
             Sentry.captureException(error);
         });
 
-        Sentry.metrics().count("ai.session.poll_failure", 1.0, "provider:" + provider);
+        Sentry.metrics().count("ai.session.poll_failure", 1.0);
         log.warn("polling_failure provider={} session_id={} poll_attempt={}",
                 provider, sessionId, pollAttempt, error);
         MDC.remove("sessionId");
@@ -153,7 +151,7 @@ public class WorkflowTracer {
             Sentry.captureException(error);
         });
 
-        Sentry.metrics().count("queue.job.failure", 1.0, "job_type:" + jobType);
+        Sentry.metrics().count("queue.job.failure", 1.0);
         log.error("queue_failure job_id={} job_type={}", jobId, jobType, error);
         MDC.remove("jobId");
     }
@@ -166,9 +164,9 @@ public class WorkflowTracer {
         Sentry.configureScope(scope -> {
             scope.setExtra("retry.context", context);
             scope.setExtra("retry.context_id", contextId);
-            scope.setExtra("retry.count", retryCount);
+            scope.setExtra("retry.count", String.valueOf(retryCount));
         });
-        Sentry.metrics().count("worker.retry", 1.0, "context:" + context);
+        Sentry.metrics().count("worker.retry", 1.0);
         log.warn("retry_attempt context={} context_id={} retry_count={}",
                 context, contextId, retryCount);
         MDC.remove("retryCount");
@@ -187,7 +185,7 @@ public class WorkflowTracer {
 
         Sentry.withScope(scope -> {
             scope.setTag("github.event_id", githubEventId);
-            scope.setExtra("retry.count", retryCount);
+            scope.setExtra("retry.count", String.valueOf(retryCount));
             scope.setLevel(SentryLevel.ERROR);
             Sentry.captureException(error);
         });
@@ -210,11 +208,11 @@ public class WorkflowTracer {
         Sentry.withScope(scope -> {
             scope.setTag("timeout.operation", operation);
             scope.setExtra("timeout.context_id", contextId);
-            scope.setExtra("timeout.duration_ms", durationMs);
+            scope.setExtra("timeout.duration_ms", String.valueOf(durationMs));
             scope.setLevel(SentryLevel.WARNING);
             Sentry.captureMessage("Timeout: " + operation + " [" + contextId + "]");
         });
-        Sentry.metrics().distribution("worker.timeout_ms", durationMs, "operation:" + operation);
+        Sentry.metrics().distribution("worker.timeout_ms", (double) durationMs);
         log.warn("timeout_event operation={} context_id={} duration_ms={}",
                 operation, contextId, durationMs);
     }
