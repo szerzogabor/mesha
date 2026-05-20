@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useState } from "react";
 
 export type Theme = "light" | "dark" | "system";
 
@@ -21,12 +21,10 @@ export function useTheme() {
 }
 
 function getSystemTheme(): "light" | "dark" {
-  if (typeof window === "undefined") return "light";
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 function getStoredTheme(): Theme {
-  if (typeof window === "undefined") return "system";
   return (localStorage.getItem("mesha-theme") as Theme) ?? "system";
 }
 
@@ -39,8 +37,10 @@ function applyTheme(resolved: "light" | "dark") {
   const root = document.documentElement;
   if (resolved === "dark") {
     root.classList.add("dark");
+    root.setAttribute("data-theme", "dark");
   } else {
     root.classList.remove("dark");
+    root.removeAttribute("data-theme");
   }
 }
 
@@ -48,13 +48,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("system");
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
 
-  useEffect(() => {
+  // useLayoutEffect runs synchronously after DOM mutations, before browser paint.
+  // This prevents any flash of the wrong theme after hydration.
+  useLayoutEffect(() => {
     const stored = getStoredTheme();
     setThemeState(stored);
     const resolved = resolveTheme(stored);
     setResolvedTheme(resolved);
     applyTheme(resolved);
+  }, []);
 
+  // Watch for OS-level theme changes (separate effect to avoid re-running on mount).
+  useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = () => {
       if (getStoredTheme() === "system") {

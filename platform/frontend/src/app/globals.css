@@ -2,16 +2,81 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =====================================================
+   CSS Custom Properties — theme tokens
+   These switch when .dark class is on <html>.
+   This is a guaranteed fallback independent of Tailwind.
+   ===================================================== */
+:root {
+  color-scheme: light;
+
+  --bg-page:    249 250 251; /* gray-50  */
+  --bg-surface: 255 255 255; /* white    */
+  --bg-input:   255 255 255; /* white    */
+  --bg-hover:   249 250 251; /* gray-50  */
+
+  --fg-primary:   17  24  39; /* gray-900 */
+  --fg-secondary: 55  65  81; /* gray-700 */
+  --fg-muted:    107 114 128; /* gray-500 */
+  --fg-faint:    156 163 175; /* gray-400 */
+
+  --border-default: 229 231 235; /* gray-200 */
+  --border-subtle:  243 244 246; /* gray-100 */
+}
+
+.dark {
+  color-scheme: dark;
+
+  --bg-page:    3   7  18; /* gray-950 */
+  --bg-surface: 17  24  39; /* gray-900 */
+  --bg-input:   17  24  39; /* gray-900 */
+  --bg-hover:   31  41  55; /* gray-800 */
+
+  --fg-primary:   249 250 251; /* gray-50  */
+  --fg-secondary: 229 231 235; /* gray-200 */
+  --fg-muted:     156 163 175; /* gray-400 */
+  --fg-faint:     107 114 128; /* gray-500 */
+
+  --border-default: 55 65 81; /* gray-700 */
+  --border-subtle:  31 41 55; /* gray-800 */
+}
+
+/* =====================================================
+   Dark-mode CSS overrides for core Tailwind classes.
+   Written outside @layer so they beat @layer utilities
+   and fire whenever .dark is on <html>.
+   ===================================================== */
+
+/* Page & layout backgrounds */
+.dark .bg-gray-50  { background-color: rgb(var(--bg-page)); }
+.dark .bg-white    { background-color: rgb(var(--bg-surface)); }
+.dark .bg-gray-100 { background-color: rgb(31 41 55); }   /* gray-800 */
+
+/* Text */
+.dark .text-gray-900 { color: rgb(var(--fg-primary)); }
+.dark .text-gray-800 { color: rgb(var(--fg-primary)); }
+.dark .text-gray-700 { color: rgb(var(--fg-secondary)); }
+.dark .text-gray-600 { color: rgb(var(--fg-muted)); }
+.dark .text-gray-500 { color: rgb(var(--fg-muted)); }
+.dark .text-gray-400 { color: rgb(var(--fg-faint)); }
+
+/* Borders */
+.dark .border         { border-color: rgb(var(--border-default)); }
+.dark .border-b       { border-bottom-color: rgb(var(--border-default)); }
+.dark .border-t       { border-top-color: rgb(var(--border-default)); }
+.dark .border-gray-100 { border-color: rgb(var(--border-subtle)); }
+.dark .border-gray-200 { border-color: rgb(var(--border-default)); }
+
+/* Divide */
+.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgb(var(--border-subtle));
+}
+
+/* Hover states */
+.dark .hover\:bg-gray-50:hover { background-color: rgb(var(--bg-hover)); }
+
+/* Smooth theme transitions — applied last so specificity doesn't matter */
 @layer base {
-  :root {
-    color-scheme: light;
-  }
-
-  .dark {
-    color-scheme: dark;
-  }
-
-  /* Smooth theme transitions */
   *,
   *::before,
   *::after {
@@ -20,7 +85,6 @@
     transition-timing-function: ease;
   }
 
-  /* Opt out of transitions for elements that shouldn't animate */
   .no-transition,
   .no-transition * {
     transition: none !important;
