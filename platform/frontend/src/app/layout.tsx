@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { ClerkProvider, SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { Providers } from "./providers";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { AppHeader } from "@/components/layout/AppHeader";
 
 export const metadata: Metadata = {
   title: "Mesha — AI-Native Project Management",
@@ -36,16 +36,7 @@ export default function RootLayout({
       <body className="bg-bg-app text-text-primary">
         <ClerkProvider>
           <Providers>
-            <header className="flex gap-4 justify-end items-center px-8 py-3 border-b border-border-default bg-bg-surface">
-              <ThemeToggle />
-              <Show when="signed-out">
-                <SignInButton />
-                <SignUpButton />
-              </Show>
-              <Show when="signed-in">
-                <UserButton />
-              </Show>
-            </header>
+            <AppHeader />
             {children}
           </Providers>
         </ClerkProvider>
