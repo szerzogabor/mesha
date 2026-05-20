@@ -4,6 +4,9 @@ import { useState } from "react";
 import * as Sentry from "@sentry/nextjs";
 import { Modal } from "@/components/ui/Modal";
 
+const inputClass =
+  "w-full border border-input-border rounded-lg px-3 py-2 text-sm bg-input-bg text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-2 focus:ring-accent";
+
 interface CreateProjectModalProps {
   open: boolean;
   onClose: () => void;
@@ -38,22 +41,22 @@ export function CreateProjectModal({ open, onClose, onSubmit }: CreateProjectMod
     <Modal open={open} onClose={onClose} title="Create Project">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Name <span className="text-red-500">*</span>
+          <label className="block text-sm font-medium text-text-secondary mb-1">
+            Name <span className="text-destructive">*</span>
           </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Project name"
-            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className={inputClass}
             required
             autoFocus
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-text-secondary mb-1">
             Description
           </label>
           <textarea
@@ -61,24 +64,24 @@ export function CreateProjectModal({ open, onClose, onSubmit }: CreateProjectMod
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Optional description"
             rows={2}
-            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            className={`${inputClass} resize-none`}
           />
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
         <div className="flex justify-end gap-3 pt-2">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-700 border rounded-lg hover:bg-gray-50"
+            className="px-4 py-2 text-sm text-text-secondary border border-border-default rounded-lg hover:bg-bg-surface-hover transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading || !name.trim()}
-            className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+            className="px-4 py-2 text-sm bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors"
           >
             {loading ? "Creating..." : "Create Project"}
           </button>

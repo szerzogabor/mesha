@@ -15,16 +15,16 @@ export function IssueCard({ issue, workspaceId, projectId }: IssueCardProps) {
   return (
     <Link
       href={`/workspaces/${workspaceId}/projects/${projectId}/issues/${issue.id}`}
-      className="block px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors"
+      className="block px-4 py-3 hover:bg-bg-surface-hover border-b border-border-default last:border-0 transition-colors"
     >
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">{issue.title}</p>
+          <p className="text-sm font-medium text-text-primary truncate">{issue.title}</p>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <StatusBadge status={issue.status} />
             <PriorityBadge priority={issue.priority} />
             {issue.assignee && (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-text-tertiary">
                 {issue.assignee.name || issue.assignee.email}
               </span>
             )}
@@ -38,7 +38,7 @@ export function IssueCard({ issue, workspaceId, projectId }: IssueCardProps) {
             ))}
           </div>
         </div>
-        <span className="text-xs text-gray-400 whitespace-nowrap">
+        <span className="text-xs text-text-tertiary whitespace-nowrap">
           {formatRelativeTime(issue.updatedAt)}
         </span>
       </div>

@@ -1,11 +1,19 @@
 ---
 name: work-ticket
-description: Pick up and implement the next Linear ticket for the Mesha project. Use when the user says "work on the next ticket", "start a ticket", or similar.
+description: >
+  Pick up and implement a Linear ticket for the Mesha project end-to-end.
+
+  TRIGGER this skill when ANY of these are true:
+  - The session's formatted_context contains an issue_identifier (e.g. MES-59) with event_type "I have mentioned you in a Linear issue" — this is a ticket delegation and must always invoke this skill immediately.
+  - The user says "work on the next ticket", "start a ticket", "implement this ticket", or similar.
+  - The user references a specific ticket ID and asks you to implement it.
+
+  Do NOT trigger for questions about a ticket (status checks, clarifications, reviews) — only when the intent is to implement and deliver a PR.
 ---
 
 # Work Ticket Skill
 
-Execute a Linear ticket end-to-end: find the next Research ticket, implement it, open a PR, and monitor for CI/review activity.
+Execute a Linear ticket end-to-end: read the ticket, implement it on a feature branch, open a PR, and monitor for CI/review activity.
 
 ## Silent Execution
 
@@ -27,11 +35,12 @@ Only produce output for:
 
 - Make all changes on the feature branch.
 - Commit frequently with messages that explain *why*, not just what.
-- Use TDD for implementing a ticket 
-- use this to install vercel tool when working on frontend : "npx plugins add vercel/vercel-plugin" 
+- Use TDD for implementing a ticket
+- use this to install vercel tool when working on frontend : "npx plugins add vercel/vercel-plugin"
 
 ### 3. Finish
 
+- The only acceptable contributor on PR creation and commits is "szerzogabor@gmail.com"
 - Push the branch to origin.
 - Open a Pull Request — title must include the ticket ID, e.g. `[MESH-42] Add user authentication`.
 - In case of Backend changes name of the Pull Request has to contain the "[render preview]"

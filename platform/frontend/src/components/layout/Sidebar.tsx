@@ -15,20 +15,20 @@ export function Sidebar({ workspace, projects, onCreateProject }: SidebarProps) 
   const pathname = usePathname();
 
   return (
-    <aside className="w-56 min-h-screen bg-gray-900 text-gray-200 flex flex-col">
-      <div className="px-4 py-4 border-b border-gray-700">
-        <h1 className="font-bold text-white text-lg truncate">{workspace.name}</h1>
-        <p className="text-xs text-gray-400 mt-0.5 truncate">{workspace.slug}</p>
+    <aside className="w-56 min-h-screen bg-sidebar-bg text-sidebar-text flex flex-col border-r border-sidebar-border">
+      <div className="px-4 py-4 border-b border-sidebar-border">
+        <h1 className="font-bold text-sidebar-text-active text-lg truncate">{workspace.name}</h1>
+        <p className="text-xs text-sidebar-text-muted mt-0.5 truncate">{workspace.slug}</p>
       </div>
 
       <nav className="flex-1 py-4 overflow-y-auto">
         <div className="px-3 mb-2 flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+          <span className="text-xs font-semibold uppercase tracking-wider text-sidebar-text-muted">
             Projects
           </span>
           <button
             onClick={onCreateProject}
-            className="text-gray-400 hover:text-white text-lg leading-none"
+            className="text-sidebar-text-muted hover:text-sidebar-text-active text-lg leading-none transition-colors"
             title="New project"
           >
             +
@@ -46,8 +46,8 @@ export function Sidebar({ workspace, projects, onCreateProject }: SidebarProps) 
                   className={cn(
                     "block px-3 py-2 rounded-lg text-sm truncate transition-colors",
                     active
-                      ? "bg-indigo-600 text-white"
-                      : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                      ? "bg-sidebar-item-active text-white"
+                      : "text-sidebar-text hover:bg-sidebar-item-hover hover:text-sidebar-text-active"
                   )}
                 >
                   {project.name}
@@ -56,13 +56,13 @@ export function Sidebar({ workspace, projects, onCreateProject }: SidebarProps) 
             );
           })}
           {projects.length === 0 && (
-            <li className="px-3 py-2 text-xs text-gray-500">No projects yet</li>
+            <li className="px-3 py-2 text-xs text-sidebar-text-muted">No projects yet</li>
           )}
         </ul>
       </nav>
 
-      <div className="px-4 py-3 border-t border-gray-700">
-        <Link href="/workspaces" className="text-xs text-gray-400 hover:text-white">
+      <div className="px-4 py-3 border-t border-sidebar-border">
+        <Link href="/workspaces" className="text-xs text-sidebar-text-muted hover:text-sidebar-text-active transition-colors">
           Switch workspace
         </Link>
       </div>

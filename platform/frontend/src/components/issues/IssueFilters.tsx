@@ -5,6 +5,9 @@ import { IssueStatus, IssuePriority } from "@/types";
 const STATUSES: IssueStatus[] = ["BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DONE"];
 const PRIORITIES: IssuePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
+const inputClass =
+  "border border-input-border rounded-lg px-3 py-1.5 text-sm bg-input-bg text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-2 focus:ring-accent";
+
 interface IssueFiltersProps {
   status?: IssueStatus;
   priority?: IssuePriority;
@@ -29,15 +32,13 @@ export function IssueFilters({
         placeholder="Search issues..."
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
-        className="border rounded-lg px-3 py-1.5 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        className={`${inputClass} w-48`}
       />
 
       <select
         value={status ?? ""}
-        onChange={(e) =>
-          onStatusChange((e.target.value as IssueStatus) || undefined)
-        }
-        className="border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        onChange={(e) => onStatusChange((e.target.value as IssueStatus) || undefined)}
+        className={inputClass}
       >
         <option value="">All statuses</option>
         {STATUSES.map((s) => (
@@ -49,10 +50,8 @@ export function IssueFilters({
 
       <select
         value={priority ?? ""}
-        onChange={(e) =>
-          onPriorityChange((e.target.value as IssuePriority) || undefined)
-        }
-        className="border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        onChange={(e) => onPriorityChange((e.target.value as IssuePriority) || undefined)}
+        className={inputClass}
       >
         <option value="">All priorities</option>
         {PRIORITIES.map((p) => (

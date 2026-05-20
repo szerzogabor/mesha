@@ -14,17 +14,17 @@ export function Pagination({ page, totalPages, onPageChange }: PaginationProps) 
       <button
         onClick={() => onPageChange(page - 1)}
         disabled={page === 0}
-        className="px-3 py-1 rounded border text-sm disabled:opacity-40 hover:bg-gray-50"
+        className="px-3 py-1 rounded border border-border-default text-sm text-text-secondary disabled:opacity-40 hover:bg-bg-surface-hover transition-colors"
       >
         Prev
       </button>
-      <span className="text-sm text-gray-600">
+      <span className="text-sm text-text-secondary">
         {page + 1} / {totalPages}
       </span>
       <button
         onClick={() => onPageChange(page + 1)}
         disabled={page >= totalPages - 1}
-        className="px-3 py-1 rounded border text-sm disabled:opacity-40 hover:bg-gray-50"
+        className="px-3 py-1 rounded border border-border-default text-sm text-text-secondary disabled:opacity-40 hover:bg-bg-surface-hover transition-colors"
       >
         Next
       </button>

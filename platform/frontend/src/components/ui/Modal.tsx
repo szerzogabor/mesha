@@ -25,20 +25,20 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
-        className="absolute inset-0 bg-black/40"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
       <div
         className={cn(
-          "relative z-10 w-full max-w-lg rounded-xl bg-white shadow-xl p-6",
+          "relative z-10 w-full max-w-lg rounded-xl bg-bg-surface border border-border-default shadow-2xl p-6",
           className
         )}
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+          <h2 className="text-lg font-semibold text-text-primary">{title}</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+            className="text-text-tertiary hover:text-text-primary text-xl leading-none transition-colors"
           >
             ×
           </button>

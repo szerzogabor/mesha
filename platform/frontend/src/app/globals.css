@@ -1,3 +1,131 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ─── Light theme tokens (Linear-inspired) ─── */
+:root {
+  --bg-app: #f7f7f8;
+  --bg-surface: #ffffff;
+  --bg-surface-hover: #f3f3f4;
+  --bg-surface-raised: #ffffff;
+  --bg-overlay: rgba(0, 0, 0, 0.4);
+
+  --sidebar-bg: #16161a;
+  --sidebar-border: #2a2a30;
+  --sidebar-text: #c8c8d0;
+  --sidebar-text-muted: #606068;
+  --sidebar-text-active: #ffffff;
+  --sidebar-item-active: #5e6ad2;
+  --sidebar-item-hover: #26262e;
+
+  --border: #e5e5e7;
+  --border-strong: #d0d0d2;
+
+  --text-primary: #111116;
+  --text-secondary: #6b6b78;
+  --text-tertiary: #9b9ba4;
+  --text-placeholder: #b8b8c0;
+
+  --accent: #5e6ad2;
+  --accent-hover: #4f5bbf;
+  --accent-muted: #eceefe;
+  --accent-muted-text: #5e6ad2;
+
+  --destructive: #e5534b;
+  --destructive-muted: #fff1f0;
+  --success: #30a46c;
+  --success-muted: #f0faf5;
+  --warning: #c08a1e;
+  --warning-muted: #fef9ec;
+
+  --input-bg: #ffffff;
+  --input-border: #d0d0d4;
+  --input-focus-ring: #5e6ad2;
+
+  --scrollbar-thumb: #d0d0d4;
+  --scrollbar-track: transparent;
+}
+
+/* ─── Dark theme tokens (Linear-inspired) ─── */
+.dark {
+  --bg-app: #0f0f10;
+  --bg-surface: #161618;
+  --bg-surface-hover: #1e1e21;
+  --bg-surface-raised: #1e1e21;
+  --bg-overlay: rgba(0, 0, 0, 0.6);
+
+  --sidebar-bg: #0a0a0c;
+  --sidebar-border: #1e1e22;
+  --sidebar-text: #8e8e98;
+  --sidebar-text-muted: #4e4e58;
+  --sidebar-text-active: #e8e8f0;
+  --sidebar-item-active: #5e6ad2;
+  --sidebar-item-hover: #1a1a1e;
+
+  --border: #26262a;
+  --border-strong: #36363c;
+
+  --text-primary: #e8e8f0;
+  --text-secondary: #8e8e98;
+  --text-tertiary: #5e5e68;
+  --text-placeholder: #46464e;
+
+  --accent: #7b87e0;
+  --accent-hover: #8b96e8;
+  --accent-muted: #1e2040;
+  --accent-muted-text: #9ba8f0;
+
+  --destructive: #f87171;
+  --destructive-muted: #2a1010;
+  --success: #4ade80;
+  --success-muted: #0d2b18;
+  --warning: #fbbf24;
+  --warning-muted: #2a2008;
+
+  --input-bg: #1a1a1e;
+  --input-border: #2e2e34;
+  --input-focus-ring: #7b87e0;
+
+  --scrollbar-thumb: #2e2e34;
+  --scrollbar-track: transparent;
+}
+
+/* ─── Base styles ─── */
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+}
+
+/* ─── Scrollbar ─── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+/* ─── Focus ring ─── */
+*:focus-visible {
+  outline: 2px solid var(--input-focus-ring);
+  outline-offset: 2px;
+}
