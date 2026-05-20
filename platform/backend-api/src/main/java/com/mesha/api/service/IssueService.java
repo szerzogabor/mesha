@@ -80,7 +80,8 @@ public class IssueService {
     public Page<Issue> list(UUID projectId, IssueStatus status, IssuePriority priority,
                              UUID assigneeId, String search, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return issueRepository.findByProjectFiltered(projectId, status, priority, assigneeId, search, pageable);
+        String normalizedSearch = search != null ? "%" + search.toLowerCase() + "%" : null;
+        return issueRepository.findByProjectFiltered(projectId, status, priority, assigneeId, normalizedSearch, pageable);
     }
 
     public Issue getById(UUID issueId) {

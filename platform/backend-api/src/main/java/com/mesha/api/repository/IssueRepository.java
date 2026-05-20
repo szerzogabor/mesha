@@ -20,7 +20,7 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
              AND (:status IS NULL OR i.status = :status)
              AND (:priority IS NULL OR i.priority = :priority)
              AND (:assigneeId IS NULL OR i.assignee.id = :assigneeId)
-             AND (:search IS NULL OR LOWER(i.title) LIKE LOWER(CONCAT('%', :search, '%')))
+             AND (:search IS NULL OR LOWER(i.title) LIKE :search)
            ORDER BY i.createdAt DESC
            """)
     Page<Issue> findByProjectFiltered(
