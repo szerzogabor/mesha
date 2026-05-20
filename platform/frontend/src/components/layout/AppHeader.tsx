@@ -7,8 +7,8 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 export function AppHeader() {
   const pathname = usePathname();
 
-  // Workspace pages manage their own in-content top bars.
-  if (pathname === "/workspaces" || pathname.startsWith("/workspaces/")) {
+  // Nested workspace routes render their own top bars.
+  if (/^\/workspaces\/[^/]+/.test(pathname)) {
     return null;
   }
 
