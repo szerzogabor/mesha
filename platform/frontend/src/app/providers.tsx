@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import * as Sentry from "@sentry/nextjs";
 import { apiClient, setTokenGetter } from "@/lib/api-client";
 import { AuthSyncContext, AuthSyncStatus } from "@/lib/auth-sync";
+import { ThemeProvider } from "@/context/ThemeContext";
 
 function ClerkTokenBridge({ onStatusChange }: { onStatusChange: (status: AuthSyncStatus) => void }) {
   const { getToken } = useAuth();
@@ -83,9 +84,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <AuthSyncContext.Provider value={authSyncStatus}>
-      <ClerkTokenBridge onStatusChange={setAuthSyncStatus} />
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </AuthSyncContext.Provider>
+    <ThemeProvider>
+      <AuthSyncContext.Provider value={authSyncStatus}>
+        <ClerkTokenBridge onStatusChange={setAuthSyncStatus} />
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      </AuthSyncContext.Provider>
+    </ThemeProvider>
   );
 }

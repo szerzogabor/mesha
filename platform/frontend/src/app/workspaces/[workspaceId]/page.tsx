@@ -23,14 +23,14 @@ export default function WorkspacePage({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full py-32">
-        <Spinner size="lg" className="text-indigo-600" />
+        <Spinner size="lg" className="text-accent" />
       </div>
     );
   }
 
   if (projects && projects.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full py-32 text-gray-400">
+      <div className="flex flex-col items-center justify-center h-full py-32 text-text-tertiary">
         <p className="text-lg mb-1">No projects yet</p>
         <p className="text-sm">Create a project using the sidebar.</p>
       </div>

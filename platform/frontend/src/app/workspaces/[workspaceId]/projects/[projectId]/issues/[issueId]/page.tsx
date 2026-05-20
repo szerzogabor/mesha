@@ -16,6 +16,9 @@ import { formatRelativeTime } from "@/lib/utils";
 const STATUSES: IssueStatus[] = ["BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DONE"];
 const PRIORITIES: IssuePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
+const selectClass =
+  "w-full border border-input-border rounded-lg px-3 py-2 text-sm bg-input-bg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent";
+
 export default function IssueDetailPage({
   params,
 }: {
@@ -39,17 +42,17 @@ export default function IssueDetailPage({
   if (isLoading || !issue) {
     return (
       <div className="flex items-center justify-center py-32">
-        <Spinner size="lg" className="text-indigo-600" />
+        <Spinner size="lg" className="text-accent" />
       </div>
     );
   }
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="px-6 py-4 bg-white border-b flex items-center gap-3">
+      <div className="px-6 py-4 bg-bg-surface border-b border-border-default flex items-center gap-3">
         <Link
           href={`/workspaces/${workspaceId}/projects/${projectId}`}
-          className="text-sm text-gray-400 hover:text-gray-700"
+          className="text-sm text-text-tertiary hover:text-text-primary transition-colors"
         >
           ← Back
         </Link>
@@ -66,7 +69,7 @@ export default function IssueDetailPage({
                   autoFocus
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="flex-1 text-2xl font-bold border-b-2 border-indigo-500 outline-none py-1"
+                  className="flex-1 text-2xl font-bold border-b-2 border-accent outline-none py-1 bg-transparent text-text-primary"
                   onKeyDown={async (e) => {
                     if (e.key === "Enter") {
                       await updateIssue.mutateAsync({ title: editTitle });
@@ -80,20 +83,20 @@ export default function IssueDetailPage({
                     await updateIssue.mutateAsync({ title: editTitle });
                     setEditingTitle(false);
                   }}
-                  className="px-3 py-1 text-sm bg-indigo-600 text-white rounded-lg"
+                  className="px-3 py-1 text-sm bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
                 >
                   Save
                 </button>
                 <button
                   onClick={() => setEditingTitle(false)}
-                  className="px-3 py-1 text-sm border rounded-lg"
+                  className="px-3 py-1 text-sm border border-border-default rounded-lg text-text-secondary hover:bg-bg-surface-hover transition-colors"
                 >
                   Cancel
                 </button>
               </div>
             ) : (
               <h1
-                className="text-2xl font-bold text-gray-900 cursor-pointer hover:opacity-70"
+                className="text-2xl font-bold text-text-primary cursor-pointer hover:opacity-70 transition-opacity"
                 onClick={() => {
                   setEditTitle(issue.title);
                   setEditingTitle(true);
@@ -103,22 +106,22 @@ export default function IssueDetailPage({
                 {issue.title}
               </h1>
             )}
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-text-tertiary mt-1">
               Created {formatRelativeTime(issue.createdAt)} · Updated {formatRelativeTime(issue.updatedAt)}
             </p>
           </div>
 
           {/* Description */}
-          <div className="bg-white rounded-xl border p-4">
+          <div className="bg-bg-surface rounded-xl border border-border-default p-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-gray-700">Description</h3>
+              <h3 className="text-sm font-semibold text-text-secondary">Description</h3>
               {!editingDesc && (
                 <button
                   onClick={() => {
                     setEditDesc(issue.description || "");
                     setEditingDesc(true);
                   }}
-                  className="text-xs text-gray-400 hover:text-gray-700"
+                  className="text-xs text-text-tertiary hover:text-text-primary transition-colors"
                 >
                   Edit
                 </button>
@@ -131,7 +134,7 @@ export default function IssueDetailPage({
                   value={editDesc}
                   onChange={(e) => setEditDesc(e.target.value)}
                   rows={6}
-                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  className="w-full border border-input-border rounded-lg px-3 py-2 text-sm bg-input-bg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent resize-none"
                 />
                 <div className="flex gap-2">
                   <button
@@ -139,13 +142,13 @@ export default function IssueDetailPage({
                       await updateIssue.mutateAsync({ description: editDesc });
                       setEditingDesc(false);
                     }}
-                    className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg"
+                    className="px-3 py-1.5 text-sm bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
                   >
                     Save
                   </button>
                   <button
                     onClick={() => setEditingDesc(false)}
-                    className="px-3 py-1.5 text-sm border rounded-lg"
+                    className="px-3 py-1.5 text-sm border border-border-default rounded-lg text-text-secondary hover:bg-bg-surface-hover transition-colors"
                   >
                     Cancel
                   </button>
@@ -153,30 +156,30 @@ export default function IssueDetailPage({
               </div>
             ) : (
               <p
-                className="text-sm text-gray-600 whitespace-pre-wrap cursor-pointer min-h-[40px]"
+                className="text-sm text-text-secondary whitespace-pre-wrap cursor-pointer min-h-[40px] hover:opacity-80 transition-opacity"
                 onClick={() => {
                   setEditDesc(issue.description || "");
                   setEditingDesc(true);
                 }}
               >
                 {issue.description || (
-                  <span className="text-gray-400 italic">No description. Click to add one.</span>
+                  <span className="text-text-tertiary italic">No description. Click to add one.</span>
                 )}
               </p>
             )}
           </div>
 
           {/* Comments + Activity tabs */}
-          <div className="bg-white rounded-xl border p-4">
-            <div className="flex gap-4 mb-4 border-b">
+          <div className="bg-bg-surface rounded-xl border border-border-default p-4">
+            <div className="flex gap-4 mb-4 border-b border-border-default">
               {(["comments", "activity"] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={`pb-2 text-sm font-medium capitalize transition-colors ${
                     activeTab === tab
-                      ? "border-b-2 border-indigo-600 text-indigo-600"
-                      : "text-gray-400 hover:text-gray-700"
+                      ? "border-b-2 border-accent text-accent"
+                      : "text-text-tertiary hover:text-text-secondary"
                   }`}
                 >
                   {tab}
@@ -201,9 +204,9 @@ export default function IssueDetailPage({
 
         {/* Sidebar: metadata */}
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border p-4 space-y-4">
+          <div className="bg-bg-surface rounded-xl border border-border-default p-4 space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              <label className="block text-xs font-semibold text-text-tertiary uppercase tracking-wide mb-1">
                 Status
               </label>
               <select
@@ -211,7 +214,7 @@ export default function IssueDetailPage({
                 onChange={async (e) => {
                   await updateIssue.mutateAsync({ status: e.target.value as IssueStatus });
                 }}
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className={selectClass}
               >
                 {STATUSES.map((s) => (
                   <option key={s} value={s}>
@@ -222,7 +225,7 @@ export default function IssueDetailPage({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              <label className="block text-xs font-semibold text-text-tertiary uppercase tracking-wide mb-1">
                 Priority
               </label>
               <select
@@ -230,7 +233,7 @@ export default function IssueDetailPage({
                 onChange={async (e) => {
                   await updateIssue.mutateAsync({ priority: e.target.value as IssuePriority });
                 }}
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className={selectClass}
               >
                 {PRIORITIES.map((p) => (
                   <option key={p} value={p}>
@@ -241,34 +244,34 @@ export default function IssueDetailPage({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              <label className="block text-xs font-semibold text-text-tertiary uppercase tracking-wide mb-1">
                 Assignee
               </label>
               {issue.assignee ? (
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-medium text-indigo-700">
+                    <div className="h-6 w-6 rounded-full bg-accent-muted flex items-center justify-center text-xs font-medium text-accent-muted-text">
                       {(issue.assignee.name || issue.assignee.email)[0]?.toUpperCase()}
                     </div>
-                    <span className="text-sm text-gray-700">
+                    <span className="text-sm text-text-primary">
                       {issue.assignee.name || issue.assignee.email}
                     </span>
                   </div>
                   <button
                     onClick={() => updateIssue.mutateAsync({ clearAssignee: true })}
-                    className="text-xs text-gray-400 hover:text-red-500"
+                    className="text-xs text-text-tertiary hover:text-destructive transition-colors"
                   >
                     ×
                   </button>
                 </div>
               ) : (
-                <p className="text-sm text-gray-400">Unassigned</p>
+                <p className="text-sm text-text-tertiary">Unassigned</p>
               )}
             </div>
 
             {issue.labels.length > 0 && (
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                <label className="block text-xs font-semibold text-text-tertiary uppercase tracking-wide mb-1">
                   Labels
                 </label>
                 <div className="flex flex-wrap gap-1">
@@ -286,9 +289,9 @@ export default function IssueDetailPage({
             )}
           </div>
 
-          <div className="bg-white rounded-xl border p-4 text-xs text-gray-400 space-y-1">
-            <p><span className="text-gray-500 font-medium">Created:</span> {new Date(issue.createdAt).toLocaleString()}</p>
-            <p><span className="text-gray-500 font-medium">Updated:</span> {new Date(issue.updatedAt).toLocaleString()}</p>
+          <div className="bg-bg-surface rounded-xl border border-border-default p-4 text-xs text-text-tertiary space-y-1">
+            <p><span className="text-text-secondary font-medium">Created:</span> {new Date(issue.createdAt).toLocaleString()}</p>
+            <p><span className="text-text-secondary font-medium">Updated:</span> {new Date(issue.updatedAt).toLocaleString()}</p>
           </div>
         </div>
       </div>
