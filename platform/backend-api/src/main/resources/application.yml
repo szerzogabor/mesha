@@ -65,6 +65,15 @@ sentry:
   tags:
     service: mesha-api
 
+github:
+  app:
+    app-id: ${GITHUB_APP_ID:0}
+    client-id: ${GITHUB_APP_CLIENT_ID:}
+    client-secret: ${GITHUB_APP_CLIENT_SECRET:}
+    private-key: ${GITHUB_APP_PRIVATE_KEY:}
+    webhook-secret: ${GITHUB_APP_WEBHOOK_SECRET:}
+    app-name: ${GITHUB_APP_NAME:mesha}
+
 # Structured JSON logging — format handled by logback-spring.xml
 logging:
   level:
