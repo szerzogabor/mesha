@@ -78,7 +78,7 @@ github:
     client-secret: ${GITHUB_APP_CLIENT_SECRET:}
     private-key: ${GITHUB_APP_PRIVATE_KEY:}
     webhook-secret: ${GITHUB_APP_WEBHOOK_SECRET:}
-    app-name: ${GITHUB_APP_NAME:mesha}
+    app-name: ${GITHUB_APP_NAME:mesha-github-app}
 
 # Structured JSON logging — format handled by logback-spring.xml
 logging:
