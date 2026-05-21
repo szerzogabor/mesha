@@ -26,7 +26,28 @@ export type ActivityEventType =
   | "LABEL_REMOVED"
   | "COMMENT_ADDED"
   | "TITLE_CHANGED"
-  | "DESCRIPTION_CHANGED";
+  | "DESCRIPTION_CHANGED"
+  | "ISSUE_CREATED_FROM_AI_DRAFT";
+
+export type AIDraftStatus = "PENDING" | "COMPLETED" | "FAILED" | "APPROVED" | "REJECTED";
+
+export interface AIDraft {
+  id: string;
+  projectId: string;
+  prompt: string;
+  status: AIDraftStatus;
+  generatedTitle?: string;
+  generatedDescription?: string;
+  acceptanceCriteria?: string;
+  suggestedLabels?: string;
+  prioritySuggestion?: string;
+  implementationNotes?: string;
+  scopeNotes?: string;
+  outOfScopeNotes?: string;
+  errorMessage?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface UserSummary {
   id: string;

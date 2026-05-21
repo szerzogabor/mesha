@@ -9,6 +9,7 @@ import {
 } from "@/hooks/useIssues";
 import { IssueFilters } from "@/components/issues/IssueFilters";
 import { CreateIssueModal } from "@/components/issues/CreateIssueModal";
+import { AIDraftModal } from "@/components/issues/AIDraftModal";
 import { ViewSwitcher, ViewMode } from "@/components/issues/ViewSwitcher";
 import { ListView } from "@/components/issues/ListView";
 import { KanbanView } from "@/components/issues/KanbanView";
@@ -29,6 +30,7 @@ export default function ProjectPage({
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
+  const [showAIDraft, setShowAIDraft] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(VIEW_STORAGE_KEY);
@@ -88,6 +90,12 @@ export default function ProjectPage({
           <div className="flex items-center gap-3">
             <ViewSwitcher view={view} onViewChange={handleViewChange} />
             <button
+              onClick={() => setShowAIDraft(true)}
+              className="px-4 py-2 bg-bg-surface border border-border-default text-text-primary rounded-lg text-sm hover:bg-bg-surface-hover transition-colors flex items-center gap-1.5"
+            >
+              ✦ Generate with AI
+            </button>
+            <button
               onClick={() => setShowCreate(true)}
               className="px-4 py-2 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover transition-colors"
             >
@@ -145,6 +153,12 @@ export default function ProjectPage({
         onSubmit={async (formData) => {
           await createIssue.mutateAsync(formData);
         }}
+      />
+
+      <AIDraftModal
+        open={showAIDraft}
+        projectId={projectId}
+        onClose={() => setShowAIDraft(false)}
       />
     </div>
   );
