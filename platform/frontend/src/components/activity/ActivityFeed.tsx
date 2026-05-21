@@ -24,6 +24,8 @@ function eventDescription(event: ActivityEvent): string {
       return `${actor} updated the title`;
     case "DESCRIPTION_CHANGED":
       return `${actor} updated the description`;
+    case "ISSUE_CREATED_FROM_AI_DRAFT":
+      return `${actor} created this issue from an AI draft`;
     default:
       return `${actor} made a change`;
   }
@@ -39,6 +41,7 @@ const eventIcons: Record<ActivityEventType, string> = {
   COMMENT_ADDED: "◇",
   TITLE_CHANGED: "✎",
   DESCRIPTION_CHANGED: "✎",
+  ISSUE_CREATED_FROM_AI_DRAFT: "✦",
 };
 
 interface ActivityFeedProps {
