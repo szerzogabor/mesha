@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Issue, IssueStatus, IssuePriority } from "@/types";
 import { StatusBadge } from "./StatusBadge";
@@ -87,24 +87,26 @@ export function ListView({
     );
   }
 
-  const sorted = [...issues].sort((a, b) => {
-    let cmp = 0;
-    switch (sortField) {
-      case "title":
-        cmp = a.title.localeCompare(b.title);
-        break;
-      case "status":
-        cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
-        break;
-      case "priority":
-        cmp = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
-        break;
-      case "updatedAt":
-        cmp = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
-        break;
-    }
-    return sortDir === "asc" ? cmp : -cmp;
-  });
+  const sorted = useMemo(() => {
+    return [...issues].sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case "title":
+          cmp = a.title.localeCompare(b.title);
+          break;
+        case "status":
+          cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+          break;
+        case "priority":
+          cmp = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+          break;
+        case "updatedAt":
+          cmp = a.updatedAt.localeCompare(b.updatedAt);
+          break;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [issues, sortField, sortDir]);
 
   const SortButton = ({ field, label }: { field: SortField; label: string }) => (
     <button

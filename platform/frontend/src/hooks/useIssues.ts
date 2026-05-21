@@ -87,17 +87,24 @@ export function useDeleteIssue(projectId: string) {
   });
 }
 
+const KANBAN_MAX_ISSUES = 500;
+
 export function useAllIssues(
   projectId: string,
-  filters: Omit<IssueFilters, "page" | "size"> = {}
+  filters: Omit<IssueFilters, "page" | "size"> = {},
+  options: { enabled?: boolean } = {}
 ) {
   return useQuery({
     queryKey: ["issues-all", projectId, filters],
     queryFn: () =>
       apiClient.get<PagedResponse<Issue>>(
-        `/api/projects/${projectId}/issues${buildQuery({ ...filters, page: 0, size: 200 })}`
+        `/api/projects/${projectId}/issues${buildQuery({
+          ...filters,
+          page: 0,
+          size: KANBAN_MAX_ISSUES,
+        })}`
       ),
-    enabled: !!projectId,
+    enabled: (options.enabled ?? true) && !!projectId,
   });
 }
 

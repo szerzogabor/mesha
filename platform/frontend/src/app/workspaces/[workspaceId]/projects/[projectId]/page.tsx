@@ -63,10 +63,11 @@ export default function ProjectPage({
     size: 25,
   });
 
-  const kanbanQuery = useAllIssues(projectId, {
-    priority,
-    search: search || undefined,
-  });
+  const kanbanQuery = useAllIssues(
+    projectId,
+    { priority, search: search || undefined },
+    { enabled: view === "kanban" }
+  );
 
   const createIssue = useCreateIssue(projectId);
   const updateIssue = useUpdateIssueInProject(projectId);
