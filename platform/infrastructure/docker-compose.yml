@@ -40,6 +40,8 @@ services:
       DB_USER: mesha
       DB_PASSWORD: mesha
       REDIS_URL: redis://redis:6379
+    env_file:
+      - .env
     depends_on:
       postgres:
         condition: service_healthy

@@ -2,7 +2,7 @@ spring:
   application:
     name: mesha-worker
   profiles:
-    active: ${ENVIRONMENT:local}
+    active: ${APP_ENV:local}
 
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:mesha}
@@ -30,7 +30,7 @@ management:
 
 sentry:
   dsn: ${SENTRY_DSN:https://c2f30f5b2b577059370f00a36ee7476f@o4511348602241024.ingest.de.sentry.io/4511423699877968}
-  environment: ${ENVIRONMENT:local}
+  environment: ${APP_ENV:local}
   release: ${SENTRY_RELEASE:${APP_VERSION:0.0.1-SNAPSHOT}}
   # PII is handled by SentryConfig.BeforeSendCallback — do not enable default PII collection
   send-default-pii: false

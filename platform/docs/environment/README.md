@@ -139,6 +139,7 @@ Apply each variable to the correct environment (Production / Preview / Developme
 | `CLERK_SECRET_KEY` | Production secret | Test secret | Test secret |
 | `NEXT_PUBLIC_SENTRY_DSN` | Production DSN | Preview DSN | (optional) |
 | `NEXT_PUBLIC_ENVIRONMENT` | `production` | `preview` | `local` |
+| `APP_ENV` (backend) | `production` | `preview` | `local` |
 | `NEXT_PUBLIC_APP_VERSION` | Git tag | Git SHA | (optional) |
 | `SENTRY_AUTH_TOKEN` | Auth token | Auth token | (optional) |
 

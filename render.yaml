@@ -99,6 +99,8 @@ services:
           name: mesha-redis
           type: redis
           property: connectionString
+      - key: APP_ENV
+        value: production
       - key: BLOCKS_API_URL
         sync: false
       - key: BLOCKS_API_KEY
