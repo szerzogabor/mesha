@@ -28,6 +28,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.security.PrivateKey;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
@@ -58,7 +59,9 @@ public class GitHubAppService {
         this.repositoryRepo = repositoryRepo;
         this.workspaceRepo = workspaceRepo;
         this.objectMapper = objectMapper;
-        this.httpClient = HttpClient.newHttpClient();
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
     }
 
     /**
@@ -162,18 +165,26 @@ public class GitHubAppService {
     public List<JsonNode> listInstallationRepositories(Long installationId) {
         try {
             String token = getInstallationToken(installationId);
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(GITHUB_API + "/installation/repositories?per_page=100"))
-                    .header("Authorization", "Bearer " + token)
-                    .header("Accept", "application/vnd.github+json")
-                    .header("X-GitHub-Api-Version", "2022-11-28")
-                    .GET()
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            JsonNode root = objectMapper.readTree(response.body());
             List<JsonNode> repos = new ArrayList<>();
-            root.path("repositories").forEach(repos::add);
+            String nextUrl = GITHUB_API + "/installation/repositories?per_page=100";
+
+            while (nextUrl != null) {
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(nextUrl))
+                        .header("Authorization", "Bearer " + token)
+                        .header("Accept", "application/vnd.github+json")
+                        .header("X-GitHub-Api-Version", "2022-11-28")
+                        .GET()
+                        .build();
+
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                JsonNode root = objectMapper.readTree(response.body());
+                root.path("repositories").forEach(repos::add);
+
+                // Follow GitHub's Link header for next page
+                nextUrl = extractNextPageUrl(response.headers().firstValue("Link").orElse(null));
+            }
+
             return repos;
         } catch (ResponseStatusException e) {
             throw e;
@@ -181,6 +192,19 @@ public class GitHubAppService {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Failed to list repositories: " + e.getMessage());
         }
+    }
+
+    private String extractNextPageUrl(String linkHeader) {
+        if (linkHeader == null) return null;
+        for (String part : linkHeader.split(",")) {
+            String[] segments = part.trim().split(";");
+            if (segments.length == 2 && segments[1].trim().equals("rel=\"next\"")) {
+                String url = segments[0].trim();
+                return url.startsWith("<") && url.endsWith(">")
+                        ? url.substring(1, url.length() - 1) : url;
+            }
+        }
+        return null;
     }
 
     /**

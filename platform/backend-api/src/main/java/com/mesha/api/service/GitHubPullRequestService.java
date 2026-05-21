@@ -131,13 +131,11 @@ public class GitHubPullRequestService {
         pr.setDraft(prNode.path("draft").asBoolean(false));
         pr.setCommitsCount(prNode.path("commits").asInt(0));
 
-        String mergedAt = prNode.path("merged_at").asText(null);
-        if (mergedAt != null && !mergedAt.equals("null")) {
-            pr.setMergedAt(Instant.parse(mergedAt));
+        if (prNode.hasNonNull("merged_at")) {
+            pr.setMergedAt(Instant.parse(prNode.get("merged_at").asText()));
         }
-        String closedAt = prNode.path("closed_at").asText(null);
-        if (closedAt != null && !closedAt.equals("null")) {
-            pr.setClosedAt(Instant.parse(closedAt));
+        if (prNode.hasNonNull("closed_at")) {
+            pr.setClosedAt(Instant.parse(prNode.get("closed_at").asText()));
         }
 
         prRepo.save(pr);

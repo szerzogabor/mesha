@@ -1,8 +1,6 @@
 package com.mesha.api.controller;
 
 import com.mesha.api.dto.GitHubInstallationDto;
-import com.mesha.api.model.User;
-import com.mesha.api.security.CurrentUser;
 import com.mesha.api.service.GitHubAppService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,8 +36,7 @@ public class GitHubAppController {
     @PreAuthorize("@workspaceSecurity.isAdminOrAbove(authentication, #workspaceId)")
     public ResponseEntity<GitHubInstallationDto> registerInstallation(
             @PathVariable String workspaceId,
-            @PathVariable Long installationId,
-            @CurrentUser User user) {
+            @PathVariable Long installationId) {
         GitHubInstallationDto dto = GitHubInstallationDto.from(
                 appService.registerInstallation(installationId, UUID.fromString(workspaceId)));
         return ResponseEntity.status(HttpStatus.CREATED).body(dto);

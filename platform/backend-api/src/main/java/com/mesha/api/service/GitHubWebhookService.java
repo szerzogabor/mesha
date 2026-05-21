@@ -15,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.HexFormat;
 
 @Service
@@ -46,7 +47,9 @@ public class GitHubWebhookService {
      */
     public void verifySignature(String signature, String payload) {
         if (props.getWebhookSecret() == null || props.getWebhookSecret().isBlank()) {
-            return;
+            log.error("GITHUB_APP_WEBHOOK_SECRET is not configured — all webhook requests are accepted without verification. This is a security risk.");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Webhook secret is not configured; refusing to process unverified events");
         }
         if (signature == null || !signature.startsWith("sha256=")) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing or invalid webhook signature");
@@ -56,7 +59,8 @@ public class GitHubWebhookService {
             mac.init(new SecretKeySpec(props.getWebhookSecret().getBytes(StandardCharsets.UTF_8), HMAC_ALGO));
             byte[] computed = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
             String expected = "sha256=" + HexFormat.of().formatHex(computed);
-            if (!constantTimeEquals(expected, signature)) {
+            if (!MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8),
+                    signature.getBytes(StandardCharsets.UTF_8))) {
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Webhook signature mismatch");
             }
         } catch (ResponseStatusException e) {
@@ -118,12 +122,4 @@ public class GitHubWebhookService {
         }
     }
 
-    private boolean constantTimeEquals(String a, String b) {
-        if (a.length() != b.length()) return false;
-        int result = 0;
-        for (int i = 0; i < a.length(); i++) {
-            result |= a.charAt(i) ^ b.charAt(i);
-        }
-        return result == 0;
-    }
 }
