@@ -61,7 +61,28 @@ export function Sidebar({ workspace, projects, onCreateProject }: SidebarProps) 
         </ul>
       </nav>
 
-      <div className="px-4 py-3 border-t border-sidebar-border">
+      <div className="px-3 mt-4 mb-2">
+        <span className="text-xs font-semibold uppercase tracking-wider text-sidebar-text-muted">
+          Integrations
+        </span>
+      </div>
+      <ul className="space-y-0.5 px-2 mb-2">
+        <li>
+          <Link
+            href={`/workspaces/${workspace.id}/github`}
+            className={cn(
+              "block px-3 py-2 rounded-lg text-sm truncate transition-colors",
+              pathname.startsWith(`/workspaces/${workspace.id}/github`)
+                ? "bg-sidebar-item-active text-white"
+                : "text-sidebar-text hover:bg-sidebar-item-hover hover:text-sidebar-text-active"
+            )}
+          >
+            GitHub
+          </Link>
+        </li>
+      </ul>
+
+      <div className="px-4 py-3 border-t border-sidebar-border mt-auto">
         <Link href="/workspaces" className="text-xs text-sidebar-text-muted hover:text-sidebar-text-active transition-colors">
           Switch workspace
         </Link>

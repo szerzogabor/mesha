@@ -36,6 +36,7 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/github/webhooks").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/sync").authenticated()
                 .anyRequest().authenticated()
             )
