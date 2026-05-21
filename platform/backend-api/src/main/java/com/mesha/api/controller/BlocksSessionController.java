@@ -1,0 +1,86 @@
+package com.mesha.api.controller;
+
+import com.mesha.api.dto.BlocksSessionDto;
+import com.mesha.api.dto.UpdateBlocksSessionRequest;
+import com.mesha.api.model.BlocksSession;
+import com.mesha.api.model.User;
+import com.mesha.api.security.CurrentUser;
+import com.mesha.api.service.BlocksSessionService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/projects/{projectId}/issues/{issueId}/blocks-sessions")
+public class BlocksSessionController {
+
+    private final BlocksSessionService blocksSessionService;
+
+    public BlocksSessionController(BlocksSessionService blocksSessionService) {
+        this.blocksSessionService = blocksSessionService;
+    }
+
+    @PostMapping
+    @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    public ResponseEntity<BlocksSessionDto> assign(
+            @PathVariable UUID projectId,
+            @PathVariable UUID issueId,
+            @CurrentUser User user) {
+        BlocksSession session = blocksSessionService.assignToBlocks(issueId, user);
+        return ResponseEntity.status(HttpStatus.CREATED).body(BlocksSessionDto.from(session));
+    }
+
+    @GetMapping
+    @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    public ResponseEntity<List<BlocksSessionDto>> list(
+            @PathVariable UUID projectId,
+            @PathVariable UUID issueId) {
+        List<BlocksSessionDto> sessions = blocksSessionService.getSessionsForIssue(issueId)
+            .stream().map(BlocksSessionDto::from).toList();
+        return ResponseEntity.ok(sessions);
+    }
+
+    @GetMapping("/active")
+    @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    public ResponseEntity<BlocksSessionDto> getActive(
+            @PathVariable UUID projectId,
+            @PathVariable UUID issueId) {
+        return ResponseEntity.ok(BlocksSessionDto.from(blocksSessionService.getActiveSessionForIssue(issueId)));
+    }
+
+    @GetMapping("/{sessionId}")
+    @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    public ResponseEntity<BlocksSessionDto> get(
+            @PathVariable UUID projectId,
+            @PathVariable UUID issueId,
+            @PathVariable UUID sessionId) {
+        return ResponseEntity.ok(BlocksSessionDto.from(blocksSessionService.getById(sessionId)));
+    }
+
+    @PatchMapping("/{sessionId}")
+    @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    public ResponseEntity<BlocksSessionDto> update(
+            @PathVariable UUID projectId,
+            @PathVariable UUID issueId,
+            @PathVariable UUID sessionId,
+            @CurrentUser User user,
+            @RequestBody UpdateBlocksSessionRequest req) {
+        BlocksSession session = blocksSessionService.updateSession(sessionId, req, user);
+        return ResponseEntity.ok(BlocksSessionDto.from(session));
+    }
+
+    @PostMapping("/{sessionId}/cancel")
+    @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    public ResponseEntity<BlocksSessionDto> cancel(
+            @PathVariable UUID projectId,
+            @PathVariable UUID issueId,
+            @PathVariable UUID sessionId,
+            @CurrentUser User user) {
+        BlocksSession session = blocksSessionService.cancelSession(sessionId, user);
+        return ResponseEntity.ok(BlocksSessionDto.from(session));
+    }
+}

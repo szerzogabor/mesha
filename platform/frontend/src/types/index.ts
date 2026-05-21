@@ -17,6 +17,15 @@ export interface Project {
 export type IssueStatus = "BACKLOG" | "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
 export type IssuePriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 export type AIAssignmentState = "pending" | "running" | "completed" | "failed";
+export type AIExecutionState =
+  | "CREATED"
+  | "PLANNING"
+  | "EXECUTING"
+  | "WAITING_REVIEW"
+  | "PR_OPENED"
+  | "DONE"
+  | "FAILED"
+  | "CANCELED";
 export type ActivityEventType =
   | "ISSUE_CREATED"
   | "STATUS_CHANGED"
@@ -112,6 +121,21 @@ export interface AISession {
   issueId: string;
   provider: string;
   status: "pending" | "running" | "completed" | "failed";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BlocksSession {
+  id: string;
+  issueId: string;
+  provider: string;
+  providerSessionId?: string;
+  executionState: AIExecutionState;
+  retryCount: number;
+  prUrl?: string;
+  prNumber?: number;
+  branchName?: string;
+  errorMessage?: string;
   createdAt: string;
   updatedAt: string;
 }

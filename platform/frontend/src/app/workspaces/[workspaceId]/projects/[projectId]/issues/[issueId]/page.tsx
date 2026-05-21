@@ -10,6 +10,7 @@ import { PriorityBadge } from "@/components/issues/PriorityBadge";
 import { CommentThread } from "@/components/comments/CommentThread";
 import { ActivityFeed } from "@/components/activity/ActivityFeed";
 import { Spinner } from "@/components/ui/Spinner";
+import { AssignToBlocksPanel } from "@/components/blocks/AssignToBlocksButton";
 import { IssueStatus, IssuePriority } from "@/types";
 import { formatRelativeTime } from "@/lib/utils";
 
@@ -288,6 +289,12 @@ export default function IssueDetailPage({
               </div>
             )}
           </div>
+
+          <AssignToBlocksPanel
+            projectId={projectId}
+            issueId={issueId}
+            hasActiveSession={!!issue.aiAssignmentState && !["DONE", "FAILED", "CANCELED"].includes(issue.aiAssignmentState)}
+          />
 
           <div className="bg-bg-surface rounded-xl border border-border-default p-4 text-xs text-text-tertiary space-y-1">
             <p><span className="text-text-secondary font-medium">Created:</span> {new Date(issue.createdAt).toLocaleString()}</p>
