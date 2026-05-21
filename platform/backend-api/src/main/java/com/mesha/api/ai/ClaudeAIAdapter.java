@@ -77,10 +77,12 @@ public class ClaudeAIAdapter implements AIProvider {
             JsonNode root = objectMapper.readTree(responseBody);
             String text = root.path("content").get(0).path("text").asText();
 
-            // Strip markdown code block if present
+            // Extract the JSON object robustly — handles markdown fences and surrounding prose
             String json = text.trim();
-            if (json.startsWith("```")) {
-                json = json.replaceAll("^```(?:json)?\\s*", "").replaceAll("\\s*```$", "").trim();
+            int start = json.indexOf('{');
+            int end = json.lastIndexOf('}');
+            if (start != -1 && end != -1 && end > start) {
+                json = json.substring(start, end + 1);
             }
 
             JsonNode parsed = objectMapper.readTree(json);

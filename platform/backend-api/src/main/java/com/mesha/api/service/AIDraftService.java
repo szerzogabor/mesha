@@ -25,18 +25,22 @@ public class AIDraftService {
     private final ProjectRepository projectRepository;
     private final AIOrchestrationService orchestration;
     private final IssueService issueService;
+    private final ActivityService activityService;
 
     public AIDraftService(AIDraftRepository draftRepository,
                           ProjectRepository projectRepository,
                           AIOrchestrationService orchestration,
-                          IssueService issueService) {
+                          IssueService issueService,
+                          ActivityService activityService) {
         this.draftRepository = draftRepository;
         this.projectRepository = projectRepository;
         this.orchestration = orchestration;
         this.issueService = issueService;
+        this.activityService = activityService;
     }
 
-    @Transactional
+    // No @Transactional here: the AI network call must not hold a DB connection open.
+    // Each draftRepository.save() call runs in its own implicit transaction.
     public AIDraft generate(UUID projectId, String prompt, User actor) {
         Project project = projectRepository.findById(projectId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
@@ -97,6 +101,7 @@ public class AIDraftService {
         );
 
         Issue issue = issueService.create(draft.getProject().getId(), createReq, actor);
+        activityService.record(issue, actor, ActivityEventType.ISSUE_CREATED_FROM_AI_DRAFT, null, draft.getId().toString());
 
         draft.setStatus(AIDraftStatus.APPROVED);
         draftRepository.save(draft);
@@ -111,7 +116,8 @@ public class AIDraftService {
         draftRepository.save(draft);
     }
 
-    @Transactional
+    // No @Transactional here: calls generate() which makes an external network call.
+    // reject() and generate() each manage their own transactions.
     public AIDraft regenerate(UUID draftId, String newPrompt, User actor) {
         AIDraft existing = getById(draftId);
         String prompt = (newPrompt != null && !newPrompt.isBlank()) ? newPrompt : existing.getPrompt();
