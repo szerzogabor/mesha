@@ -86,3 +86,42 @@ export function useDeleteIssue(projectId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["issues", projectId] }),
   });
 }
+
+const KANBAN_MAX_ISSUES = 500;
+
+export function useAllIssues(
+  projectId: string,
+  filters: Omit<IssueFilters, "page" | "size"> = {},
+  options: { enabled?: boolean } = {}
+) {
+  return useQuery({
+    queryKey: ["issues-all", projectId, filters],
+    queryFn: () =>
+      apiClient.get<PagedResponse<Issue>>(
+        `/api/projects/${projectId}/issues${buildQuery({
+          ...filters,
+          page: 0,
+          size: KANBAN_MAX_ISSUES,
+        })}`
+      ),
+    enabled: (options.enabled ?? true) && !!projectId,
+  });
+}
+
+export function useUpdateIssueInProject(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      issueId,
+      data,
+    }: {
+      issueId: string;
+      data: { status?: IssueStatus; priority?: IssuePriority };
+    }) => apiClient.patch<Issue>(`/api/projects/${projectId}/issues/${issueId}`, data),
+    onSuccess: (_, { issueId }) => {
+      qc.invalidateQueries({ queryKey: ["issue", issueId] });
+      qc.invalidateQueries({ queryKey: ["issues", projectId] });
+      qc.invalidateQueries({ queryKey: ["issues-all", projectId] });
+    },
+  });
+}
