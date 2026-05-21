@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -9,9 +9,11 @@ import {
   DragOverlay,
   PointerSensor,
   KeyboardSensor,
-  closestCorners,
+  pointerWithin,
+  rectIntersection,
   useSensor,
   useSensors,
+  CollisionDetection,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Issue, IssueStatus } from "@/types";
@@ -20,6 +22,27 @@ import { KanbanCard } from "./KanbanCard";
 import { Spinner } from "@/components/ui/Spinner";
 
 const STATUSES: IssueStatus[] = ["BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DONE"];
+
+// pointerWithin correctly targets whichever column/card is under the cursor,
+// which reliably hits empty columns. rectIntersection covers the edge case
+// where the pointer is in a gap between columns.
+const kanbanCollision: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args);
+  if (pointerCollisions.length > 0) return pointerCollisions;
+  return rectIntersection(args);
+};
+
+// Resolve the target IssueStatus from a drag-over or drag-end event.
+// Column droppable IDs equal the status string; card droppable IDs are UUIDs.
+function resolveTargetStatus(
+  overId: string,
+  localIssuesRef: React.RefObject<Issue[]>
+): IssueStatus | undefined {
+  if (STATUSES.includes(overId as IssueStatus)) {
+    return overId as IssueStatus;
+  }
+  return localIssuesRef.current?.find((i) => i.id === overId)?.status;
+}
 
 interface KanbanViewProps {
   issues: Issue[];
@@ -41,6 +64,11 @@ export function KanbanView({
   const [localIssues, setLocalIssues] = useState<Issue[]>(issues);
   const [activeIssue, setActiveIssue] = useState<Issue | null>(null);
 
+  // Keep a ref so memoized callbacks always read the latest localIssues
+  // without needing it in their dependency arrays.
+  const localIssuesRef = useRef(localIssues);
+  localIssuesRef.current = localIssues;
+
   useEffect(() => {
     setLocalIssues(issues);
   }, [issues]);
@@ -50,21 +78,19 @@ export function KanbanView({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const handleDragStart = useCallback(
-    ({ active }: DragStartEvent) => {
-      setActiveIssue(localIssues.find((i) => i.id === active.id) ?? null);
-    },
-    [localIssues]
-  );
+  const handleDragStart = useCallback(({ active }: DragStartEvent) => {
+    setActiveIssue(localIssuesRef.current.find((i) => i.id === active.id) ?? null);
+  }, []);
 
   const handleDragOver = useCallback(({ active, over }: DragOverEvent) => {
     if (!over) return;
-    const targetStatus = over.data.current?.status as IssueStatus | undefined;
+    const targetStatus = resolveTargetStatus(String(over.id), localIssuesRef);
     if (!targetStatus) return;
 
+    const activeId = String(active.id);
     setLocalIssues((prev) =>
       prev.map((issue) =>
-        issue.id === active.id && issue.status !== targetStatus
+        issue.id === activeId && issue.status !== targetStatus
           ? { ...issue, status: targetStatus }
           : issue
       )
@@ -74,22 +100,27 @@ export function KanbanView({
   const handleDragEnd = useCallback(
     ({ active, over }: DragEndEvent) => {
       setActiveIssue(null);
+
       if (!over) {
         setLocalIssues(issues);
         return;
       }
 
-      const targetStatus = over.data.current?.status as IssueStatus | undefined;
+      const targetStatus = resolveTargetStatus(String(over.id), localIssuesRef);
       if (!targetStatus) {
         setLocalIssues(issues);
         return;
       }
 
-      const originalIssue = issues.find((i) => i.id === active.id);
+      const activeId = String(active.id);
+      const originalIssue = issues.find((i) => i.id === activeId);
       if (!originalIssue) return;
 
       if (originalIssue.status !== targetStatus) {
-        onUpdateStatus(String(active.id), targetStatus);
+        onUpdateStatus(activeId, targetStatus);
+      } else {
+        // Target column is same as origin — revert the optimistic move
+        setLocalIssues(issues);
       }
     },
     [issues, onUpdateStatus]
@@ -121,7 +152,7 @@ export function KanbanView({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={kanbanCollision}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
