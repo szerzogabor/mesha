@@ -1,13 +1,20 @@
 "use client";
 
-import { use, useState, useCallback } from "react";
-import { useIssues, useCreateIssue } from "@/hooks/useIssues";
-import { IssueCard } from "@/components/issues/IssueCard";
+import { use, useState, useCallback, useEffect } from "react";
+import {
+  useIssues,
+  useCreateIssue,
+  useAllIssues,
+  useUpdateIssueInProject,
+} from "@/hooks/useIssues";
 import { IssueFilters } from "@/components/issues/IssueFilters";
 import { CreateIssueModal } from "@/components/issues/CreateIssueModal";
-import { Pagination } from "@/components/ui/Pagination";
-import { Spinner } from "@/components/ui/Spinner";
+import { ViewSwitcher, ViewMode } from "@/components/issues/ViewSwitcher";
+import { ListView } from "@/components/issues/ListView";
+import { KanbanView } from "@/components/issues/KanbanView";
 import { IssueStatus, IssuePriority } from "@/types";
+
+const VIEW_STORAGE_KEY = "mesha-view-mode";
 
 export default function ProjectPage({
   params,
@@ -16,21 +23,22 @@ export default function ProjectPage({
 }) {
   const { workspaceId, projectId } = use(params);
 
+  const [view, setView] = useState<ViewMode>("list");
   const [status, setStatus] = useState<IssueStatus | undefined>();
   const [priority, setPriority] = useState<IssuePriority | undefined>();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
 
-  const { data, isLoading, error } = useIssues(projectId, {
-    status,
-    priority,
-    search: search || undefined,
-    page,
-    size: 25,
-  });
+  useEffect(() => {
+    const saved = localStorage.getItem(VIEW_STORAGE_KEY);
+    if (saved === "list" || saved === "kanban") setView(saved);
+  }, []);
 
-  const createIssue = useCreateIssue(projectId);
+  const handleViewChange = (v: ViewMode) => {
+    setView(v);
+    localStorage.setItem(VIEW_STORAGE_KEY, v);
+  };
 
   const handleFilterChange = useCallback(() => setPage(0), []);
 
@@ -47,22 +55,44 @@ export default function ProjectPage({
     handleFilterChange();
   };
 
+  const listQuery = useIssues(projectId, {
+    status,
+    priority,
+    search: search || undefined,
+    page,
+    size: 25,
+  });
+
+  const kanbanQuery = useAllIssues(projectId, {
+    priority,
+    search: search || undefined,
+  });
+
+  const createIssue = useCreateIssue(projectId);
+  const updateIssue = useUpdateIssueInProject(projectId);
+
+  const totalElements =
+    view === "list"
+      ? listQuery.data?.totalElements ?? 0
+      : kanbanQuery.data?.totalElements ?? 0;
+
   return (
     <div className="h-full flex flex-col">
-      <div className="px-6 py-4 bg-bg-surface border-b border-border-default">
-        <div className="flex items-center justify-between mb-3">
+      <div className="px-6 py-4 bg-bg-surface border-b border-border-default flex-shrink-0">
+        <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
           <div>
             <h2 className="text-lg font-semibold text-text-primary">Issues</h2>
-            {data && (
-              <p className="text-sm text-text-tertiary">{data.totalElements} total</p>
-            )}
+            <p className="text-sm text-text-tertiary">{totalElements} total</p>
           </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-2 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover transition-colors"
-          >
-            + New Issue
-          </button>
+          <div className="flex items-center gap-3">
+            <ViewSwitcher view={view} onViewChange={handleViewChange} />
+            <button
+              onClick={() => setShowCreate(true)}
+              className="px-4 py-2 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover transition-colors"
+            >
+              + New Issue
+            </button>
+          </div>
         </div>
 
         <IssueFilters
@@ -72,53 +102,38 @@ export default function ProjectPage({
           onStatusChange={handleStatusChange}
           onPriorityChange={handlePriorityChange}
           onSearchChange={handleSearchChange}
+          hideStatusFilter={view === "kanban"}
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        {isLoading && (
-          <div className="flex items-center justify-center py-16">
-            <Spinner size="lg" className="text-accent" />
-          </div>
-        )}
-
-        {error && (
-          <div className="p-6">
-            <div className="p-4 bg-destructive-muted text-destructive rounded-lg text-sm">
-              {error instanceof Error ? error.message : "Failed to load issues"}
-            </div>
-          </div>
-        )}
-
-        {data && data.content.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-24 text-text-tertiary">
-            <p className="text-lg mb-1">No issues found</p>
-            <p className="text-sm">
-              {search || status || priority
-                ? "Try clearing your filters."
-                : 'Create your first issue with "+ New Issue".'}
-            </p>
-          </div>
-        )}
-
-        {data && data.content.length > 0 && (
-          <div className="bg-bg-surface mx-6 mt-4 rounded-xl border border-border-default divide-y divide-border-default overflow-hidden">
-            {data.content.map((issue) => (
-              <IssueCard
-                key={issue.id}
-                issue={issue}
-                workspaceId={workspaceId}
-                projectId={projectId}
-              />
-            ))}
-          </div>
-        )}
-
-        {data && (
-          <Pagination
-            page={data.page}
-            totalPages={data.totalPages}
+      <div
+        className={
+          view === "kanban"
+            ? "flex-1 overflow-hidden flex flex-col min-h-0"
+            : "flex-1 overflow-y-auto"
+        }
+      >
+        {view === "list" ? (
+          <ListView
+            issues={listQuery.data?.content ?? []}
+            totalPages={listQuery.data?.totalPages ?? 0}
+            page={page}
+            isLoading={listQuery.isLoading}
+            error={listQuery.error}
+            workspaceId={workspaceId}
+            projectId={projectId}
             onPageChange={setPage}
+          />
+        ) : (
+          <KanbanView
+            issues={kanbanQuery.data?.content ?? []}
+            isLoading={kanbanQuery.isLoading}
+            error={kanbanQuery.error}
+            workspaceId={workspaceId}
+            projectId={projectId}
+            onUpdateStatus={(issueId, newStatus) =>
+              updateIssue.mutate({ issueId, data: { status: newStatus } })
+            }
           />
         )}
       </div>

@@ -15,6 +15,7 @@ interface IssueFiltersProps {
   onStatusChange: (s: IssueStatus | undefined) => void;
   onPriorityChange: (p: IssuePriority | undefined) => void;
   onSearchChange: (s: string) => void;
+  hideStatusFilter?: boolean;
 }
 
 export function IssueFilters({
@@ -24,6 +25,7 @@ export function IssueFilters({
   onStatusChange,
   onPriorityChange,
   onSearchChange,
+  hideStatusFilter = false,
 }: IssueFiltersProps) {
   return (
     <div className="flex items-center gap-3 flex-wrap">
@@ -35,18 +37,20 @@ export function IssueFilters({
         className={`${inputClass} w-48`}
       />
 
-      <select
-        value={status ?? ""}
-        onChange={(e) => onStatusChange((e.target.value as IssueStatus) || undefined)}
-        className={inputClass}
-      >
-        <option value="">All statuses</option>
-        {STATUSES.map((s) => (
-          <option key={s} value={s}>
-            {s.replace("_", " ")}
-          </option>
-        ))}
-      </select>
+      {!hideStatusFilter && (
+        <select
+          value={status ?? ""}
+          onChange={(e) => onStatusChange((e.target.value as IssueStatus) || undefined)}
+          className={inputClass}
+        >
+          <option value="">All statuses</option>
+          {STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {s.replace("_", " ")}
+            </option>
+          ))}
+        </select>
+      )}
 
       <select
         value={priority ?? ""}
