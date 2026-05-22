@@ -19,8 +19,10 @@ import java.util.concurrent.Callable;
  * Provides Sentry tracing, structured MDC logging, and metrics emission for:
  *   - AI provider session creation and polling
  *   - Orchestration state transitions
- *   - Queue job processing
- *   - GitHub webhook retries
+ *   - Queue job enqueue/dequeue/lifecycle/dead-letter
+ *   - GitHub webhook processing and retries
+ *   - Branch and PR creation flows
+ *   - Installation and repository synchronization
  *   - Timeout and cancellation events
  *   - Execution recovery
  *
@@ -134,9 +136,98 @@ public class WorkflowTracer {
         MDC.remove("retryCount");
     }
 
+    /**
+     * Records a session lifecycle event (created, started, completed, failed).
+     */
+    public void recordSessionLifecycle(String sessionId, String provider, String event) {
+        MDC.put("sessionId", sessionId);
+        MDC.put("provider", provider);
+        Sentry.configureScope(scope -> {
+            scope.setTag("session.id", sessionId);
+            scope.setTag("ai.provider", provider);
+            scope.setTag("session.event", event);
+        });
+        Sentry.metrics().count("ai.session." + event, 1.0);
+        log.info("session_lifecycle session_id={} provider={} event={}", sessionId, provider, event);
+        MDC.remove("sessionId");
+        MDC.remove("provider");
+    }
+
+    /**
+     * Records the completion of an AI session with timing.
+     */
+    public void recordSessionComplete(String sessionId, String provider, long durationMs, String status) {
+        MDC.put("sessionId", sessionId);
+        MDC.put("provider", provider);
+        Sentry.metrics().distribution("ai.session.duration_ms", (double) durationMs);
+        Sentry.metrics().count("ai.session.complete", 1.0);
+        log.info("session_complete session_id={} provider={} duration_ms={} status={}",
+                sessionId, provider, durationMs, status);
+        MDC.remove("sessionId");
+        MDC.remove("provider");
+    }
+
     // -------------------------------------------------------------------------
     // Queue and background job tracing
     // -------------------------------------------------------------------------
+
+    /**
+     * Records a job being enqueued.
+     */
+    public void recordQueueEnqueue(String jobId, String jobType, Map<String, String> metadata) {
+        MDC.put("jobId", jobId);
+        MDC.put("jobType", jobType);
+        Sentry.configureScope(scope -> {
+            scope.setTag("queue.job_id", jobId);
+            scope.setTag("queue.job_type", jobType);
+            scope.setTag("queue.operation", "enqueue");
+        });
+        Sentry.metrics().count("queue.enqueue", 1.0);
+        log.info("queue_enqueue job_id={} job_type={} metadata={}", jobId, jobType, metadata);
+        MDC.remove("jobId");
+        MDC.remove("jobType");
+    }
+
+    /**
+     * Records a job being dequeued and starting processing.
+     */
+    public void recordQueueDequeue(String jobId, String jobType, long queueTimeMs) {
+        MDC.put("jobId", jobId);
+        MDC.put("jobType", jobType);
+        Sentry.configureScope(scope -> {
+            scope.setTag("queue.job_id", jobId);
+            scope.setTag("queue.job_type", jobType);
+            scope.setTag("queue.operation", "dequeue");
+        });
+        Sentry.metrics().distribution("queue.wait_time_ms", (double) queueTimeMs);
+        log.info("queue_dequeue job_id={} job_type={} queue_time_ms={}", jobId, jobType, queueTimeMs);
+        MDC.remove("jobId");
+        MDC.remove("jobType");
+    }
+
+    /**
+     * Records worker job execution start.
+     */
+    public void recordJobStart(String jobId, String jobType) {
+        MDC.put("jobId", jobId);
+        MDC.put("jobType", jobType);
+        Sentry.configureScope(scope -> {
+            scope.setTag("queue.job_id", jobId);
+            scope.setTag("queue.job_type", jobType);
+        });
+        log.info("job_start job_id={} job_type={}", jobId, jobType);
+    }
+
+    /**
+     * Records worker job execution completion.
+     */
+    public void recordJobComplete(String jobId, String jobType, long durationMs) {
+        Sentry.metrics().distribution("queue.job.duration_ms", (double) durationMs);
+        Sentry.metrics().count("queue.job.success", 1.0);
+        log.info("job_complete job_id={} job_type={} duration_ms={}", jobId, jobType, durationMs);
+        MDC.remove("jobId");
+        MDC.remove("jobType");
+    }
 
     /**
      * Captures a queue job processing failure.
@@ -154,6 +245,27 @@ public class WorkflowTracer {
         Sentry.metrics().count("queue.job.failure", 1.0);
         log.error("queue_failure job_id={} job_type={}", jobId, jobType, error);
         MDC.remove("jobId");
+    }
+
+    /**
+     * Captures a dead-letter scenario — job exhausted all retries.
+     */
+    public void captureDeadLetter(String jobId, String jobType, int retryCount, Throwable error) {
+        MDC.put("jobId", jobId);
+        MDC.put("retryCount", String.valueOf(retryCount));
+
+        Sentry.withScope(scope -> {
+            scope.setTag("queue.job_id", jobId);
+            scope.setTag("queue.job_type", jobType);
+            scope.setExtra("retry.count", String.valueOf(retryCount));
+            scope.setLevel(SentryLevel.ERROR);
+            Sentry.captureException(error);
+        });
+
+        Sentry.metrics().count("queue.dead_letter", 1.0);
+        log.error("dead_letter job_id={} job_type={} retry_count={}", jobId, jobType, retryCount, error);
+        MDC.remove("jobId");
+        MDC.remove("retryCount");
     }
 
     /**
@@ -177,6 +289,48 @@ public class WorkflowTracer {
     // -------------------------------------------------------------------------
 
     /**
+     * Records the start of processing a GitHub webhook event.
+     */
+    public void recordWebhookReceived(String eventType, String deliveryId) {
+        MDC.put("githubEventId", deliveryId);
+        MDC.put("githubEventType", eventType);
+        Sentry.configureScope(scope -> {
+            scope.setTag("github.event_type", eventType);
+            scope.setTag("github.delivery_id", deliveryId);
+        });
+        Sentry.metrics().count("webhook.received", 1.0);
+        log.info("webhook_received event_type={} delivery_id={}", eventType, deliveryId);
+    }
+
+    /**
+     * Records successful processing of a GitHub webhook event.
+     */
+    public void recordWebhookProcessed(String eventType, String deliveryId, long durationMs) {
+        Sentry.metrics().distribution("webhook.processing_ms", (double) durationMs);
+        Sentry.metrics().count("webhook.processed", 1.0);
+        log.info("webhook_processed event_type={} delivery_id={} duration_ms={}",
+                eventType, deliveryId, durationMs);
+        MDC.remove("githubEventId");
+        MDC.remove("githubEventType");
+    }
+
+    /**
+     * Captures a GitHub webhook processing failure.
+     */
+    public void captureWebhookProcessingFailure(String eventType, String deliveryId, Throwable error) {
+        Sentry.withScope(scope -> {
+            scope.setTag("github.event_type", eventType);
+            scope.setTag("github.delivery_id", deliveryId);
+            scope.setLevel(SentryLevel.ERROR);
+            Sentry.captureException(error);
+        });
+        Sentry.metrics().count("webhook.failure", 1.0);
+        log.error("webhook_processing_failure event_type={} delivery_id={}", eventType, deliveryId, error);
+        MDC.remove("githubEventId");
+        MDC.remove("githubEventType");
+    }
+
+    /**
      * Captures a GitHub webhook retry failure (all retries exhausted).
      */
     public void captureWebhookRetryFailure(String githubEventId, int retryCount, Throwable error) {
@@ -195,6 +349,88 @@ public class WorkflowTracer {
                 githubEventId, retryCount, error);
         MDC.remove("githubEventId");
         MDC.remove("retryCount");
+    }
+
+    // -------------------------------------------------------------------------
+    // GitHub integration — installation and repository
+    // -------------------------------------------------------------------------
+
+    /**
+     * Records a GitHub installation sync event (registered, suspended, deleted).
+     */
+    public void recordInstallationSync(long installationId, String action) {
+        MDC.put("githubInstallationId", String.valueOf(installationId));
+        Sentry.configureScope(scope -> {
+            scope.setTag("github.installation_id", String.valueOf(installationId));
+            scope.setTag("github.installation_action", action);
+        });
+        Sentry.metrics().count("github.installation." + action, 1.0);
+        log.info("installation_sync installation_id={} action={}", installationId, action);
+        MDC.remove("githubInstallationId");
+    }
+
+    /**
+     * Records a GitHub repository sync.
+     */
+    public void recordRepositorySync(String repoFullName, int prCount, long durationMs) {
+        MDC.put("repoFullName", repoFullName);
+        Sentry.metrics().distribution("github.repo_sync.duration_ms", (double) durationMs);
+        Sentry.metrics().count("github.repo_sync", 1.0);
+        log.info("repository_sync repo={} pr_count={} duration_ms={}", repoFullName, prCount, durationMs);
+        MDC.remove("repoFullName");
+    }
+
+    /**
+     * Records a branch creation event.
+     */
+    public void recordBranchCreation(String repoFullName, String branchName, String workflowId) {
+        MDC.put("repoFullName", repoFullName);
+        MDC.put("branchName", branchName);
+        MDC.put("workflowId", workflowId);
+        Sentry.configureScope(scope -> {
+            scope.setTag("github.repo", repoFullName);
+            scope.setTag("github.branch", branchName);
+            scope.setTag("workflow.id", workflowId);
+        });
+        Sentry.metrics().count("github.branch.created", 1.0);
+        log.info("branch_created repo={} branch={} workflow_id={}", repoFullName, branchName, workflowId);
+        MDC.remove("repoFullName");
+        MDC.remove("branchName");
+        MDC.remove("workflowId");
+    }
+
+    /**
+     * Records a PR creation event.
+     */
+    public void recordPRCreation(String repoFullName, int prNumber, String branchName, String workflowId) {
+        MDC.put("repoFullName", repoFullName);
+        MDC.put("prNumber", String.valueOf(prNumber));
+        MDC.put("workflowId", workflowId);
+        Sentry.configureScope(scope -> {
+            scope.setTag("github.repo", repoFullName);
+            scope.setTag("github.pr_number", String.valueOf(prNumber));
+            scope.setTag("workflow.id", workflowId);
+        });
+        Sentry.metrics().count("github.pr.created", 1.0);
+        log.info("pr_created repo={} pr_number={} branch={} workflow_id={}",
+                repoFullName, prNumber, branchName, workflowId);
+        MDC.remove("repoFullName");
+        MDC.remove("prNumber");
+        MDC.remove("workflowId");
+    }
+
+    /**
+     * Records a GitHub API request/response for observability.
+     */
+    public void recordGitHubApiCall(String endpoint, int statusCode, long durationMs) {
+        Sentry.metrics().distribution("github.api.duration_ms", (double) durationMs);
+        if (statusCode >= 400) {
+            Sentry.metrics().count("github.api.error", 1.0);
+            log.warn("github_api_call endpoint={} status={} duration_ms={}", endpoint, statusCode, durationMs);
+        } else {
+            Sentry.metrics().count("github.api.success", 1.0);
+            log.debug("github_api_call endpoint={} status={} duration_ms={}", endpoint, statusCode, durationMs);
+        }
     }
 
     // -------------------------------------------------------------------------

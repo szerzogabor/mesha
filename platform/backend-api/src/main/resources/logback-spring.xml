@@ -13,6 +13,17 @@
             <includeMdcKeyName>requestMethod</includeMdcKeyName>
             <includeMdcKeyName>requestUri</includeMdcKeyName>
             <includeMdcKeyName>userAgent</includeMdcKeyName>
+            <!-- GitHub integration fields -->
+            <includeMdcKeyName>githubEventId</includeMdcKeyName>
+            <includeMdcKeyName>githubEventType</includeMdcKeyName>
+            <includeMdcKeyName>githubInstallationId</includeMdcKeyName>
+            <includeMdcKeyName>repoFullName</includeMdcKeyName>
+            <includeMdcKeyName>prNumber</includeMdcKeyName>
+            <includeMdcKeyName>repositoryId</includeMdcKeyName>
+            <!-- AI / Blocks session fields -->
+            <includeMdcKeyName>sessionId</includeMdcKeyName>
+            <includeMdcKeyName>draftId</includeMdcKeyName>
+            <includeMdcKeyName>issueId</includeMdcKeyName>
             <fieldNames>
                 <timestamp>timestamp</timestamp>
                 <version>[ignore]</version>

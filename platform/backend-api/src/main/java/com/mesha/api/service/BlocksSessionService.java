@@ -6,6 +6,7 @@ import com.mesha.api.repository.BlocksSessionRepository;
 import com.mesha.api.repository.IssueRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,95 +34,120 @@ public class BlocksSessionService {
 
     @Transactional
     public BlocksSession assignToBlocks(UUID issueId, User actor) {
-        Issue issue = issueRepository.findById(issueId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found"));
+        MDC.put("issueId", issueId.toString());
+        try {
+            Issue issue = issueRepository.findById(issueId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found"));
 
-        blocksSessionRepository.findActiveByIssueId(issueId).ifPresent(existing -> {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                "Issue already has an active Blocks session in state: " + existing.getExecutionState());
-        });
+            blocksSessionRepository.findActiveByIssueId(issueId).ifPresent(existing -> {
+                log.warn("blocks_session_conflict issue_id={} existing_state={}",
+                        issueId, existing.getExecutionState());
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Issue already has an active Blocks session in state: " + existing.getExecutionState());
+            });
 
-        BlocksSession session = new BlocksSession();
-        session.setIssue(issue);
-        session.setExecutionState(AIExecutionState.CREATED);
-        session = blocksSessionRepository.save(session);
+            BlocksSession session = new BlocksSession();
+            session.setIssue(issue);
+            session.setExecutionState(AIExecutionState.CREATED);
+            session = blocksSessionRepository.save(session);
 
-        issue.setAiAssignmentState("CREATED");
-        issueRepository.save(issue);
+            MDC.put("sessionId", session.getId().toString());
+            issue.setAiAssignmentState("CREATED");
+            issueRepository.save(issue);
 
-        activityService.record(issue, actor, ActivityEventType.AI_ASSIGNED, null, session.getId().toString());
-        log.info("Issue {} assigned to Blocks, session {}", issueId, session.getId());
-        return session;
+            activityService.record(issue, actor, ActivityEventType.AI_ASSIGNED, null, session.getId().toString());
+            log.info("blocks_session_created session_id={} issue_id={} state=CREATED",
+                    session.getId(), issueId);
+            return session;
+        } finally {
+            MDC.remove("issueId");
+            MDC.remove("sessionId");
+        }
     }
 
     @Transactional
     public BlocksSession updateSession(UUID sessionId, UpdateBlocksSessionRequest req, User actor) {
-        BlocksSession session = blocksSessionRepository.findById(sessionId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blocks session not found"));
+        MDC.put("sessionId", sessionId.toString());
+        try {
+            BlocksSession session = blocksSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blocks session not found"));
 
-        if (session.getExecutionState() == AIExecutionState.DONE
-                || session.getExecutionState() == AIExecutionState.CANCELED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                "Cannot update a session in terminal state: " + session.getExecutionState());
-        }
+            if (session.getExecutionState() == AIExecutionState.DONE
+                    || session.getExecutionState() == AIExecutionState.CANCELED) {
+                log.warn("blocks_session_update_rejected session_id={} state={} reason=terminal_state",
+                        sessionId, session.getExecutionState());
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Cannot update a session in terminal state: " + session.getExecutionState());
+            }
 
-        String oldState = session.getExecutionState().name();
+            String oldState = session.getExecutionState().name();
 
-        if (req.executionState() != null) {
-            session.setExecutionState(req.executionState());
-        }
-        if (req.providerSessionId() != null) {
-            session.setProviderSessionId(req.providerSessionId());
-        }
-        if (req.prUrl() != null) {
-            session.setPrUrl(req.prUrl());
-        }
-        if (req.prNumber() != null) {
-            session.setPrNumber(req.prNumber());
-        }
-        if (req.branchName() != null) {
-            session.setBranchName(req.branchName());
-        }
-        if (req.errorMessage() != null) {
-            session.setErrorMessage(req.errorMessage());
-        }
+            if (req.executionState() != null) {
+                session.setExecutionState(req.executionState());
+            }
+            if (req.providerSessionId() != null) {
+                session.setProviderSessionId(req.providerSessionId());
+            }
+            if (req.prUrl() != null) {
+                session.setPrUrl(req.prUrl());
+            }
+            if (req.prNumber() != null) {
+                session.setPrNumber(req.prNumber());
+            }
+            if (req.branchName() != null) {
+                session.setBranchName(req.branchName());
+            }
+            if (req.errorMessage() != null) {
+                session.setErrorMessage(req.errorMessage());
+            }
 
-        session = blocksSessionRepository.save(session);
+            session = blocksSessionRepository.save(session);
 
-        Issue issue = session.getIssue();
-        issue.setAiAssignmentState(session.getExecutionState().name());
-        issueRepository.save(issue);
+            Issue issue = session.getIssue();
+            issue.setAiAssignmentState(session.getExecutionState().name());
+            issueRepository.save(issue);
 
-        ActivityEventType eventType = resolveActivityEventType(session.getExecutionState());
-        activityService.record(issue, actor, eventType, oldState, session.getExecutionState().name());
+            ActivityEventType eventType = resolveActivityEventType(session.getExecutionState());
+            activityService.record(issue, actor, eventType, oldState, session.getExecutionState().name());
 
-        log.info("Blocks session {} state updated: {} -> {}", sessionId, oldState, session.getExecutionState());
-        return session;
+            log.info("blocks_session_state_changed session_id={} from={} to={}",
+                    sessionId, oldState, session.getExecutionState());
+            return session;
+        } finally {
+            MDC.remove("sessionId");
+        }
     }
 
     @Transactional
     public BlocksSession cancelSession(UUID sessionId, User actor) {
-        BlocksSession session = blocksSessionRepository.findById(sessionId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blocks session not found"));
+        MDC.put("sessionId", sessionId.toString());
+        try {
+            BlocksSession session = blocksSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blocks session not found"));
 
-        if (session.getExecutionState() == AIExecutionState.DONE
-                || session.getExecutionState() == AIExecutionState.FAILED
-                || session.getExecutionState() == AIExecutionState.CANCELED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                "Cannot cancel a session already in terminal state: " + session.getExecutionState());
+            if (session.getExecutionState() == AIExecutionState.DONE
+                    || session.getExecutionState() == AIExecutionState.FAILED
+                    || session.getExecutionState() == AIExecutionState.CANCELED) {
+                log.warn("blocks_session_cancel_rejected session_id={} state={} reason=terminal_state",
+                        sessionId, session.getExecutionState());
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Cannot cancel a session already in terminal state: " + session.getExecutionState());
+            }
+
+            String oldState = session.getExecutionState().name();
+            session.setExecutionState(AIExecutionState.CANCELED);
+            session = blocksSessionRepository.save(session);
+
+            Issue issue = session.getIssue();
+            issue.setAiAssignmentState("CANCELED");
+            issueRepository.save(issue);
+
+            activityService.record(issue, actor, ActivityEventType.AI_CANCELED, oldState, "CANCELED");
+            log.info("blocks_session_canceled session_id={} from={} to=CANCELED", sessionId, oldState);
+            return session;
+        } finally {
+            MDC.remove("sessionId");
         }
-
-        String oldState = session.getExecutionState().name();
-        session.setExecutionState(AIExecutionState.CANCELED);
-        session = blocksSessionRepository.save(session);
-
-        Issue issue = session.getIssue();
-        issue.setAiAssignmentState("CANCELED");
-        issueRepository.save(issue);
-
-        activityService.record(issue, actor, ActivityEventType.AI_CANCELED, oldState, "CANCELED");
-        log.info("Blocks session {} canceled", sessionId);
-        return session;
     }
 
     public BlocksSession getById(UUID sessionId) {

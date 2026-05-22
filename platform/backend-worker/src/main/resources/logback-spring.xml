@@ -6,15 +6,23 @@
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <timeZone>UTC</timeZone>
-            <!-- Structured fields for workflow correlation -->
+            <!-- Core correlation fields -->
             <includeMdcKeyName>correlationId</includeMdcKeyName>
             <includeMdcKeyName>workflowId</includeMdcKeyName>
             <includeMdcKeyName>sessionId</includeMdcKeyName>
             <includeMdcKeyName>jobId</includeMdcKeyName>
+            <includeMdcKeyName>jobType</includeMdcKeyName>
+            <!-- GitHub integration fields -->
             <includeMdcKeyName>githubEventId</includeMdcKeyName>
-            <includeMdcKeyName>retryCount</includeMdcKeyName>
+            <includeMdcKeyName>githubEventType</includeMdcKeyName>
+            <includeMdcKeyName>githubInstallationId</includeMdcKeyName>
+            <includeMdcKeyName>repoFullName</includeMdcKeyName>
+            <includeMdcKeyName>prNumber</includeMdcKeyName>
+            <includeMdcKeyName>branchName</includeMdcKeyName>
+            <!-- AI / Blocks execution fields -->
             <includeMdcKeyName>provider</includeMdcKeyName>
             <includeMdcKeyName>orchestrationState</includeMdcKeyName>
+            <includeMdcKeyName>retryCount</includeMdcKeyName>
             <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
                 <maxDepthPerThrowable>30</maxDepthPerThrowable>
                 <maxLength>4096</maxLength>
@@ -29,13 +37,36 @@
         <minimumBreadcrumbLevel>INFO</minimumBreadcrumbLevel>
     </appender>
 
-    <root level="INFO">
-        <appender-ref ref="CONSOLE"/>
-        <appender-ref ref="SENTRY"/>
-    </root>
+    <!-- Local dev: human-readable console alongside Sentry -->
+    <springProfile name="local">
+        <appender name="READABLE_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{correlationId}] - %msg%n</pattern>
+            </encoder>
+        </appender>
+        <root level="DEBUG">
+            <appender-ref ref="READABLE_CONSOLE"/>
+            <appender-ref ref="SENTRY"/>
+        </root>
+        <logger name="com.mesha" level="DEBUG"/>
+        <logger name="org.springframework.security" level="INFO"/>
+        <logger name="org.hibernate.SQL" level="DEBUG"/>
+    </springProfile>
 
-    <!-- Reduce noise from framework internals -->
+    <!-- Non-local: structured JSON to stdout for Render/centralized pipeline -->
+    <springProfile name="!local">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="SENTRY"/>
+        </root>
+        <logger name="com.mesha" level="DEBUG"/>
+        <logger name="org.springframework.security" level="WARN"/>
+        <logger name="org.hibernate.SQL" level="WARN"/>
+    </springProfile>
+
+    <!-- Reduce noise from framework internals regardless of profile -->
     <logger name="org.hibernate" level="WARN"/>
     <logger name="org.springframework.data" level="WARN"/>
     <logger name="io.lettuce" level="WARN"/>
+    <logger name="org.springframework.web" level="WARN"/>
 </configuration>
