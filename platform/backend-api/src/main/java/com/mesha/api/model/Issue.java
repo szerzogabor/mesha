@@ -1,6 +1,7 @@
 package com.mesha.api.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +42,7 @@ public class Issue {
     private User assignee;
 
     @ManyToMany(fetch = FetchType.LAZY)
+    @BatchSize(size = 50)
     @JoinTable(
         name = "issue_labels",
         joinColumns = @JoinColumn(name = "issue_id"),

@@ -12,17 +12,26 @@ import java.util.UUID;
 
 public interface IssueRepository extends JpaRepository<Issue, UUID> {
 
-    @Query("""
-           SELECT i FROM Issue i
-           LEFT JOIN FETCH i.assignee
-           LEFT JOIN FETCH i.labels
-           WHERE i.project.id = :projectId
-             AND (:status IS NULL OR i.status = :status)
-             AND (:priority IS NULL OR i.priority = :priority)
-             AND (:assigneeId IS NULL OR i.assignee.id = :assigneeId)
-             AND (:search IS NULL OR LOWER(i.title) LIKE :search)
-           ORDER BY i.createdAt DESC
-           """)
+    @Query(
+        value = """
+               SELECT i FROM Issue i
+               LEFT JOIN FETCH i.assignee
+               WHERE i.project.id = :projectId
+                 AND (:status IS NULL OR i.status = :status)
+                 AND (:priority IS NULL OR i.priority = :priority)
+                 AND (:assigneeId IS NULL OR i.assignee.id = :assigneeId)
+                 AND (:search IS NULL OR LOWER(i.title) LIKE :search)
+               ORDER BY i.createdAt DESC
+               """,
+        countQuery = """
+               SELECT COUNT(i) FROM Issue i
+               WHERE i.project.id = :projectId
+                 AND (:status IS NULL OR i.status = :status)
+                 AND (:priority IS NULL OR i.priority = :priority)
+                 AND (:assigneeId IS NULL OR i.assignee.id = :assigneeId)
+                 AND (:search IS NULL OR LOWER(i.title) LIKE :search)
+               """
+    )
     Page<Issue> findByProjectFiltered(
         @Param("projectId") UUID projectId,
         @Param("status") IssueStatus status,
