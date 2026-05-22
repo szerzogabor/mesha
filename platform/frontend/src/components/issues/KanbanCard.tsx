@@ -24,7 +24,7 @@ export function KanbanCard({ issue, workspaceId, projectId, overlay = false }: K
 
   const style = overlay
     ? undefined
-    : { transform: CSS.Transform.toString(transform), transition };
+    : { transform: CSS.Transform.toString(transform), transition, touchAction: "none" };
 
   return (
     <div
