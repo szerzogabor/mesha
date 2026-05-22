@@ -7,7 +7,8 @@ import {
   DragOverEvent,
   DragStartEvent,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   KeyboardSensor,
   pointerWithin,
   rectIntersection,
@@ -75,7 +76,10 @@ export function KanbanView({
   }, [issues]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    // Delay-based activation lets quick swipes scroll the board while a
+    // 250ms hold initiates a drag, preventing conflicts with horizontal scroll.
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
