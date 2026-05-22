@@ -4,6 +4,8 @@ import com.mesha.api.dto.CreateIssueRequest;
 import com.mesha.api.dto.UpdateIssueRequest;
 import com.mesha.api.model.*;
 import com.mesha.api.repository.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +20,8 @@ import java.util.UUID;
 
 @Service
 public class IssueService {
+
+    private static final Logger log = LoggerFactory.getLogger(IssueService.class);
 
     private final IssueRepository issueRepository;
     private final ProjectRepository projectRepository;
@@ -42,6 +46,7 @@ public class IssueService {
 
     @Transactional
     public Issue create(UUID projectId, CreateIssueRequest req, User actor) {
+        log.debug("Creating issue projectId={} actorId={}", projectId, actor.getId());
         Project project = projectRepository.findById(projectId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
 
@@ -74,23 +79,28 @@ public class IssueService {
 
         issue = issueRepository.save(issue);
         activityService.record(issue, actor, ActivityEventType.ISSUE_CREATED, null, issue.getTitle());
+        log.info("Issue created issueId={} projectId={} actorId={}", issue.getId(), projectId, actor.getId());
         return issue;
     }
 
     public Page<Issue> list(UUID projectId, IssueStatus status, IssuePriority priority,
                              UUID assigneeId, String search, int page, int size) {
+        log.debug("Listing issues projectId={} status={} priority={} assigneeId={} page={} size={}",
+                projectId, status, priority, assigneeId, page, size);
         Pageable pageable = PageRequest.of(page, size);
         String normalizedSearch = search != null ? "%" + search.toLowerCase() + "%" : null;
         return issueRepository.findByProjectFiltered(projectId, status, priority, assigneeId, normalizedSearch, pageable);
     }
 
     public Issue getById(UUID issueId) {
+        log.debug("Fetching issue issueId={}", issueId);
         return issueRepository.findById(issueId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found"));
     }
 
     @Transactional
     public Issue update(UUID issueId, UpdateIssueRequest req, User actor) {
+        log.debug("Updating issue issueId={} actorId={}", issueId, actor.getId());
         Issue issue = getById(issueId);
         UUID workspaceId = issue.getProject().getWorkspace().getId();
 
@@ -110,6 +120,7 @@ public class IssueService {
             String old = issue.getStatus().name();
             issue.setStatus(req.status());
             activityService.record(issue, actor, ActivityEventType.STATUS_CHANGED, old, req.status().name());
+            log.debug("Issue status changed issueId={} from={} to={}", issueId, old, req.status().name());
         }
 
         if (req.priority() != null && req.priority() != issue.getPriority()) {
@@ -141,12 +152,16 @@ public class IssueService {
             issue.setLabels(new ArrayList<>(labels));
         }
 
-        return issueRepository.save(issue);
+        Issue saved = issueRepository.save(issue);
+        log.debug("Issue updated issueId={} actorId={}", issueId, actor.getId());
+        return saved;
     }
 
     @Transactional
     public void delete(UUID issueId) {
+        log.info("Deleting issue issueId={}", issueId);
         Issue issue = getById(issueId);
         issueRepository.delete(issue);
+        log.info("Issue deleted issueId={}", issueId);
     }
 }

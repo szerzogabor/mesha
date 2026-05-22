@@ -52,11 +52,15 @@ public class GitHubPullRequestService {
     }
 
     public List<GitHubPullRequestDto> listForRepository(UUID repositoryId) {
-        return prRepo.findAllByRepositoryId(repositoryId)
+        log.debug("Listing pull requests repositoryId={}", repositoryId);
+        List<GitHubPullRequestDto> prs = prRepo.findAllByRepositoryId(repositoryId)
                 .stream().map(GitHubPullRequestDto::from).toList();
+        log.debug("Listed pull requests repositoryId={} count={}", repositoryId, prs.size());
+        return prs;
     }
 
     public GitHubPullRequestDto getById(UUID prId) {
+        log.debug("Fetching pull request prId={}", prId);
         return prRepo.findById(prId)
                 .map(GitHubPullRequestDto::from)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pull request not found"));
@@ -67,10 +71,14 @@ public class GitHubPullRequestService {
      */
     @Transactional
     public List<GitHubPullRequestDto> syncPullRequests(UUID repositoryId) {
+        log.info("Syncing pull requests from GitHub repositoryId={}", repositoryId);
+
         GitHubRepository repo = repositoryRepo.findById(repositoryId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Repository not found"));
 
         GitHubInstallation installation = repo.getInstallation();
+        log.debug("Fetching installation token for PR sync repositoryId={} installationId={} fullName={}",
+                repositoryId, installation.getInstallationId(), repo.getFullName());
         String token = appService.getInstallationToken(installation.getInstallationId());
 
         try {
@@ -83,15 +91,29 @@ public class GitHubPullRequestService {
                     .GET()
                     .build();
 
+            long start = System.currentTimeMillis();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            JsonNode prs = objectMapper.readTree(response.body());
+            long durationMs = System.currentTimeMillis() - start;
+            log.debug("GitHub pull requests API responded repositoryId={} fullName={} httpStatus={} durationMs={}",
+                    repositoryId, repo.getFullName(), response.statusCode(), durationMs);
 
-            prs.forEach(pr -> upsertPullRequest(repo, pr));
+            JsonNode prs = objectMapper.readTree(response.body());
+            int[] counts = {0, 0};
+            prs.forEach(pr -> {
+                boolean isNew = !prRepo.findByRepositoryIdAndGithubPrNumber(repo.getId(), pr.path("number").asInt()).isPresent();
+                upsertPullRequest(repo, pr);
+                if (isNew) counts[0]++; else counts[1]++;
+            });
+
             repo.setLastSyncedAt(Instant.now());
             repositoryRepo.save(repo);
+            log.info("Pull requests synced repositoryId={} fullName={} created={} updated={} durationMs={}",
+                    repositoryId, repo.getFullName(), counts[0], counts[1], durationMs);
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
+            log.error("Failed to sync pull requests repositoryId={} fullName={}: {}",
+                    repositoryId, repo.getFullName(), e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Failed to sync pull requests: " + e.getMessage());
         }
@@ -108,8 +130,19 @@ public class GitHubPullRequestService {
         JsonNode prNode = payload.path("pull_request");
         JsonNode repoNode = payload.path("repository");
         String fullName = repoNode.path("full_name").asText();
+        String action = payload.path("action").asText();
+        int prNumber = prNode.path("number").asInt();
 
-        repositoryRepo.findByFullName(fullName).ifPresent(repo -> upsertPullRequest(repo, prNode));
+        log.debug("Handling pull_request webhook event action={} fullName={} prNumber={}", action, fullName, prNumber);
+
+        Optional<GitHubRepository> repoOpt = repositoryRepo.findByFullName(fullName);
+        if (repoOpt.isEmpty()) {
+            log.debug("No tracked repository found for webhook fullName={}, skipping", fullName);
+            return;
+        }
+
+        upsertPullRequest(repoOpt.get(), prNode);
+        log.info("Pull request webhook processed action={} fullName={} prNumber={}", action, fullName, prNumber);
     }
 
     private void upsertPullRequest(GitHubRepository repo, JsonNode prNode) {
@@ -117,6 +150,7 @@ public class GitHubPullRequestService {
         Optional<GitHubPullRequest> existing =
                 prRepo.findByRepositoryIdAndGithubPrNumber(repo.getId(), prNumber);
 
+        boolean isNew = existing.isEmpty();
         GitHubPullRequest pr = existing.orElse(new GitHubPullRequest());
         pr.setRepository(repo);
         pr.setGithubPrNumber(prNumber);
@@ -139,5 +173,7 @@ public class GitHubPullRequestService {
         }
 
         prRepo.save(pr);
+        log.debug("Pull request upserted repositoryId={} prNumber={} state={} action={}",
+                repo.getId(), prNumber, pr.getState(), isNew ? "created" : "updated");
     }
 }

@@ -6,6 +6,8 @@ import com.mesha.api.model.BlocksSession;
 import com.mesha.api.model.User;
 import com.mesha.api.security.CurrentUser;
 import com.mesha.api.service.BlocksSessionService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,6 +19,8 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/projects/{projectId}/issues/{issueId}/blocks-sessions")
 public class BlocksSessionController {
+
+    private static final Logger log = LoggerFactory.getLogger(BlocksSessionController.class);
 
     private final BlocksSessionService blocksSessionService;
 
@@ -30,7 +34,9 @@ public class BlocksSessionController {
             @PathVariable UUID projectId,
             @PathVariable UUID issueId,
             @CurrentUser User user) {
+        log.info("Assigning issue to Blocks issueId={} projectId={} userId={}", issueId, projectId, user.getId());
         BlocksSession session = blocksSessionService.assignToBlocks(issueId, user);
+        log.info("Blocks session created sessionId={} issueId={} userId={}", session.getId(), issueId, user.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(BlocksSessionDto.from(session));
     }
 
@@ -39,6 +45,7 @@ public class BlocksSessionController {
     public ResponseEntity<List<BlocksSessionDto>> list(
             @PathVariable UUID projectId,
             @PathVariable UUID issueId) {
+        log.debug("Listing Blocks sessions issueId={} projectId={}", issueId, projectId);
         List<BlocksSessionDto> sessions = blocksSessionService.getSessionsForIssue(issueId)
             .stream().map(BlocksSessionDto::from).toList();
         return ResponseEntity.ok(sessions);
@@ -49,6 +56,7 @@ public class BlocksSessionController {
     public ResponseEntity<BlocksSessionDto> getActive(
             @PathVariable UUID projectId,
             @PathVariable UUID issueId) {
+        log.debug("Fetching active Blocks session issueId={} projectId={}", issueId, projectId);
         return ResponseEntity.ok(BlocksSessionDto.from(blocksSessionService.getActiveSessionForIssue(issueId)));
     }
 
@@ -58,6 +66,7 @@ public class BlocksSessionController {
             @PathVariable UUID projectId,
             @PathVariable UUID issueId,
             @PathVariable UUID sessionId) {
+        log.debug("Fetching Blocks session sessionId={} issueId={}", sessionId, issueId);
         return ResponseEntity.ok(BlocksSessionDto.from(blocksSessionService.getById(sessionId)));
     }
 
@@ -69,6 +78,7 @@ public class BlocksSessionController {
             @PathVariable UUID sessionId,
             @CurrentUser User user,
             @RequestBody UpdateBlocksSessionRequest req) {
+        log.debug("Updating Blocks session sessionId={} issueId={} userId={}", sessionId, issueId, user.getId());
         BlocksSession session = blocksSessionService.updateSession(sessionId, req, user);
         return ResponseEntity.ok(BlocksSessionDto.from(session));
     }
@@ -80,7 +90,9 @@ public class BlocksSessionController {
             @PathVariable UUID issueId,
             @PathVariable UUID sessionId,
             @CurrentUser User user) {
+        log.info("Cancelling Blocks session sessionId={} issueId={} userId={}", sessionId, issueId, user.getId());
         BlocksSession session = blocksSessionService.cancelSession(sessionId, user);
+        log.info("Blocks session cancelled sessionId={} issueId={}", sessionId, issueId);
         return ResponseEntity.ok(BlocksSessionDto.from(session));
     }
 }

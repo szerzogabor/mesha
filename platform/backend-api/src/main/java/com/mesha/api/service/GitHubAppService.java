@@ -69,16 +69,20 @@ public class GitHubAppService {
      * Used to generate installation access tokens.
      */
     public String generateAppJwt() {
+        log.debug("Generating GitHub App JWT appId={}", props.getAppId());
         try {
             PrivateKey privateKey = parsePrivateKey(props.getPrivateKey());
             Instant now = Instant.now();
-            return Jwts.builder()
+            String jwt = Jwts.builder()
                     .issuer(String.valueOf(props.getAppId()))
                     .issuedAt(Date.from(now.minusSeconds(60)))
                     .expiration(Date.from(now.plusSeconds(540)))
                     .signWith(privateKey)
                     .compact();
+            log.debug("GitHub App JWT generated appId={}", props.getAppId());
+            return jwt;
         } catch (Exception e) {
+            log.error("Failed to generate GitHub App JWT appId={}: {}", props.getAppId(), e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Failed to generate GitHub App JWT: " + e.getMessage());
         }
@@ -89,6 +93,7 @@ public class GitHubAppService {
      * These tokens expire after 1 hour and are used for API calls on behalf of the installation.
      */
     public String getInstallationToken(Long installationId) {
+        log.debug("Requesting installation access token installationId={}", installationId);
         try {
             String appJwt = generateAppJwt();
             HttpRequest request = HttpRequest.newBuilder()
@@ -99,16 +104,23 @@ public class GitHubAppService {
                     .POST(HttpRequest.BodyPublishers.noBody())
                     .build();
 
+            long start = System.currentTimeMillis();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            long durationMs = System.currentTimeMillis() - start;
+
             if (response.statusCode() != 201) {
+                log.error("GitHub API returned unexpected status for installation token installationId={} httpStatus={} durationMs={}",
+                        installationId, response.statusCode(), durationMs);
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                         "GitHub API returned " + response.statusCode());
             }
             JsonNode node = objectMapper.readTree(response.body());
+            log.debug("Installation access token obtained installationId={} durationMs={}", installationId, durationMs);
             return node.get("token").asText();
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
+            log.error("Failed to get installation token installationId={}: {}", installationId, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Failed to get installation token: " + e.getMessage());
         }
@@ -120,8 +132,11 @@ public class GitHubAppService {
      */
     @Transactional
     public GitHubInstallation registerInstallation(Long installationId, UUID workspaceId) {
+        log.info("Registering GitHub App installation installationId={} workspaceId={}", installationId, workspaceId);
+
         Optional<GitHubInstallation> existing = installationRepo.findByInstallationId(installationId);
         if (existing.isPresent()) {
+            log.info("Installation already registered installationId={} workspaceId={}", installationId, workspaceId);
             return existing.get();
         }
 
@@ -138,22 +153,34 @@ public class GitHubAppService {
                     .GET()
                     .build();
 
+            long start = System.currentTimeMillis();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            long durationMs = System.currentTimeMillis() - start;
+            log.debug("GitHub App installation details fetched installationId={} httpStatus={} durationMs={}",
+                    installationId, response.statusCode(), durationMs);
+
             JsonNode node = objectMapper.readTree(response.body());
+            String accountLogin = node.path("account").path("login").asText();
+            String accountType = node.path("account").path("type").asText("User");
 
             GitHubInstallation installation = new GitHubInstallation();
             installation.setWorkspace(workspace);
             installation.setInstallationId(installationId);
             installation.setAppId(props.getAppId());
-            installation.setAccountLogin(node.path("account").path("login").asText());
-            installation.setAccountType(node.path("account").path("type").asText("User"));
+            installation.setAccountLogin(accountLogin);
+            installation.setAccountType(accountType);
             installation.setAccountAvatarUrl(node.path("account").path("avatar_url").asText(null));
             installation.setStatus("active");
 
-            return installationRepo.save(installation);
+            installation = installationRepo.save(installation);
+            log.info("GitHub App installation registered installationId={} accountLogin={} accountType={} workspaceId={}",
+                    installationId, accountLogin, accountType, workspaceId);
+            return installation;
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
+            log.error("Failed to register installation installationId={} workspaceId={}: {}",
+                    installationId, workspaceId, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Failed to register installation: " + e.getMessage());
         }
@@ -163,12 +190,15 @@ public class GitHubAppService {
      * Fetches the list of repositories accessible to this installation from GitHub.
      */
     public List<JsonNode> listInstallationRepositories(Long installationId) {
+        log.debug("Listing installation repositories installationId={}", installationId);
         try {
             String token = getInstallationToken(installationId);
             List<JsonNode> repos = new ArrayList<>();
             String nextUrl = GITHUB_API + "/installation/repositories?per_page=100";
+            int page = 0;
 
             while (nextUrl != null) {
+                page++;
                 HttpRequest request = HttpRequest.newBuilder()
                         .uri(URI.create(nextUrl))
                         .header("Authorization", "Bearer " + token)
@@ -179,16 +209,20 @@ public class GitHubAppService {
 
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
                 JsonNode root = objectMapper.readTree(response.body());
+                int countBefore = repos.size();
                 root.path("repositories").forEach(repos::add);
+                log.debug("Fetched installation repositories page installationId={} page={} added={} total={}",
+                        installationId, page, repos.size() - countBefore, repos.size());
 
-                // Follow GitHub's Link header for next page
                 nextUrl = extractNextPageUrl(response.headers().firstValue("Link").orElse(null));
             }
 
+            log.info("Listed installation repositories installationId={} totalCount={}", installationId, repos.size());
             return repos;
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
+            log.error("Failed to list installation repositories installationId={}: {}", installationId, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Failed to list repositories: " + e.getMessage());
         }
@@ -212,6 +246,9 @@ public class GitHubAppService {
      */
     @Transactional
     public GitHubRepository connectRepository(UUID workspaceId, Long installationId, Long githubRepoId) {
+        log.info("Connecting repository workspaceId={} installationId={} githubRepoId={}",
+                workspaceId, installationId, githubRepoId);
+
         GitHubInstallation installation = installationRepo.findByInstallationId(installationId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Installation not found"));
 
@@ -222,6 +259,7 @@ public class GitHubAppService {
         if (existing.isPresent()) {
             GitHubRepository repo = existing.get();
             repo.setConnected(true);
+            log.info("Re-connecting existing repository fullName={} workspaceId={}", repo.getFullName(), workspaceId);
             return repositoryRepo.save(repo);
         }
 
@@ -229,8 +267,12 @@ public class GitHubAppService {
         JsonNode repoNode = repos.stream()
                 .filter(r -> r.path("id").asLong() == githubRepoId)
                 .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Repository not accessible by this installation"));
+                .orElseThrow(() -> {
+                    log.warn("Repository not accessible by installation installationId={} githubRepoId={}",
+                            installationId, githubRepoId);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Repository not accessible by this installation");
+                });
 
         GitHubRepository repo = new GitHubRepository();
         repo.setInstallation(installation);
@@ -245,27 +287,37 @@ public class GitHubAppService {
         repo.setHtmlUrl(repoNode.path("html_url").asText());
         repo.setConnected(true);
 
-        return repositoryRepo.save(repo);
+        repo = repositoryRepo.save(repo);
+        log.info("Repository connected fullName={} workspaceId={} installationId={}",
+                repo.getFullName(), workspaceId, installationId);
+        return repo;
     }
 
     public List<GitHubInstallationDto> listInstallations(UUID workspaceId) {
-        return installationRepo.findAllByWorkspaceId(workspaceId)
+        log.debug("Listing installations workspaceId={}", workspaceId);
+        List<GitHubInstallationDto> installations = installationRepo.findAllByWorkspaceId(workspaceId)
                 .stream().map(GitHubInstallationDto::from).toList();
+        log.debug("Listed installations workspaceId={} count={}", workspaceId, installations.size());
+        return installations;
     }
 
     @Transactional
     public void markInstallationSuspended(Long installationId) {
+        log.info("Marking installation suspended installationId={}", installationId);
         installationRepo.findByInstallationId(installationId).ifPresent(i -> {
             i.setStatus("suspended");
             installationRepo.save(i);
+            log.info("Installation suspended installationId={}", installationId);
         });
     }
 
     @Transactional
     public void markInstallationDeleted(Long installationId) {
+        log.info("Marking installation deleted installationId={}", installationId);
         installationRepo.findByInstallationId(installationId).ifPresent(i -> {
             i.setStatus("deleted");
             installationRepo.save(i);
+            log.info("Installation marked deleted installationId={}", installationId);
         });
     }
 
