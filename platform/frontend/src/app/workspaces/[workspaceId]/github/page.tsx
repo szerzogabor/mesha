@@ -1,9 +1,11 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   useGitHubInstallations,
   useGitHubRepositories,
+  useRegisterInstallation,
   useConnectRepository,
   useDisconnectRepository,
 } from "@/hooks/useGitHub";
@@ -17,10 +19,14 @@ export default function GitHubPage({
   params: Promise<{ workspaceId: string }>;
 }) {
   const { workspaceId } = use(params);
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: installations = [], isLoading: loadingInstallations } =
     useGitHubInstallations(workspaceId);
   const { data: repositories = [], isLoading: loadingRepos } =
     useGitHubRepositories(workspaceId);
+  const registerInstallation = useRegisterInstallation(workspaceId);
   const connectRepo = useConnectRepository(workspaceId);
   const disconnectRepo = useDisconnectRepository(workspaceId);
 
@@ -29,6 +35,44 @@ export default function GitHubPage({
     githubRepoId: "",
   });
   const [showConnectForm, setShowConnectForm] = useState(false);
+
+  useEffect(() => {
+    const installationIdParam = searchParams.get("installation_id");
+    if (!installationIdParam) return;
+
+    const installationId = Number(installationIdParam);
+    if (!Number.isFinite(installationId)) {
+      logger.github.uiStateChange("oauth_redirect", "invalid_installation_id", {
+        workspaceId,
+        installationIdParam,
+      });
+      return;
+    }
+
+    const setupAction = searchParams.get("setup_action");
+    logger.github.uiStateChange("oauth_redirect", "registering_installation", {
+      workspaceId,
+      installationId,
+      setupAction,
+    });
+
+    registerInstallation
+      .mutateAsync(installationId)
+      .then(() => {
+        const paramsWithoutInstallation = new URLSearchParams(searchParams.toString());
+        paramsWithoutInstallation.delete("installation_id");
+        paramsWithoutInstallation.delete("setup_action");
+        const nextQuery = paramsWithoutInstallation.toString();
+        router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname);
+        logger.github.uiStateChange("registering_installation", "registered", {
+          workspaceId,
+          installationId,
+        });
+      })
+      .catch((error) => {
+        logger.github.registrationFailed(workspaceId, installationId, error);
+      });
+  }, [pathname, registerInstallation, router, searchParams, workspaceId]);
 
   const handleConnect = async (e: React.FormEvent) => {
     e.preventDefault();
