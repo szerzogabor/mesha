@@ -1,4 +1,4 @@
-import * as Sentry from "@sentry/nextjs";
+import { logger } from "@/lib/logger";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
@@ -23,8 +23,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const method = init?.method ?? "GET";
+  const startMs = Date.now();
+
+  logger.api.request(method, path);
 
   const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  const durationMs = Date.now() - startMs;
 
   if (!res.ok) {
     let errorBody: string;
@@ -37,22 +41,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const errorMessage = `API error ${res.status}: ${errorBody}`;
     const error = new Error(errorMessage);
 
-    // Auth failures get tagged differently for filtering
     if (res.status === 401 || res.status === 403) {
-      Sentry.logger.warn(`Auth failure: ${method} ${path} → ${res.status}`, {
-        url: path,
-        method,
-        status: res.status,
-      });
+      logger.api.authFailure(path, res.status, method);
     } else {
-      Sentry.logger.error(errorMessage, { url: path, method, status: res.status });
-      Sentry.captureException(error, {
-        tags: { "api.path": path, "api.method": method, "api.status": res.status },
-      });
+      logger.api.failure(path, res.status, errorBody, method);
     }
 
     throw error;
   }
+
+  logger.api.response(method, path, res.status, durationMs);
 
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;

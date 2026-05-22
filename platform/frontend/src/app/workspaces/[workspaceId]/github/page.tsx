@@ -9,6 +9,7 @@ import {
 } from "@/hooks/useGitHub";
 import { RepositoryCard } from "@/components/github/RepositoryCard";
 import { Spinner } from "@/components/ui/Spinner";
+import { logger } from "@/lib/logger";
 
 export default function GitHubPage({
   params,
@@ -32,12 +33,14 @@ export default function GitHubPage({
   const handleConnect = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!connectForm.installationId || !connectForm.githubRepoId) return;
+    logger.github.uiStateChange("idle", "connecting", { workspaceId });
     await connectRepo.mutateAsync({
       installationId: Number(connectForm.installationId),
       githubRepoId: Number(connectForm.githubRepoId),
     });
     setConnectForm({ installationId: "", githubRepoId: "" });
     setShowConnectForm(false);
+    logger.github.uiStateChange("connecting", "idle", { workspaceId });
   };
 
   if (loadingInstallations || loadingRepos) {

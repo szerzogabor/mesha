@@ -7,11 +7,22 @@ import * as Sentry from "@sentry/nextjs";
 import { apiClient, setTokenGetter } from "@/lib/api-client";
 import { AuthSyncContext, AuthSyncStatus } from "@/lib/auth-sync";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { logger } from "@/lib/logger";
 
 function ClerkTokenBridge({ onStatusChange }: { onStatusChange: (status: AuthSyncStatus) => void }) {
   const { getToken } = useAuth();
   const { user, isLoaded } = useUser();
   const syncedUserIdRef = useRef<string | null>(null);
+  const prevStatusRef = useRef<AuthSyncStatus>("idle");
+
+  const changeStatus = (next: AuthSyncStatus) => {
+    const prev = prevStatusRef.current;
+    if (prev !== next) {
+      logger.auth.stateChange(prev, next, { userId: user?.id });
+      prevStatusRef.current = next;
+    }
+    onStatusChange(next);
+  };
 
   useEffect(() => {
     setTokenGetter(() => getToken());
@@ -20,25 +31,24 @@ function ClerkTokenBridge({ onStatusChange }: { onStatusChange: (status: AuthSyn
   useEffect(() => {
     if (!isLoaded || !user) {
       syncedUserIdRef.current = null;
-      onStatusChange("idle");
+      changeStatus("idle");
       return;
     }
 
     if (syncedUserIdRef.current === user.id) {
-      onStatusChange("ready");
+      changeStatus("ready");
       return;
     }
 
     const primaryEmail = user.primaryEmailAddress?.emailAddress;
     if (!primaryEmail) {
-      Sentry.logger.warn("Skipping user sync because primary email is missing", {
-        userId: user.id,
-      });
-      onStatusChange("ready");
+      logger.auth.syncSkipped("primary email missing", { userId: user.id });
+      changeStatus("ready");
       return;
     }
 
-    onStatusChange("syncing");
+    changeStatus("syncing");
+    logger.auth.syncStarted(user.id);
 
     apiClient
       .post("/api/auth/sync", {
@@ -47,16 +57,19 @@ function ClerkTokenBridge({ onStatusChange }: { onStatusChange: (status: AuthSyn
       })
       .then(() => {
         syncedUserIdRef.current = user.id;
-        onStatusChange("ready");
+        logger.auth.syncCompleted(user.id);
+        changeStatus("ready");
       })
       .catch((error) => {
-        onStatusChange("ready");
+        logger.auth.syncFailed(error, { userId: user.id });
+        changeStatus("ready");
         Sentry.captureException(error, {
           tags: { source: "auth-sync" },
           extra: { userId: user.id },
         });
       });
-  }, [isLoaded, onStatusChange, user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, user]);
 
   return null;
 }
@@ -72,11 +85,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
           },
           mutations: {
             onError(error) {
-              Sentry.logger.error("React Query mutation error", {
+              logger.error("React Query mutation error", error, {
                 source: "react-query-mutation",
-                errorMessage: error instanceof Error ? error.message : String(error),
               });
-              Sentry.captureException(error, { tags: { source: "react-query-mutation" } });
             },
           },
         },

@@ -20,6 +20,7 @@ import { Issue, IssueStatus } from "@/types";
 import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCard } from "./KanbanCard";
 import { Spinner } from "@/components/ui/Spinner";
+import { logger } from "@/lib/logger";
 
 const STATUSES: IssueStatus[] = ["BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DONE"];
 
@@ -79,7 +80,11 @@ export function KanbanView({
   );
 
   const handleDragStart = useCallback(({ active }: DragStartEvent) => {
-    setActiveIssue(localIssuesRef.current.find((i) => i.id === active.id) ?? null);
+    const issue = localIssuesRef.current.find((i) => i.id === active.id) ?? null;
+    setActiveIssue(issue);
+    if (issue) {
+      logger.kanban.dragStarted(issue.id, issue.status);
+    }
   }, []);
 
   const handleDragOver = useCallback(({ active, over }: DragOverEvent) => {
@@ -89,19 +94,25 @@ export function KanbanView({
 
     const activeId = String(active.id);
     setLocalIssues((prev) =>
-      prev.map((issue) =>
-        issue.id === activeId && issue.status !== targetStatus
-          ? { ...issue, status: targetStatus }
-          : issue
-      )
+      prev.map((issue) => {
+        if (issue.id === activeId && issue.status !== targetStatus) {
+          logger.kanban.optimisticUpdate(issue.id, targetStatus);
+          return { ...issue, status: targetStatus };
+        }
+        return issue;
+      })
     );
   }, []);
 
   const handleDragEnd = useCallback(
     ({ active, over }: DragEndEvent) => {
+      const activeId = String(active.id);
+      const originalIssue = issues.find((i) => i.id === activeId);
+
       setActiveIssue(null);
 
       if (!over) {
+        logger.kanban.dragCanceled(activeId);
         setLocalIssues(issues);
         return;
       }
@@ -112,9 +123,9 @@ export function KanbanView({
         return;
       }
 
-      const activeId = String(active.id);
-      const originalIssue = issues.find((i) => i.id === activeId);
       if (!originalIssue) return;
+
+      logger.kanban.dragEnded(activeId, originalIssue.status, targetStatus);
 
       if (originalIssue.status !== targetStatus) {
         onUpdateStatus(activeId, targetStatus);
@@ -127,9 +138,10 @@ export function KanbanView({
   );
 
   const handleDragCancel = useCallback(() => {
+    logger.kanban.dragCanceled(activeIssue?.id);
     setActiveIssue(null);
     setLocalIssues(issues);
-  }, [issues]);
+  }, [activeIssue, issues]);
 
   if (isLoading) {
     return (
