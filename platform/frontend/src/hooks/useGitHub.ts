@@ -47,6 +47,8 @@ export function useRegisterInstallation(workspaceId: string) {
     onSuccess: () => {
       logger.github.queryInvalidated("github.installations", { workspaceId });
       qc.invalidateQueries({ queryKey: ["github", "installations", workspaceId] });
+      logger.github.queryInvalidated("github.repositories", { workspaceId });
+      qc.invalidateQueries({ queryKey: ["github", "repositories", workspaceId] });
     },
   });
 }
