@@ -2,6 +2,8 @@ package com.mesha.api.controller;
 
 import com.mesha.api.dto.GitHubInstallationDto;
 import com.mesha.api.service.GitHubAppService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -13,6 +15,8 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/workspaces/{workspaceId}/github")
 public class GitHubAppController {
+
+    private static final Logger log = LoggerFactory.getLogger(GitHubAppController.class);
 
     private final GitHubAppService appService;
 
@@ -26,6 +30,7 @@ public class GitHubAppController {
     @GetMapping("/installations")
     @PreAuthorize("@workspaceSecurity.isMember(authentication, #workspaceId)")
     public ResponseEntity<List<GitHubInstallationDto>> listInstallations(@PathVariable String workspaceId) {
+        log.debug("Listing GitHub installations workspaceId={}", workspaceId);
         return ResponseEntity.ok(appService.listInstallations(UUID.fromString(workspaceId)));
     }
 
@@ -37,8 +42,10 @@ public class GitHubAppController {
     public ResponseEntity<GitHubInstallationDto> registerInstallation(
             @PathVariable String workspaceId,
             @PathVariable Long installationId) {
+        log.info("Registering GitHub App installation installationId={} workspaceId={}", installationId, workspaceId);
         GitHubInstallationDto dto = GitHubInstallationDto.from(
                 appService.registerInstallation(installationId, UUID.fromString(workspaceId)));
+        log.info("GitHub App installation registered installationId={} workspaceId={}", installationId, workspaceId);
         return ResponseEntity.status(HttpStatus.CREATED).body(dto);
     }
 }

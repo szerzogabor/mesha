@@ -3,6 +3,8 @@ package com.mesha.api.service;
 import com.mesha.api.dto.GitHubRepositoryDto;
 import com.mesha.api.model.GitHubRepository;
 import com.mesha.api.repository.GitHubRepositoryRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +16,8 @@ import java.util.UUID;
 @Service
 public class GitHubRepositoryService {
 
+    private static final Logger log = LoggerFactory.getLogger(GitHubRepositoryService.class);
+
     private final GitHubRepositoryRepository repositoryRepo;
 
     public GitHubRepositoryService(GitHubRepositoryRepository repositoryRepo) {
@@ -21,11 +25,15 @@ public class GitHubRepositoryService {
     }
 
     public List<GitHubRepositoryDto> listForWorkspace(UUID workspaceId) {
-        return repositoryRepo.findAllByWorkspaceId(workspaceId)
+        log.debug("Listing repositories workspaceId={}", workspaceId);
+        List<GitHubRepositoryDto> repos = repositoryRepo.findAllByWorkspaceId(workspaceId)
                 .stream().map(GitHubRepositoryDto::from).toList();
+        log.debug("Listed repositories workspaceId={} count={}", workspaceId, repos.size());
+        return repos;
     }
 
     public GitHubRepositoryDto getById(UUID repositoryId) {
+        log.debug("Fetching repository repositoryId={}", repositoryId);
         return repositoryRepo.findById(repositoryId)
                 .map(GitHubRepositoryDto::from)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Repository not found"));
@@ -33,9 +41,11 @@ public class GitHubRepositoryService {
 
     @Transactional
     public void disconnect(UUID repositoryId) {
+        log.info("Disconnecting repository repositoryId={}", repositoryId);
         GitHubRepository repo = repositoryRepo.findById(repositoryId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Repository not found"));
         repo.setConnected(false);
         repositoryRepo.save(repo);
+        log.info("Repository disconnected repositoryId={} fullName={}", repositoryId, repo.getFullName());
     }
 }

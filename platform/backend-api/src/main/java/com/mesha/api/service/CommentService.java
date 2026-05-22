@@ -5,6 +5,8 @@ import com.mesha.api.dto.CreateCommentRequest;
 import com.mesha.api.model.*;
 import com.mesha.api.repository.CommentRepository;
 import com.mesha.api.repository.IssueRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +19,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class CommentService {
+
+    private static final Logger log = LoggerFactory.getLogger(CommentService.class);
 
     private final CommentRepository commentRepository;
     private final IssueRepository issueRepository;
@@ -32,6 +36,7 @@ public class CommentService {
 
     @Transactional
     public Comment create(UUID issueId, CreateCommentRequest req, User author) {
+        log.debug("Creating comment issueId={} authorId={} hasParent={}", issueId, author.getId(), req.parentId() != null);
         Issue issue = issueRepository.findById(issueId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found"));
 
@@ -51,20 +56,25 @@ public class CommentService {
 
         comment = commentRepository.save(comment);
         activityService.record(issue, author, ActivityEventType.COMMENT_ADDED, null, comment.getId().toString());
+        log.debug("Comment created commentId={} issueId={} authorId={}", comment.getId(), issueId, author.getId());
         return comment;
     }
 
     public List<CommentDto> listThreaded(UUID issueId) {
+        log.debug("Listing threaded comments issueId={}", issueId);
         List<Comment> all = commentRepository.findAllByIssueId(issueId);
 
         Map<UUID, List<Comment>> childrenByParent = all.stream()
             .filter(c -> c.getParent() != null)
             .collect(Collectors.groupingBy(c -> c.getParent().getId()));
 
-        return all.stream()
+        List<CommentDto> threads = all.stream()
             .filter(c -> c.getParent() == null)
             .map(c -> buildDto(c, childrenByParent))
             .toList();
+        log.debug("Listed threaded comments issueId={} topLevelCount={} totalCount={}",
+                issueId, threads.size(), all.size());
+        return threads;
     }
 
     private CommentDto buildDto(Comment comment, Map<UUID, List<Comment>> childrenByParent) {
@@ -77,14 +87,18 @@ public class CommentService {
 
     @Transactional
     public void delete(UUID issueId, UUID commentId, User requestingUser) {
+        log.debug("Deleting comment commentId={} issueId={} requestingUserId={}", commentId, issueId, requestingUser.getId());
         Comment comment = commentRepository.findById(commentId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found"));
         if (!comment.getIssue().getId().equals(issueId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Comment does not belong to this issue");
         }
         if (comment.getAuthor() != null && !comment.getAuthor().getId().equals(requestingUser.getId())) {
+            log.warn("Unauthorized comment deletion attempt commentId={} authorId={} requestingUserId={}",
+                    commentId, comment.getAuthor().getId(), requestingUser.getId());
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not the comment author");
         }
         commentRepository.delete(comment);
+        log.debug("Comment deleted commentId={} issueId={}", commentId, issueId);
     }
 }
