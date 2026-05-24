@@ -21,6 +21,7 @@ yarn-error.log*
 # Playwright
 playwright-report/
 playwright-results/
+platform/frontend/e2e/.auth/
 
 # IDE
 .idea/

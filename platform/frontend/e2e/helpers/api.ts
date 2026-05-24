@@ -41,32 +41,26 @@ export async function interceptApiCall(
   page: Page,
   urlPattern: string | RegExp
 ): Promise<{ request: unknown; response: unknown }> {
-  return new Promise((resolve) => {
-    page.on("response", async (response) => {
-      if (
-        typeof urlPattern === "string"
-          ? response.url().includes(urlPattern)
-          : urlPattern.test(response.url())
-      ) {
-        const request = response.request();
-        resolve({
-          request: {
-            url: request.url(),
-            method: request.method(),
-            headers: request.headers(),
-          },
-          response: {
-            status: response.status(),
-            body: await response.json().catch(() => null),
-          },
-        });
-      }
-    });
-  });
+  const response = await page.waitForResponse((r) =>
+    typeof urlPattern === "string"
+      ? r.url().includes(urlPattern)
+      : urlPattern.test(r.url())
+  );
+  const request = response.request();
+  return {
+    request: {
+      url: request.url(),
+      method: request.method(),
+      headers: request.headers(),
+    },
+    response: {
+      status: response.status(),
+      body: await response.json().catch(() => null),
+    },
+  };
 }
 
 export function apiUrl(path: string): string {
-  const base =
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+  const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
   return `${base}${path}`;
 }
