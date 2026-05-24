@@ -1,8 +1,8 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, devices } from "@playwright/test";
 import { TIMEOUTS } from "../helpers/production";
 
-test.describe("Mobile emulation", () => {
-  test.use({ ...require("@playwright/test").devices["iPhone 14"] });
+test.describe("Mobile emulation - iOS", () => {
+  test.use({ ...devices["iPhone 14"] });
 
   test("sign-in page is mobile-responsive", async ({ page }) => {
     const signInUrl =
@@ -13,19 +13,14 @@ test.describe("Mobile emulation", () => {
       timeout: TIMEOUTS.navigation,
     });
 
-    // Ensure there is no horizontal scroll
-    const scrollWidth = await page.evaluate(
-      () => document.body.scrollWidth
-    );
-    const clientWidth = await page.evaluate(
-      () => document.body.clientWidth
-    );
+    const scrollWidth = await page.evaluate(() => document.body.scrollWidth);
+    const clientWidth = await page.evaluate(() => document.body.clientWidth);
     expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
   });
 });
 
 test.describe("Mobile emulation - Android", () => {
-  test.use({ ...require("@playwright/test").devices["Pixel 7"] });
+  test.use({ ...devices["Pixel 7"] });
 
   test("sign-in page is mobile-responsive on Android", async ({ page }) => {
     const signInUrl =
@@ -36,12 +31,8 @@ test.describe("Mobile emulation - Android", () => {
       timeout: TIMEOUTS.navigation,
     });
 
-    const scrollWidth = await page.evaluate(
-      () => document.body.scrollWidth
-    );
-    const clientWidth = await page.evaluate(
-      () => document.body.clientWidth
-    );
+    const scrollWidth = await page.evaluate(() => document.body.scrollWidth);
+    const clientWidth = await page.evaluate(() => document.body.clientWidth);
     expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
   });
 });
