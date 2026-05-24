@@ -50,6 +50,24 @@ test.describe("Authentication", () => {
     await signOut(page);
   });
 
+  test("session persists after page reload", async ({ page }) => {
+    const email = process.env.E2E_TEST_EMAIL!;
+    const password = process.env.E2E_TEST_PASSWORD!;
+
+    await signIn(page, email, password);
+    await page.reload();
+
+    // After reload, Clerk should restore the session — no sign-in redirect
+    await expect(page).not.toHaveURL(/sign-in/, {
+      timeout: TIMEOUTS.navigation,
+    });
+    await expect(page).toHaveURL(/workspaces/, {
+      timeout: TIMEOUTS.navigation,
+    });
+
+    await signOut(page);
+  });
+
   test("protected route redirects unauthenticated users to sign-in", async ({
     page,
   }) => {
