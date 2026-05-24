@@ -1,0 +1,62 @@
+name: E2E Backend (Post-merge)
+
+on:
+  # Only runs after a successful CI build on main
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  e2e-backend:
+    # Only proceed when the upstream CI build passed
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: platform/frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./platform/frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: ./platform/frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run full-stack E2E tests against production
+        working-directory: ./platform/frontend
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ secrets.PRODUCTION_FRONTEND_URL }}
+          E2E_TEST_ENV: production
+          E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
+          E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.PRODUCTION_API_URL }}
+          NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+          NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: /workspaces
+        # Run only against chromium in production to limit impact
+        run: npx playwright test --project=chromium
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-backend-${{ github.run_id }}
+          path: platform/frontend/playwright-report/
+          retention-days: 30
+
+      - name: Upload Playwright results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results-backend-${{ github.run_id }}
+          path: platform/frontend/playwright-results/
+          retention-days: 30
