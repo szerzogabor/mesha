@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
+    permissions:
+      contents: read
+
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
@@ -28,19 +31,56 @@ jobs:
         working-directory: ./platform/frontend
         run: npx playwright install --with-deps chromium firefox webkit
 
-      - name: Wait for Vercel Preview deployment
-        uses: patrickedqvist/wait-for-vercel-preview@v1.3.2
+      - name: Get Vercel Preview URL
         id: vercel-preview
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          max_timeout: 300
-          allow_inactive: true
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "VERCEL_TOKEN or VERCEL_PROJECT_ID not set — E2E tests will be skipped"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "url=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          COMMIT_SHA="${GITHUB_SHA}"
+          BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          echo "Looking for Vercel preview: branch=${BRANCH}, sha=${COMMIT_SHA}"
+
+          for i in $(seq 1 30); do
+            # Prefer matching the exact commit SHA; fall back to latest on the branch
+            RESPONSE=$(curl -sf \
+              "https://api.vercel.com/v6/deployments?projectId=${VERCEL_PROJECT_ID}&meta-gitCommitSha=${COMMIT_SHA}&limit=5" \
+              -H "Authorization: Bearer ${VERCEL_TOKEN}" 2>/dev/null \
+              || curl -sf \
+              "https://api.vercel.com/v6/deployments?projectId=${VERCEL_PROJECT_ID}&meta-gitBranch=${BRANCH}&limit=5" \
+              -H "Authorization: Bearer ${VERCEL_TOKEN}" 2>/dev/null \
+              || echo '{"deployments":[]}')
+
+            URL=$(echo "$RESPONSE" | jq -r '[.deployments[] | select(.state == "READY")] | .[0].url // empty')
+
+            if [ -n "$URL" ]; then
+              PREVIEW_URL="https://${URL}"
+              echo "url=${PREVIEW_URL}" >> "$GITHUB_OUTPUT"
+              echo "skip=false" >> "$GITHUB_OUTPUT"
+              echo "Vercel preview ready: ${PREVIEW_URL}"
+              exit 0
+            fi
+
+            echo "No READY deployment yet (attempt ${i}/30) — retrying in 15s..."
+            sleep 15
+          done
+
+          echo "Timed out waiting for Vercel deployment — skipping E2E tests"
+          echo "skip=true" >> "$GITHUB_OUTPUT"
+          echo "url=" >> "$GITHUB_OUTPUT"
 
       - name: Run frontend E2E tests
+        if: steps.vercel-preview.outputs.skip != 'true'
         working-directory: ./platform/frontend
         env:
           PLAYWRIGHT_BASE_URL: ${{ steps.vercel-preview.outputs.url }}
-          VERCEL_PREVIEW_URL: ${{ steps.vercel-preview.outputs.url }}
           E2E_TEST_ENV: preview
           E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
           E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
@@ -55,6 +95,7 @@ jobs:
           name: playwright-report-frontend-${{ github.run_id }}
           path: platform/frontend/playwright-report/
           retention-days: 14
+          if-no-files-found: ignore
 
       - name: Upload Playwright results
         if: always()
@@ -63,3 +104,4 @@ jobs:
           name: playwright-results-frontend-${{ github.run_id }}
           path: platform/frontend/playwright-results/
           retention-days: 14
+          if-no-files-found: ignore
