@@ -3,6 +3,7 @@ package com.mesha.api.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mesha.api.config.GitHubAppProperties;
+import com.mesha.api.dto.AvailableRepositoryDto;
 import com.mesha.api.dto.GitHubInstallationDto;
 import com.mesha.api.dto.GitHubRepositoryDto;
 import com.mesha.api.model.GitHubInstallation;
@@ -293,12 +294,37 @@ public class GitHubAppService {
         return repo;
     }
 
+    /**
+     * Returns the list of repositories accessible to an installation, formatted for the frontend.
+     */
+    public List<AvailableRepositoryDto> listAvailableRepositories(Long installationId, UUID workspaceId) {
+        log.debug("Listing available repositories for installationId={} workspaceId={}", installationId, workspaceId);
+        installationRepo.findByInstallationId(installationId)
+                .filter(i -> i.getWorkspace().getId().equals(workspaceId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Installation not found for this workspace"));
+        List<AvailableRepositoryDto> repos = listInstallationRepositories(installationId)
+                .stream().map(AvailableRepositoryDto::from).toList();
+        log.debug("Listed available repositories installationId={} count={}", installationId, repos.size());
+        return repos;
+    }
+
     public List<GitHubInstallationDto> listInstallations(UUID workspaceId) {
         log.debug("Listing installations workspaceId={}", workspaceId);
         List<GitHubInstallationDto> installations = installationRepo.findAllByWorkspaceId(workspaceId)
                 .stream().map(GitHubInstallationDto::from).toList();
         log.debug("Listed installations workspaceId={} count={}", workspaceId, installations.size());
         return installations;
+    }
+
+    @Transactional
+    public void markInstallationActive(Long installationId) {
+        log.info("Marking installation active installationId={}", installationId);
+        installationRepo.findByInstallationId(installationId).ifPresent(i -> {
+            i.setStatus("active");
+            installationRepo.save(i);
+            log.info("Installation marked active installationId={}", installationId);
+        });
     }
 
     @Transactional

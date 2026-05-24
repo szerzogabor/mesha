@@ -6,12 +6,132 @@ import {
   useGitHubInstallations,
   useGitHubRepositories,
   useRegisterInstallation,
+  useInstallationRepositories,
   useConnectRepository,
   useDisconnectRepository,
 } from "@/hooks/useGitHub";
 import { RepositoryCard } from "@/components/github/RepositoryCard";
 import { Spinner } from "@/components/ui/Spinner";
 import { logger } from "@/lib/logger";
+
+function ConnectRepositoryForm({
+  workspaceId,
+  installations,
+  onCancel,
+  onConnected,
+}: {
+  workspaceId: string;
+  installations: { id: string; installationId: number; accountLogin: string }[];
+  onCancel: () => void;
+  onConnected: () => void;
+}) {
+  const [selectedInstallationId, setSelectedInstallationId] = useState<number | null>(
+    installations.length === 1 ? installations[0].installationId : null
+  );
+  const [selectedRepoId, setSelectedRepoId] = useState<number | null>(null);
+
+  const { data: availableRepos = [], isLoading: loadingRepos } = useInstallationRepositories(
+    workspaceId,
+    selectedInstallationId
+  );
+  const connectRepo = useConnectRepository(workspaceId);
+
+  const handleInstallationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedInstallationId(e.target.value ? Number(e.target.value) : null);
+    setSelectedRepoId(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedInstallationId || !selectedRepoId) return;
+    logger.github.uiStateChange("idle", "connecting", { workspaceId });
+    await connectRepo.mutateAsync({
+      installationId: selectedInstallationId,
+      githubRepoId: selectedRepoId,
+    });
+    logger.github.uiStateChange("connecting", "idle", { workspaceId });
+    onConnected();
+  };
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="mb-4 bg-bg-surface border border-border-subtle rounded-lg p-4 space-y-3"
+    >
+      {installations.length > 1 && (
+        <div>
+          <label className="block text-xs font-medium text-text-secondary mb-1">
+            Installation
+          </label>
+          <select
+            className="w-full text-sm border border-border-input rounded-lg px-3 py-2 bg-bg-input text-text-primary"
+            value={selectedInstallationId ?? ""}
+            onChange={handleInstallationChange}
+            required
+          >
+            <option value="">Select installation…</option>
+            {installations.map((i) => (
+              <option key={i.id} value={i.installationId}>
+                {i.accountLogin} ({i.installationId})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div>
+        <label className="block text-xs font-medium text-text-secondary mb-1">
+          Repository
+        </label>
+        {loadingRepos ? (
+          <div className="flex items-center gap-2 text-sm text-text-muted py-2">
+            <Spinner size="sm" />
+            Loading repositories…
+          </div>
+        ) : (
+          <select
+            className="w-full text-sm border border-border-input rounded-lg px-3 py-2 bg-bg-input text-text-primary"
+            value={selectedRepoId ?? ""}
+            onChange={(e) => setSelectedRepoId(e.target.value ? Number(e.target.value) : null)}
+            required
+            disabled={!selectedInstallationId}
+          >
+            <option value="">
+              {!selectedInstallationId
+                ? "Select an installation first…"
+                : availableRepos.length === 0
+                ? "No repositories found"
+                : "Select repository…"}
+            </option>
+            {availableRepos.map((repo) => (
+              <option key={repo.id} value={repo.id}>
+                {repo.fullName}
+                {repo.isPrivate ? " (private)" : ""}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={connectRepo.isPending || !selectedInstallationId || !selectedRepoId}
+          className="px-4 py-2 bg-accent text-white text-sm rounded-lg hover:bg-accent/90 disabled:opacity-50 transition-colors"
+        >
+          {connectRepo.isPending ? "Connecting…" : "Connect"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 text-sm text-text-secondary rounded-lg hover:bg-bg-subtle transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
 
 export default function GitHubPage({
   params,
@@ -27,13 +147,8 @@ export default function GitHubPage({
   const { data: repositories = [], isLoading: loadingRepos } =
     useGitHubRepositories(workspaceId);
   const registerInstallation = useRegisterInstallation(workspaceId);
-  const connectRepo = useConnectRepository(workspaceId);
   const disconnectRepo = useDisconnectRepository(workspaceId);
 
-  const [connectForm, setConnectForm] = useState({
-    installationId: "",
-    githubRepoId: "",
-  });
   const [showConnectForm, setShowConnectForm] = useState(false);
 
   useEffect(() => {
@@ -73,19 +188,6 @@ export default function GitHubPage({
         logger.github.registrationFailed(workspaceId, installationId, error);
       });
   }, [pathname, registerInstallation, router, searchParams, workspaceId]);
-
-  const handleConnect = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!connectForm.installationId || !connectForm.githubRepoId) return;
-    logger.github.uiStateChange("idle", "connecting", { workspaceId });
-    await connectRepo.mutateAsync({
-      installationId: Number(connectForm.installationId),
-      githubRepoId: Number(connectForm.githubRepoId),
-    });
-    setConnectForm({ installationId: "", githubRepoId: "" });
-    setShowConnectForm(false);
-    logger.github.uiStateChange("connecting", "idle", { workspaceId });
-  };
 
   if (loadingInstallations || loadingRepos) {
     return (
@@ -168,65 +270,12 @@ export default function GitHubPage({
         </div>
 
         {showConnectForm && (
-          <form
-            onSubmit={handleConnect}
-            className="mb-4 bg-bg-surface border border-border-subtle rounded-lg p-4 space-y-3"
-          >
-            <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1">
-                Installation ID
-              </label>
-              <select
-                className="w-full text-sm border border-border-input rounded-lg px-3 py-2 bg-bg-input text-text-primary"
-                value={connectForm.installationId}
-                onChange={(e) =>
-                  setConnectForm((f) => ({
-                    ...f,
-                    installationId: e.target.value,
-                  }))
-                }
-                required
-              >
-                <option value="">Select installation…</option>
-                {installations.map((i) => (
-                  <option key={i.id} value={i.installationId}>
-                    {i.accountLogin} ({i.installationId})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1">
-                GitHub Repository ID
-              </label>
-              <input
-                type="number"
-                placeholder="e.g. 123456789"
-                className="w-full text-sm border border-border-input rounded-lg px-3 py-2 bg-bg-input text-text-primary"
-                value={connectForm.githubRepoId}
-                onChange={(e) =>
-                  setConnectForm((f) => ({ ...f, githubRepoId: e.target.value }))
-                }
-                required
-              />
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={connectRepo.isPending}
-                className="px-4 py-2 bg-accent text-white text-sm rounded-lg hover:bg-accent/90 disabled:opacity-50 transition-colors"
-              >
-                {connectRepo.isPending ? "Connecting…" : "Connect"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowConnectForm(false)}
-                className="px-4 py-2 text-sm text-text-secondary rounded-lg hover:bg-bg-subtle transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+          <ConnectRepositoryForm
+            workspaceId={workspaceId}
+            installations={installations}
+            onCancel={() => setShowConnectForm(false)}
+            onConnected={() => setShowConnectForm(false)}
+          />
         )}
 
         {repositories.length === 0 ? (

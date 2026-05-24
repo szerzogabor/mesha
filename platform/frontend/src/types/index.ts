@@ -162,6 +162,17 @@ export interface GitHubInstallation {
   createdAt: string;
 }
 
+export interface AvailableRepository {
+  id: number;
+  name: string;
+  fullName: string;
+  owner: string;
+  isPrivate: boolean;
+  defaultBranch: string;
+  description?: string;
+  htmlUrl: string;
+}
+
 export interface GitHubRepository {
   id: string;
   workspaceId: string;

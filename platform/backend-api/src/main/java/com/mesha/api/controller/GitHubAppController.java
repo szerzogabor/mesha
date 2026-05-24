@@ -1,5 +1,6 @@
 package com.mesha.api.controller;
 
+import com.mesha.api.dto.AvailableRepositoryDto;
 import com.mesha.api.dto.GitHubInstallationDto;
 import com.mesha.api.service.GitHubAppService;
 import org.slf4j.Logger;
@@ -47,5 +48,19 @@ public class GitHubAppController {
                 appService.registerInstallation(installationId, UUID.fromString(workspaceId)));
         log.info("GitHub App installation registered installationId={} workspaceId={}", installationId, workspaceId);
         return ResponseEntity.status(HttpStatus.CREATED).body(dto);
+    }
+
+    /**
+     * Lists repositories accessible to a specific installation from GitHub.
+     * Used by the frontend to populate the repository selection dropdown.
+     */
+    @GetMapping("/installations/{installationId}/repositories")
+    @PreAuthorize("@workspaceSecurity.isMember(authentication, #workspaceId)")
+    public ResponseEntity<List<AvailableRepositoryDto>> listInstallationRepositories(
+            @PathVariable String workspaceId,
+            @PathVariable Long installationId) {
+        log.debug("Listing available repositories for installationId={} workspaceId={}", installationId, workspaceId);
+        return ResponseEntity.ok(
+                appService.listAvailableRepositories(installationId, UUID.fromString(workspaceId)));
     }
 }

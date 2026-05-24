@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { logger } from "@/lib/logger";
 import {
+  AvailableRepository,
   GitHubInstallation,
   GitHubRepository,
   GitHubPullRequest,
@@ -64,6 +65,20 @@ export function useGitHubRepositories(workspaceId: string) {
       return result;
     },
     enabled: !!workspaceId,
+  });
+}
+
+export function useInstallationRepositories(workspaceId: string, installationId: number | null) {
+  return useQuery({
+    queryKey: ["github", "installation-repos", workspaceId, installationId],
+    queryFn: async () => {
+      const result = await apiClient.get<AvailableRepository[]>(
+        `/api/workspaces/${workspaceId}/github/installations/${installationId}/repositories`
+      );
+      logger.github.repositoriesFetched(workspaceId, result?.length ?? 0);
+      return result;
+    },
+    enabled: !!workspaceId && installationId !== null,
   });
 }
 
