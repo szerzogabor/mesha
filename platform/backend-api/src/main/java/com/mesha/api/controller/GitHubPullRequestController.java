@@ -27,7 +27,6 @@ public class GitHubPullRequestController {
     @PreAuthorize("@workspaceSecurity.isMember(authentication, #workspaceId)")
     public ResponseEntity<List<GitHubPullRequestDto>> list(@PathVariable String workspaceId,
                                                            @PathVariable String repositoryId) {
-        log.debug("Listing pull requests repositoryId={} workspaceId={}", repositoryId, workspaceId);
         return ResponseEntity.ok(prService.listForRepository(UUID.fromString(repositoryId)));
     }
 
@@ -36,7 +35,6 @@ public class GitHubPullRequestController {
     public ResponseEntity<GitHubPullRequestDto> get(@PathVariable String workspaceId,
                                                     @PathVariable String repositoryId,
                                                     @PathVariable String prId) {
-        log.debug("Fetching pull request prId={} repositoryId={}", prId, repositoryId);
         return ResponseEntity.ok(prService.getById(UUID.fromString(prId)));
     }
 

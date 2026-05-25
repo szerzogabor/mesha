@@ -52,8 +52,11 @@ public class AIDraftService {
         draft.setStatus(AIDraftStatus.PENDING);
         draft = draftRepository.save(draft);
 
+        log.info("AI draft generation started draftId={} projectId={}", draft.getId(), projectId);
+        long aiStartMs = System.currentTimeMillis();
         try {
             AIDraftContent content = orchestration.generateDraft(prompt);
+            log.info("AI draft generation completed draftId={} durationMs={}", draft.getId(), System.currentTimeMillis() - aiStartMs);
             draft.setStatus(AIDraftStatus.COMPLETED);
             draft.setGeneratedTitle(content.title());
             draft.setGeneratedDescription(content.description());
@@ -64,7 +67,7 @@ public class AIDraftService {
             draft.setScopeNotes(content.scopeNotes());
             draft.setOutOfScopeNotes(content.outOfScopeNotes());
         } catch (Exception e) {
-            log.error("AI generation failed for draft {}", draft.getId(), e);
+            log.error("AI draft generation failed draftId={} durationMs={} error={}", draft.getId(), System.currentTimeMillis() - aiStartMs, e.getMessage(), e);
             draft.setStatus(AIDraftStatus.FAILED);
             draft.setErrorMessage(e.getMessage());
         }

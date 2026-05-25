@@ -22,13 +22,13 @@ public class UserService {
 
     @Transactional
     public User syncUser(String clerkUserId, String email, String name) {
-        log.debug("Syncing user clerkUserId={}", clerkUserId);
+        long startMs = System.currentTimeMillis();
         return userRepository.findByClerkUserId(clerkUserId)
             .map(existing -> {
                 existing.setEmail(email);
                 if (name != null) existing.setName(name);
                 User saved = userRepository.save(existing);
-                log.debug("User synced (updated) clerkUserId={} userId={}", clerkUserId, saved.getId());
+                log.info("User synced action=updated clerkUserId={} userId={} durationMs={}", clerkUserId, saved.getId(), System.currentTimeMillis() - startMs);
                 return saved;
             })
             .orElseGet(() -> {
@@ -37,14 +37,16 @@ public class UserService {
                 user.setEmail(email);
                 user.setName(name);
                 User saved = userRepository.save(user);
-                log.info("User synced (created) clerkUserId={} userId={}", clerkUserId, saved.getId());
+                log.info("User synced action=created clerkUserId={} userId={} durationMs={}", clerkUserId, saved.getId(), System.currentTimeMillis() - startMs);
                 return saved;
             });
     }
 
     public User getByClerkUserId(String clerkUserId) {
-        log.debug("Looking up user clerkUserId={}", clerkUserId);
-        return userRepository.findByClerkUserId(clerkUserId)
+        long startMs = System.currentTimeMillis();
+        User user = userRepository.findByClerkUserId(clerkUserId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + clerkUserId));
+        log.info("Fetched user clerkUserId={} userId={} durationMs={}", clerkUserId, user.getId(), System.currentTimeMillis() - startMs);
+        return user;
     }
 }

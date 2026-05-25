@@ -73,7 +73,7 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
             } else if (status >= 400) {
                 log.warn(msg, status, durationMs);
             } else {
-                log.debug(msg, status, durationMs);
+                log.info(msg, status, durationMs);
             }
             MDC.clear();
         }

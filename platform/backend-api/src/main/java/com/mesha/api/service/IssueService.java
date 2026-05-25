@@ -85,17 +85,21 @@ public class IssueService {
 
     public Page<Issue> list(UUID projectId, IssueStatus status, IssuePriority priority,
                              UUID assigneeId, String search, int page, int size) {
-        log.debug("Listing issues projectId={} status={} priority={} assigneeId={} page={} size={}",
-                projectId, status, priority, assigneeId, page, size);
+        long startMs = System.currentTimeMillis();
         Pageable pageable = PageRequest.of(page, size);
         String normalizedSearch = search != null ? "%" + search.toLowerCase() + "%" : null;
-        return issueRepository.findByProjectFiltered(projectId, status, priority, assigneeId, normalizedSearch, pageable);
+        Page<Issue> result = issueRepository.findByProjectFiltered(projectId, status, priority, assigneeId, normalizedSearch, pageable);
+        log.info("Listed issues projectId={} status={} priority={} count={} totalElements={} durationMs={}",
+                projectId, status, priority, result.getNumberOfElements(), result.getTotalElements(), System.currentTimeMillis() - startMs);
+        return result;
     }
 
     public Issue getById(UUID issueId) {
-        log.debug("Fetching issue issueId={}", issueId);
-        return issueRepository.findById(issueId)
+        long startMs = System.currentTimeMillis();
+        Issue issue = issueRepository.findById(issueId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found"));
+        log.info("Fetched issue issueId={} projectId={} durationMs={}", issueId, issue.getProject().getId(), System.currentTimeMillis() - startMs);
+        return issue;
     }
 
     @Transactional

@@ -6,8 +6,6 @@ import com.mesha.api.model.User;
 import com.mesha.api.security.CurrentUser;
 import com.mesha.api.service.UserService;
 import jakarta.validation.Valid;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -16,8 +14,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-
-    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final UserService userService;
 
@@ -34,9 +30,7 @@ public class AuthController {
                                             @Valid @RequestBody SyncUserRequest req) {
         Jwt jwt = (Jwt) authentication.getPrincipal();
         String clerkUserId = jwt.getSubject();
-        log.debug("User sync requested clerkUserId={}", clerkUserId);
         User user = userService.syncUser(clerkUserId, req.email(), req.name());
-        log.debug("User sync completed clerkUserId={} userId={}", clerkUserId, user.getId());
         return ResponseEntity.ok(UserDto.from(user));
     }
 
@@ -45,7 +39,6 @@ public class AuthController {
      */
     @GetMapping("/me")
     public ResponseEntity<UserDto> me(@CurrentUser User user) {
-        log.debug("Fetching current user profile userId={}", user.getId());
         return ResponseEntity.ok(UserDto.from(user));
     }
 }

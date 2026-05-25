@@ -52,22 +52,24 @@ public class WorkspaceService {
     }
 
     public List<Workspace> listForUser(UUID userId) {
-        log.debug("Listing workspaces userId={}", userId);
+        long startMs = System.currentTimeMillis();
         List<Workspace> workspaces = workspaceRepository.findAllByMemberUserId(userId);
-        log.debug("Listed workspaces userId={} count={}", userId, workspaces.size());
+        log.info("Listed workspaces userId={} count={} durationMs={}", userId, workspaces.size(), System.currentTimeMillis() - startMs);
         return workspaces;
     }
 
     public Workspace getById(UUID workspaceId) {
-        log.debug("Fetching workspace workspaceId={}", workspaceId);
-        return workspaceRepository.findById(workspaceId)
+        long startMs = System.currentTimeMillis();
+        Workspace ws = workspaceRepository.findById(workspaceId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Workspace not found"));
+        log.info("Fetched workspace workspaceId={} durationMs={}", workspaceId, System.currentTimeMillis() - startMs);
+        return ws;
     }
 
     public List<WorkspaceMember> listMembers(UUID workspaceId) {
-        log.debug("Listing workspace members workspaceId={}", workspaceId);
+        long startMs = System.currentTimeMillis();
         List<WorkspaceMember> members = memberRepository.findAllByWorkspaceId(workspaceId);
-        log.debug("Listed workspace members workspaceId={} count={}", workspaceId, members.size());
+        log.info("Listed workspace members count={} durationMs={}", members.size(), System.currentTimeMillis() - startMs);
         return members;
     }
 

@@ -50,7 +50,7 @@ public class BlocksSessionService {
         issueRepository.save(issue);
 
         activityService.record(issue, actor, ActivityEventType.AI_ASSIGNED, null, session.getId().toString());
-        log.info("Issue {} assigned to Blocks, session {}", issueId, session.getId());
+        log.info("Blocks session created issueId={} sessionId={}", issueId, session.getId());
         return session;
     }
 
@@ -95,7 +95,7 @@ public class BlocksSessionService {
         ActivityEventType eventType = resolveActivityEventType(session.getExecutionState());
         activityService.record(issue, actor, eventType, oldState, session.getExecutionState().name());
 
-        log.info("Blocks session {} state updated: {} -> {}", sessionId, oldState, session.getExecutionState());
+        log.info("Blocks session state updated sessionId={} from={} to={}", sessionId, oldState, session.getExecutionState());
         return session;
     }
 
@@ -120,7 +120,7 @@ public class BlocksSessionService {
         issueRepository.save(issue);
 
         activityService.record(issue, actor, ActivityEventType.AI_CANCELED, oldState, "CANCELED");
-        log.info("Blocks session {} canceled", sessionId);
+        log.info("Blocks session canceled sessionId={}", sessionId);
         return session;
     }
 

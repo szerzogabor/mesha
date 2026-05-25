@@ -33,7 +33,6 @@ public class GitHubRepositoryController {
     @GetMapping
     @PreAuthorize("@workspaceSecurity.isMember(authentication, #workspaceId)")
     public ResponseEntity<List<GitHubRepositoryDto>> list(@PathVariable String workspaceId) {
-        log.debug("Listing repositories workspaceId={}", workspaceId);
         return ResponseEntity.ok(repositoryService.listForWorkspace(UUID.fromString(workspaceId)));
     }
 
@@ -41,7 +40,6 @@ public class GitHubRepositoryController {
     @PreAuthorize("@workspaceSecurity.isMember(authentication, #workspaceId)")
     public ResponseEntity<GitHubRepositoryDto> get(@PathVariable String workspaceId,
                                                    @PathVariable String repositoryId) {
-        log.debug("Fetching repository repositoryId={} workspaceId={}", repositoryId, workspaceId);
         return ResponseEntity.ok(repositoryService.getById(UUID.fromString(repositoryId)));
     }
 

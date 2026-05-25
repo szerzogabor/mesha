@@ -61,7 +61,7 @@ public class CommentService {
     }
 
     public List<CommentDto> listThreaded(UUID issueId) {
-        log.debug("Listing threaded comments issueId={}", issueId);
+        long startMs = System.currentTimeMillis();
         List<Comment> all = commentRepository.findAllByIssueId(issueId);
 
         Map<UUID, List<Comment>> childrenByParent = all.stream()
@@ -72,8 +72,8 @@ public class CommentService {
             .filter(c -> c.getParent() == null)
             .map(c -> buildDto(c, childrenByParent))
             .toList();
-        log.debug("Listed threaded comments issueId={} topLevelCount={} totalCount={}",
-                issueId, threads.size(), all.size());
+        log.info("Listed threaded comments issueId={} topLevelCount={} totalCount={} durationMs={}",
+                issueId, threads.size(), all.size(), System.currentTimeMillis() - startMs);
         return threads;
     }
 
