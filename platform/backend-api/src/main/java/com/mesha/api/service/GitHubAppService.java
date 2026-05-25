@@ -135,34 +135,33 @@ public class GitHubAppService {
     public GitHubInstallation registerInstallation(Long installationId, UUID workspaceId) {
         log.info("Registering GitHub App installation installationId={} workspaceId={}", installationId, workspaceId);
 
-        Optional<GitHubInstallation> existing = installationRepo.findByInstallationId(installationId);
-        if (existing.isPresent()) {
-            log.info("Installation already registered installationId={} workspaceId={}", installationId, workspaceId);
-            return existing.get();
-        }
-
         Workspace workspace = workspaceRepo.findById(workspaceId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Workspace not found"));
 
         try {
-            String appJwt = generateAppJwt();
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(GITHUB_API + "/app/installations/" + installationId))
-                    .header("Authorization", "Bearer " + appJwt)
-                    .header("Accept", "application/vnd.github+json")
-                    .header("X-GitHub-Api-Version", "2022-11-28")
-                    .GET()
-                    .build();
-
-            long start = System.currentTimeMillis();
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            long durationMs = System.currentTimeMillis() - start;
-            log.debug("GitHub App installation details fetched installationId={} httpStatus={} durationMs={}",
-                    installationId, response.statusCode(), durationMs);
-
-            JsonNode node = objectMapper.readTree(response.body());
-            String accountLogin = node.path("account").path("login").asText();
+            JsonNode node = fetchInstallationDetails(installationId);
+            String accountLogin = node.path("account").path("login").asText("unknown");
             String accountType = node.path("account").path("type").asText("User");
+            String accountAvatarUrl = node.path("account").path("avatar_url").asText(null);
+
+            Optional<GitHubInstallation> existing = installationRepo.findByInstallationId(installationId);
+            if (existing.isPresent()) {
+                GitHubInstallation installation = existing.get();
+                boolean workspaceChanged = !installation.getWorkspace().getId().equals(workspaceId);
+                if (workspaceChanged) {
+                    log.warn("Re-linking existing installation to a different workspace installationId={} fromWorkspaceId={} toWorkspaceId={}",
+                            installationId, installation.getWorkspace().getId(), workspaceId);
+                    installation.setWorkspace(workspace);
+                }
+                installation.setAccountLogin(accountLogin);
+                installation.setAccountType(accountType);
+                installation.setAccountAvatarUrl(accountAvatarUrl);
+                installation.setStatus("active");
+                installation = installationRepo.save(installation);
+                log.info("GitHub App installation refreshed installationId={} workspaceId={} accountLogin={}",
+                        installationId, workspaceId, accountLogin);
+                return installation;
+            }
 
             GitHubInstallation installation = new GitHubInstallation();
             installation.setWorkspace(workspace);
@@ -170,7 +169,7 @@ public class GitHubAppService {
             installation.setAppId(props.getAppId());
             installation.setAccountLogin(accountLogin);
             installation.setAccountType(accountType);
-            installation.setAccountAvatarUrl(node.path("account").path("avatar_url").asText(null));
+            installation.setAccountAvatarUrl(accountAvatarUrl);
             installation.setStatus("active");
 
             installation = installationRepo.save(installation);
@@ -185,6 +184,32 @@ public class GitHubAppService {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Failed to register installation: " + e.getMessage());
         }
+    }
+
+    private JsonNode fetchInstallationDetails(Long installationId) throws Exception {
+        String appJwt = generateAppJwt();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(GITHUB_API + "/app/installations/" + installationId))
+                .header("Authorization", "Bearer " + appJwt)
+                .header("Accept", "application/vnd.github+json")
+                .header("X-GitHub-Api-Version", "2022-11-28")
+                .GET()
+                .build();
+
+        long start = System.currentTimeMillis();
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        long durationMs = System.currentTimeMillis() - start;
+        log.debug("GitHub App installation details fetched installationId={} httpStatus={} durationMs={}",
+                installationId, response.statusCode(), durationMs);
+
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            log.error("GitHub API returned unexpected status for installation details installationId={} httpStatus={}",
+                    installationId, response.statusCode());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Failed to fetch GitHub installation details");
+        }
+
+        return objectMapper.readTree(response.body());
     }
 
     /**
