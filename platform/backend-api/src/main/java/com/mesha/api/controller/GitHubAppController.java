@@ -31,7 +31,6 @@ public class GitHubAppController {
     @GetMapping("/installations")
     @PreAuthorize("@workspaceSecurity.isMember(authentication, #workspaceId)")
     public ResponseEntity<List<GitHubInstallationDto>> listInstallations(@PathVariable String workspaceId) {
-        log.debug("Listing GitHub installations workspaceId={}", workspaceId);
         return ResponseEntity.ok(appService.listInstallations(UUID.fromString(workspaceId)));
     }
 
@@ -46,7 +45,6 @@ public class GitHubAppController {
         log.info("Registering GitHub App installation installationId={} workspaceId={}", installationId, workspaceId);
         GitHubInstallationDto dto = GitHubInstallationDto.from(
                 appService.registerInstallation(installationId, UUID.fromString(workspaceId)));
-        log.info("GitHub App installation registered installationId={} workspaceId={}", installationId, workspaceId);
         return ResponseEntity.status(HttpStatus.CREATED).body(dto);
     }
 
@@ -59,7 +57,6 @@ public class GitHubAppController {
     public ResponseEntity<List<AvailableRepositoryDto>> listInstallationRepositories(
             @PathVariable String workspaceId,
             @PathVariable Long installationId) {
-        log.debug("Listing available repositories for installationId={} workspaceId={}", installationId, workspaceId);
         return ResponseEntity.ok(
                 appService.listAvailableRepositories(installationId, UUID.fromString(workspaceId)));
     }

@@ -49,9 +49,9 @@ public class LabelService {
     }
 
     public List<Label> listByWorkspace(UUID workspaceId) {
-        log.debug("Listing labels workspaceId={}", workspaceId);
+        long startMs = System.currentTimeMillis();
         List<Label> labels = labelRepository.findAllByWorkspaceIdOrderByNameAsc(workspaceId);
-        log.debug("Listed labels workspaceId={} count={}", workspaceId, labels.size());
+        log.info("Listed labels count={} durationMs={}", labels.size(), System.currentTimeMillis() - startMs);
         return labels;
     }
 

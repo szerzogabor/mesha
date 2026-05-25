@@ -45,21 +45,22 @@ public class ProjectService {
     }
 
     public List<Project> listByWorkspace(UUID workspaceId) {
-        log.debug("Listing projects workspaceId={}", workspaceId);
+        long startMs = System.currentTimeMillis();
         List<Project> projects = projectRepository.findAllByWorkspaceIdOrderByCreatedAtAsc(workspaceId);
-        log.debug("Listed projects workspaceId={} count={}", workspaceId, projects.size());
+        log.info("Listed projects count={} durationMs={}", projects.size(), System.currentTimeMillis() - startMs);
         return projects;
     }
 
     public Project getById(UUID projectId) {
-        log.debug("Fetching project projectId={}", projectId);
-        return projectRepository.findById(projectId)
+        long startMs = System.currentTimeMillis();
+        Project project = projectRepository.findById(projectId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
+        log.info("Fetched project projectId={} durationMs={}", projectId, System.currentTimeMillis() - startMs);
+        return project;
     }
 
     @Transactional
     public Project update(UUID projectId, UpdateProjectRequest req) {
-        log.debug("Updating project projectId={}", projectId);
         Project project = getById(projectId);
         if (req.name() != null && !req.name().isBlank()) {
             project.setName(req.name());
@@ -67,8 +68,9 @@ public class ProjectService {
         if (req.description() != null) {
             project.setDescription(req.description());
         }
+        long startMs = System.currentTimeMillis();
         Project saved = projectRepository.save(project);
-        log.debug("Project updated projectId={}", projectId);
+        log.info("Project updated projectId={} durationMs={}", projectId, System.currentTimeMillis() - startMs);
         return saved;
     }
 

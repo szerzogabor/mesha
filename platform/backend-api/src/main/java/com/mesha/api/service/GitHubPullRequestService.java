@@ -52,18 +52,20 @@ public class GitHubPullRequestService {
     }
 
     public List<GitHubPullRequestDto> listForRepository(UUID repositoryId) {
-        log.debug("Listing pull requests repositoryId={}", repositoryId);
+        long startMs = System.currentTimeMillis();
         List<GitHubPullRequestDto> prs = prRepo.findAllByRepositoryId(repositoryId)
                 .stream().map(GitHubPullRequestDto::from).toList();
-        log.debug("Listed pull requests repositoryId={} count={}", repositoryId, prs.size());
+        log.info("Listed pull requests repositoryId={} count={} durationMs={}", repositoryId, prs.size(), System.currentTimeMillis() - startMs);
         return prs;
     }
 
     public GitHubPullRequestDto getById(UUID prId) {
-        log.debug("Fetching pull request prId={}", prId);
-        return prRepo.findById(prId)
+        long startMs = System.currentTimeMillis();
+        GitHubPullRequestDto pr = prRepo.findById(prId)
                 .map(GitHubPullRequestDto::from)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pull request not found"));
+        log.info("Fetched pull request prId={} durationMs={}", prId, System.currentTimeMillis() - startMs);
+        return pr;
     }
 
     /**
