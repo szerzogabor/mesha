@@ -34,5 +34,6 @@ public class WorkspaceContextInterceptor implements HandlerInterceptor {
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
                                 Object handler, Exception ex) {
         MDC.remove(WORKSPACE_ID_MDC_KEY);
+        Sentry.configureScope(scope -> scope.removeTag("workspaceId"));
     }
 }
