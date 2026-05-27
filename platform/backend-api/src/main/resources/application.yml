@@ -1,6 +1,8 @@
 spring:
   application:
     name: mesha-api
+  profiles:
+    active: ${APP_ENV:local}
 
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:mesha}
@@ -54,11 +56,10 @@ sentry:
   traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:1.0}
   profile-session-sample-rate: ${SENTRY_PROFILE_SAMPLE_RATE:1.0}
   profile-lifecycle: TRACE
-  # Forward ERROR+ log events to Sentry automatically
+  # SentryAppender is configured directly in logback-spring.xml; disable auto-configured
+  # appender to prevent duplicate event capture in Sentry.
   logging:
-    enabled: true
-    minimum-event-level: error
-    minimum-breadcrumb-level: info
+    enabled: false
   # Attach request headers and IP for context; PII is scrubbed in BeforeSendCallback
   send-default-pii: true
   # Tag every event with the service name
