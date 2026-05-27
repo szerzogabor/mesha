@@ -3,7 +3,7 @@
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
     <!-- JSON console appender with all MDC fields included -->
-    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <timeZone>UTC</timeZone>
             <!-- Structured fields for workflow correlation -->
@@ -29,13 +29,32 @@
         <minimumBreadcrumbLevel>INFO</minimumBreadcrumbLevel>
     </appender>
 
-    <root level="INFO">
-        <appender-ref ref="CONSOLE"/>
-        <appender-ref ref="SENTRY"/>
-    </root>
+    <springProfile name="local">
+        <!-- Human-readable console for local development -->
+        <appender name="READABLE_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{correlationId}] - %msg%n</pattern>
+            </encoder>
+        </appender>
+        <root level="DEBUG">
+            <appender-ref ref="READABLE_CONSOLE"/>
+            <appender-ref ref="SENTRY"/>
+        </root>
+        <logger name="com.mesha" level="DEBUG"/>
+        <logger name="org.hibernate" level="WARN"/>
+        <logger name="org.springframework.data" level="WARN"/>
+        <logger name="io.lettuce" level="WARN"/>
+    </springProfile>
 
-    <!-- Reduce noise from framework internals -->
-    <logger name="org.hibernate" level="WARN"/>
-    <logger name="org.springframework.data" level="WARN"/>
-    <logger name="io.lettuce" level="WARN"/>
+    <springProfile name="!local">
+        <root level="INFO">
+            <appender-ref ref="JSON_CONSOLE"/>
+            <appender-ref ref="SENTRY"/>
+        </root>
+        <logger name="com.mesha" level="DEBUG"/>
+        <!-- Reduce noise from framework internals -->
+        <logger name="org.hibernate" level="WARN"/>
+        <logger name="org.springframework.data" level="WARN"/>
+        <logger name="io.lettuce" level="WARN"/>
+    </springProfile>
 </configuration>

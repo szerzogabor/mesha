@@ -36,6 +36,10 @@ sentry:
   send-default-pii: false
   logs:
     enabled: true
+  # SentryAppender is configured directly in logback-spring.xml; disable auto-configured
+  # appender to prevent duplicate event capture in Sentry.
+  logging:
+    enabled: false
   traces-sample-rate: 1.0
   profile-session-sample-rate: 1.0
   profile-lifecycle: TRACE

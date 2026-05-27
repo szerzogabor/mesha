@@ -9,11 +9,9 @@ Sentry.init({
     ? `mesha-frontend@${process.env.NEXT_PUBLIC_APP_VERSION}`
     : undefined,
 
-  sendDefaultPii: true,
-
   tracesSampleRate: process.env.NEXT_PUBLIC_ENVIRONMENT === "production" ? 0.1 : 1.0,
 
-  includeLocalVariables: true,
+  sendDefaultPii: true,
 
   enableLogs: true,
 
