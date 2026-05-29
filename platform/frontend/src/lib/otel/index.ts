@@ -1,10 +1,10 @@
 import { initTracer, getTracer } from "./tracer";
 import { initLogProvider, getOtelLogger, SeverityNumber } from "./log-provider";
-import { generateCorrelationId, injectTraceHeaders, getActiveTraceContext } from "./correlation";
+import { generateCorrelationId, injectTraceHeaders } from "./correlation";
 import { otelConfig } from "./config";
 
 export { getTracer, getOtelLogger, SeverityNumber };
-export { generateCorrelationId, injectTraceHeaders, getActiveTraceContext };
+export { generateCorrelationId, injectTraceHeaders };
 export { otelConfig };
 
 let _initialized = false;

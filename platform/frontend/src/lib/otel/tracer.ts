@@ -1,5 +1,9 @@
 import { WebTracerProvider } from "@opentelemetry/sdk-trace-web";
-import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
+import {
+  BatchSpanProcessor,
+  ParentBasedSampler,
+  TraceIdRatioBasedSampler,
+} from "@opentelemetry/sdk-trace-base";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { Resource } from "@opentelemetry/resources";
 import {
@@ -35,8 +39,13 @@ export function initTracer(): WebTracerProvider | null {
 
   _provider = new WebTracerProvider({
     resource,
-    spanProcessors: [new BatchSpanProcessor(exporter)],
+    sampler: new ParentBasedSampler({
+      root: new TraceIdRatioBasedSampler(otelConfig.tracesSampleRate),
+    }),
   });
+
+  // Span processor must be added explicitly — the constructor config does not accept it.
+  _provider.addSpanProcessor(new BatchSpanProcessor(exporter));
 
   // Register as global provider with W3C TraceContext propagation.
   // On the browser, Sentry v10 does not use the global OTel provider so this is safe.
@@ -44,15 +53,19 @@ export function initTracer(): WebTracerProvider | null {
     propagator: new W3CTraceContextPropagator(),
   });
 
-  // Scope fetch propagation to our own API to avoid leaking traceparent to third-party services.
-  const apiOrigin = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+  // Scope fetch propagation to our API to avoid leaking traceparent to third-party services.
+  // FetchInstrumentation will automatically inject traceparent on matching requests — no
+  // manual header injection is needed in api-client.ts.
+  const apiOriginPattern = new RegExp(
+    otelConfig.apiUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  );
 
   registerInstrumentations({
     tracerProvider: _provider,
     instrumentations: [
       new DocumentLoadInstrumentation(),
       new FetchInstrumentation({
-        propagateTraceHeaderCorsUrls: [new RegExp(apiOrigin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))],
+        propagateTraceHeaderCorsUrls: [apiOriginPattern],
         clearTimingResources: true,
       }),
       new UserInteractionInstrumentation(),

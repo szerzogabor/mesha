@@ -9,8 +9,14 @@ export const otelConfig = {
   // Base64-encoded "<instanceId>:<apiToken>" for Grafana Cloud OTLP basic-auth
   otlpAuthHeader: process.env.NEXT_PUBLIC_OTEL_EXPORTER_OTLP_AUTH ?? "",
 
-  // Trace/log sample rates (0–1)
-  tracesSampleRate: Number(process.env.NEXT_PUBLIC_OTEL_TRACES_SAMPLE_RATE ?? "1"),
+  // Trace sample rate (0–1). Validated to avoid NaN or out-of-range values from env.
+  tracesSampleRate: (() => {
+    const rate = Number(process.env.NEXT_PUBLIC_OTEL_TRACES_SAMPLE_RATE ?? "1");
+    return isNaN(rate) || rate < 0 || rate > 1 ? 1 : rate;
+  })(),
+
+  // Single source of truth for the backend API URL, shared with api-client and tracer.
+  apiUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080",
 
   get enabled(): boolean {
     return Boolean(this.otlpEndpoint);
