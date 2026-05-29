@@ -1,4 +1,5 @@
 import { logger } from "@/lib/logger";
+import { generateCorrelationId, injectTraceHeaders } from "@/lib/otel/correlation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
@@ -16,16 +17,21 @@ async function getAuthToken(): Promise<string | null> {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await getAuthToken();
+  const correlationId = generateCorrelationId();
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(init?.headers as Record<string, string>),
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
+  // Inject W3C traceparent + correlation ID for frontend/backend trace correlation
+  injectTraceHeaders(headers, correlationId);
+
   const method = init?.method ?? "GET";
   const startMs = Date.now();
 
-  logger.api.request(method, path);
+  logger.api.request(method, path, { correlationId });
 
   const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
   const durationMs = Date.now() - startMs;

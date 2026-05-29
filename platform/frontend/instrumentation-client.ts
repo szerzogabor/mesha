@@ -1,4 +1,8 @@
+import { initOtel } from "@/lib/otel";
 import * as Sentry from "@sentry/nextjs";
+
+// Bootstrap OpenTelemetry first so Sentry can share the global context.
+initOtel();
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
