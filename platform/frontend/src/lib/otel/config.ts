@@ -4,7 +4,15 @@ export const otelConfig = {
   environment: process.env.NEXT_PUBLIC_ENVIRONMENT ?? "local",
 
   // Grafana Cloud OTLP gateway — e.g. https://otlp-gateway-prod-eu-west-0.grafana.net/otlp
-  otlpEndpoint: process.env.NEXT_PUBLIC_OTEL_EXPORTER_OTLP_ENDPOINT ?? "",
+  // In the browser, route through the same-origin Next.js rewrite proxy (/otlp/*) to avoid CORS.
+  otlpEndpoint: (() => {
+    const configured = (process.env.NEXT_PUBLIC_OTEL_EXPORTER_OTLP_ENDPOINT ?? "").replace(/\/$/, "");
+    if (!configured) return "";
+    if (typeof window !== "undefined") {
+      return `${window.location.origin}/otlp`;
+    }
+    return configured;
+  })(),
 
   // Base64-encoded "<instanceId>:<apiToken>" for Grafana Cloud OTLP basic-auth
   otlpAuthHeader: process.env.NEXT_PUBLIC_OTEL_EXPORTER_OTLP_AUTH ?? "",
