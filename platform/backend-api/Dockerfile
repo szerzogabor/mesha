@@ -3,17 +3,14 @@ WORKDIR /app
 COPY pom.xml .
 COPY src ./src
 ENV SENTRY_SKIP_SOURCE_BUNDLE=true
+# maven-dependency-plugin:copy-otel-agent copies opentelemetry-javaagent.jar into target/
+# alongside the application JAR — no wget/curl needed.
 RUN mvn clean package -DskipTests
-
-# Download OpenTelemetry Java Agent for automatic instrumentation
-ARG OTEL_AGENT_VERSION=2.4.0
-RUN wget -q -O /app/opentelemetry-javaagent.jar \
-    https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v${OTEL_AGENT_VERSION}/opentelemetry-javaagent.jar
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
-COPY --from=build /app/opentelemetry-javaagent.jar opentelemetry-javaagent.jar
+COPY --from=build /app/target/opentelemetry-javaagent.jar opentelemetry-javaagent.jar
 EXPOSE 10000
 ENTRYPOINT ["java", \
     "-XX:+UseContainerSupport", \
