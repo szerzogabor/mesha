@@ -32,6 +32,9 @@ export function initTracer(): WebTracerProvider | null {
 
   const exporter = new OTLPTraceExporter({
     url: `${otelConfig.otlpEndpoint}/v1/traces`,
+    headers: otelConfig.authorizationHeader
+      ? { Authorization: otelConfig.authorizationHeader }
+      : undefined,
   });
 
   _provider = new WebTracerProvider({
