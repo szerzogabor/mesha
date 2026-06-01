@@ -4,23 +4,21 @@ COPY pom.xml .
 COPY src ./src
 RUN mvn clean package -DskipTests
 
-# Download Sentry OpenTelemetry agent for distributed tracing instrumentation
+# Download the standard OpenTelemetry Java Agent for distributed tracing.
+# The agent auto-instruments Spring Boot, JDBC, Redis, and HTTP clients and exports
+# spans to Grafana Tempo (or any OTLP backend) via OTEL_EXPORTER_OTLP_ENDPOINT.
 RUN mvn dependency:copy \
-    -Dartifact=io.sentry:sentry-opentelemetry-agent:8.42.0:jar \
+    -Dartifact=io.opentelemetry.javaagent:opentelemetry-javaagent:2.12.0:jar \
     -DoutputDirectory=/app/agents
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
-COPY --from=build /app/agents/sentry-opentelemetry-agent-8.42.0.jar sentry-agent.jar
+COPY --from=build /app/agents/opentelemetry-javaagent-2.12.0.jar otel-agent.jar
 EXPOSE 8081
-
-# SENTRY_AUTO_INIT=false: the Spring Boot starter owns SDK initialization;
-# the OTel agent must not attempt a second init.
-ENV SENTRY_AUTO_INIT=false
 
 ENTRYPOINT ["java", \
     "-XX:+UseContainerSupport", \
     "-XX:MaxRAMPercentage=75.0", \
-    "-javaagent:/app/sentry-agent.jar", \
+    "-javaagent:/app/otel-agent.jar", \
     "-jar", "app.jar"]

@@ -26,7 +26,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics
+  tracing:
+    sampling:
+      probability: 1.0
 
 sentry:
   dsn: ${SENTRY_DSN:https://c2f30f5b2b577059370f00a36ee7476f@o4511348602241024.ingest.de.sentry.io/4511423699877968}
@@ -65,6 +68,10 @@ spring:
 sentry:
   traces-sample-rate: 0.1
   profile-session-sample-rate: 0.1
+management:
+  tracing:
+    sampling:
+      probability: 0.1
 
 ---
 spring:
@@ -74,6 +81,10 @@ spring:
 sentry:
   traces-sample-rate: 0.5
   profile-session-sample-rate: 0.5
+management:
+  tracing:
+    sampling:
+      probability: 0.5
 
 ---
 spring:
