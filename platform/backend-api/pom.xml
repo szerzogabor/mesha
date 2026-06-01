@@ -166,7 +166,9 @@
                                     <destFileName>opentelemetry-javaagent.jar</destFileName>
                                 </artifactItem>
                             </artifactItems>
-                            <outputDirectory>${project.build.directory}</outputDirectory>
+                            <!-- target/agents/ keeps the agent JAR separate from the app JAR so
+                                 the Dockerfile's COPY target/*.jar wildcard matches exactly one file. -->
+                            <outputDirectory>${project.build.directory}/agents</outputDirectory>
                         </configuration>
                     </execution>
                 </executions>
