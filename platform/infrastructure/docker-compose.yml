@@ -40,20 +40,21 @@ services:
       DB_USER: mesha
       DB_PASSWORD: mesha
       REDIS_URL: redis://redis:6379
-      # OpenTelemetry Java Agent configuration
+      # OpenTelemetry Java Agent — mirrors the frontend's Grafana Cloud setup.
+      # Set OTEL_EXPORTER_OTLP_ENDPOINT to the same value as the frontend's
+      # NEXT_PUBLIC_OTEL_EXPORTER_OTLP_ENDPOINT (e.g. https://otlp-gateway-prod-eu-central-0.grafana.net/otlp).
+      # Set OTEL_EXPORTER_OTLP_HEADERS to "Authorization=Basic <base64>" where the
+      # base64 value is the same as the frontend's NEXT_PUBLIC_OTEL_EXPORTER_OTLP_AUTH.
       OTEL_SERVICE_NAME: mesha-api
       OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-otlp}
       OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-none}
-      OTEL_LOGS_EXPORTER: ${OTEL_LOGS_EXPORTER:-none}
+      OTEL_LOGS_EXPORTER: ${OTEL_LOGS_EXPORTER:-otlp}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
-      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
+      # Grafana Cloud OTLP gateway uses HTTP/protobuf, not gRPC
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}
       OTEL_PROPAGATORS: tracecontext,baggage
       OTEL_INSTRUMENTATION_LOGBACK_MDC_ADD_BAGGAGE: "true"
-      # Loki log shipping (Loki4j Logback appender)
-      LOKI_URL: ${LOKI_URL:-}
-      LOKI_USERNAME: ${LOKI_USERNAME:-}
-      LOKI_PASSWORD: ${LOKI_PASSWORD:-}
     env_file:
       - .env
     depends_on:
