@@ -71,10 +71,11 @@ public class CorrelationFilter implements Filter {
         }
 
         final String corrId = correlationId;
+        final String reqId = requestId;
         final String instId = installationId;
         Sentry.configureScope(scope -> {
             scope.setTag(MDC_CORRELATION_ID, corrId);
-            scope.setTag(MDC_REQUEST_ID, requestId);
+            scope.setTag(MDC_REQUEST_ID, reqId);
             if (instId != null && !instId.isBlank()) {
                 scope.setTag(MDC_INSTALLATION_ID, instId);
             }
