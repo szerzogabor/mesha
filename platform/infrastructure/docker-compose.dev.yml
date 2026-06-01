@@ -1,7 +1,8 @@
 version: "3.9"
 
-# Local development: only starts infrastructure dependencies (DB + Redis)
-# Run backend and frontend locally on your machine
+# Local development: starts infrastructure dependencies (DB, Redis) and the Grafana
+# observability stack (Loki + Tempo + Grafana) for local log/trace inspection.
+# Run backend and frontend locally on your machine alongside this stack.
 
 services:
   postgres:
@@ -20,5 +21,45 @@ services:
     ports:
       - "6379:6379"
 
+  # Loki: log aggregation — receives structured JSON logs from the Loki4j Logback appender
+  loki:
+    image: grafana/loki:3.0.0
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki_dev_data:/loki
+
+  # Tempo: distributed tracing backend — receives OTLP spans from the OTel Java Agent
+  tempo:
+    image: grafana/tempo:2.5.0
+    command: ["-config.file=/etc/tempo.yaml"]
+    ports:
+      - "3200:3200"    # Tempo HTTP API
+      - "4317:4317"    # OTLP gRPC receiver
+      - "4318:4318"    # OTLP HTTP receiver
+    volumes:
+      - ./grafana/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo_dev_data:/tmp/tempo
+
+  # Grafana: dashboards and log/trace exploration UI
+  grafana:
+    image: grafana/grafana:11.0.0
+    ports:
+      - "3001:3000"
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_dev_data:/var/lib/grafana
+    depends_on:
+      - loki
+      - tempo
+
 volumes:
   postgres_dev_data:
+  loki_dev_data:
+  tempo_dev_data:
+  grafana_dev_data:

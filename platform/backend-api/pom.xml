@@ -94,6 +94,12 @@
             <artifactId>logstash-logback-encoder</artifactId>
             <version>7.4</version>
         </dependency>
+        <!-- Loki4j: ships structured log events directly to Loki's push API -->
+        <dependency>
+            <groupId>com.github.loki4j</groupId>
+            <artifactId>loki-logback-appender</artifactId>
+            <version>1.5.2</version>
+        </dependency>
 
         <!-- GitHub App integration: JWT generation for App auth and REST API client -->
         <dependency>

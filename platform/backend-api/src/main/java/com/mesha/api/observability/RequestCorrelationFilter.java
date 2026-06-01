@@ -17,9 +17,19 @@ import java.io.IOException;
 import java.util.UUID;
 
 /**
- * Populates MDC with per-request context (correlationId, traceId, method, URI, user-agent)
- * so every log line emitted during the request carries these fields automatically.
- * Also propagates the correlation ID to Sentry scope and response headers.
+ * Populates MDC with per-request context so every log line emitted during the request carries
+ * correlation fields automatically. Also propagates IDs to Sentry scope and response headers.
+ *
+ * MDC keys set here:
+ *   correlationId  — client-supplied or newly generated UUID (also returned in X-Correlation-ID)
+ *   requestId      — always-fresh UUID identifying this specific server-side request
+ *   workflowId     — forwarded from X-Workflow-ID header (set by WorkflowIdPropagationFilter)
+ *   requestMethod  — HTTP verb
+ *   requestUri     — path with UUID segments replaced by {id} for low cardinality
+ *   userAgent      — User-Agent header value
+ *
+ * OTel trace context (trace_id, span_id, trace_flags) is injected into MDC automatically
+ * by the OpenTelemetry Java Agent's Logback bridge — no manual extraction needed.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -29,7 +39,7 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
 
     static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
     static final String CORRELATION_ID_MDC_KEY = "correlationId";
-    static final String TRACE_ID_MDC_KEY = "traceId";
+    static final String REQUEST_ID_MDC_KEY = "requestId";
     static final String REQUEST_METHOD_MDC_KEY = "requestMethod";
     static final String REQUEST_URI_MDC_KEY = "requestUri";
     static final String USER_AGENT_MDC_KEY = "userAgent";
@@ -41,20 +51,20 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
         long startTime = System.currentTimeMillis();
 
         String correlationId = resolveCorrelationId(request);
-        String sentryTraceId = Sentry.getSpan() != null
-                ? Sentry.getSpan().getSpanContext().getTraceId().toString()
-                : UUID.randomUUID().toString().replace("-", "");
+        String requestId = UUID.randomUUID().toString();
+        String sanitizedUri = sanitizeUri(request);
 
         MDC.put(CORRELATION_ID_MDC_KEY, correlationId);
-        MDC.put(TRACE_ID_MDC_KEY, sentryTraceId);
+        MDC.put(REQUEST_ID_MDC_KEY, requestId);
         MDC.put(REQUEST_METHOD_MDC_KEY, request.getMethod());
-        MDC.put(REQUEST_URI_MDC_KEY, sanitizeUri(request));
+        MDC.put(REQUEST_URI_MDC_KEY, sanitizedUri);
         MDC.put(USER_AGENT_MDC_KEY, request.getHeader("User-Agent"));
 
         Sentry.configureScope(scope -> {
             scope.setTag("correlationId", correlationId);
+            scope.setTag("requestId", requestId);
             scope.setTag("httpMethod", request.getMethod());
-            scope.setTag("httpPath", sanitizeUri(request));
+            scope.setTag("httpPath", sanitizedUri);
         });
 
         response.setHeader(CORRELATION_ID_HEADER, correlationId);
@@ -68,7 +78,6 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
             if (status >= 500) {
                 log.error(msg, status, durationMs);
             } else if (status == 401 || status == 403) {
-                // Auth failures are expected; avoid polluting logs/Sentry with warnings
                 log.debug(msg, status, durationMs);
             } else if (status >= 400) {
                 log.warn(msg, status, durationMs);
@@ -86,7 +95,6 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
 
     private String sanitizeUri(HttpServletRequest request) {
         String uri = request.getRequestURI();
-        // Strip UUIDs from path to avoid high-cardinality Sentry tags
         return uri.replaceAll("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", "{id}");
     }
 }
