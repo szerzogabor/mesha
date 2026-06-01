@@ -8,10 +8,15 @@
             <timeZone>UTC</timeZone>
             <!-- Structured fields for workflow correlation -->
             <includeMdcKeyName>correlationId</includeMdcKeyName>
+            <includeMdcKeyName>requestId</includeMdcKeyName>
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <includeMdcKeyName>installationId</includeMdcKeyName>
             <includeMdcKeyName>workflowId</includeMdcKeyName>
             <includeMdcKeyName>sessionId</includeMdcKeyName>
             <includeMdcKeyName>jobId</includeMdcKeyName>
             <includeMdcKeyName>githubEventId</includeMdcKeyName>
+            <includeMdcKeyName>githubRepository</includeMdcKeyName>
+            <includeMdcKeyName>prNumber</includeMdcKeyName>
             <includeMdcKeyName>retryCount</includeMdcKeyName>
             <includeMdcKeyName>provider</includeMdcKeyName>
             <includeMdcKeyName>orchestrationState</includeMdcKeyName>
@@ -21,6 +26,34 @@
                 <rootCauseFirst>true</rootCauseFirst>
             </throwableConverter>
         </encoder>
+    </appender>
+
+    <!-- Loki4j appender – ships logs directly to Grafana Cloud Loki.
+         Enabled for non-local profiles. Requires LOKI_URL, LOKI_USERNAME, LOKI_PASSWORD env vars.
+         Labels allow filtering by app/env in Grafana; the message body is JSON for LogQL parsing. -->
+    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+        <http>
+            <url>${LOKI_URL:-http://localhost:3100}/loki/api/v1/push</url>
+            <auth>
+                <username>${LOKI_USERNAME:-}</username>
+                <password>${LOKI_PASSWORD:-}</password>
+            </auth>
+        </http>
+        <format>
+            <label>
+                <pattern>app=mesha-worker,env=${APP_ENV:-local},host=${HOSTNAME:-localhost}</pattern>
+            </label>
+            <message class="com.github.loki4j.logback.JsonLayout">
+                <appendMdcProperties>true</appendMdcProperties>
+            </message>
+            <sortByTime>true</sortByTime>
+        </format>
+    </appender>
+
+    <!-- Async wrapper to avoid blocking the calling thread on Loki pushes -->
+    <appender name="LOKI_ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="LOKI"/>
+        <neverBlock>true</neverBlock>
     </appender>
 
     <!-- Sentry appender: sends ERROR logs as events, INFO+ as breadcrumbs -->
@@ -33,7 +66,7 @@
         <!-- Human-readable console for local development -->
         <appender name="READABLE_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder>
-                <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{correlationId}] - %msg%n</pattern>
+                <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{correlationId}] [trace=%X{traceId}] - %msg%n</pattern>
             </encoder>
         </appender>
         <root level="DEBUG">
@@ -49,6 +82,7 @@
     <springProfile name="!local">
         <root level="INFO">
             <appender-ref ref="JSON_CONSOLE"/>
+            <appender-ref ref="LOKI_ASYNC"/>
             <appender-ref ref="SENTRY"/>
         </root>
         <logger name="com.mesha" level="DEBUG"/>
@@ -56,5 +90,6 @@
         <logger name="org.hibernate" level="WARN"/>
         <logger name="org.springframework.data" level="WARN"/>
         <logger name="io.lettuce" level="WARN"/>
+        <logger name="com.github.loki4j" level="WARN"/>
     </springProfile>
 </configuration>
