@@ -14,7 +14,7 @@ export const otelConfig = {
   })(),
 
   // Single source of truth for the backend API URL, shared with api-client and tracer.
-  apiUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080",
+  apiUrl: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080",
 
   // OTel is enabled when NEXT_PUBLIC_OTEL_ENABLED=true (set in .env.production).
   get enabled(): boolean {
