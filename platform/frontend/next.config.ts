@@ -4,7 +4,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 const nextConfig: NextConfig = {
   output: "standalone",
   async rewrites() {
-    const otlpTarget = process.env.NEXT_PUBLIC_OTEL_EXPORTER_OTLP_ENDPOINT;
+    const otlpTarget = process.env.NEXT_PUBLIC_OTEL_EXPORTER_OTLP_ENDPOINT?.replace(/\/$/, "");
     if (!otlpTarget) return [];
     return [
       {

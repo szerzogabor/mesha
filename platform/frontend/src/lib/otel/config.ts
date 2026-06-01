@@ -6,7 +6,7 @@ export const otelConfig = {
   // Grafana Cloud OTLP gateway — e.g. https://otlp-gateway-prod-eu-west-0.grafana.net/otlp
   // In the browser, route through the same-origin Next.js rewrite proxy (/otlp/*) to avoid CORS.
   otlpEndpoint: (() => {
-    const configured = process.env.NEXT_PUBLIC_OTEL_EXPORTER_OTLP_ENDPOINT ?? "";
+    const configured = (process.env.NEXT_PUBLIC_OTEL_EXPORTER_OTLP_ENDPOINT ?? "").replace(/\/$/, "");
     if (!configured) return "";
     if (typeof window !== "undefined") {
       return `${window.location.origin}/otlp`;
