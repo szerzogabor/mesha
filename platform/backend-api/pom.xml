@@ -100,6 +100,11 @@
             <artifactId>loki-logback-appender</artifactId>
             <version>1.5.2</version>
         </dependency>
+        <!-- Janino: enables <if condition> in logback-spring.xml for conditional appender wiring -->
+        <dependency>
+            <groupId>org.codehaus.janino</groupId>
+            <artifactId>janino</artifactId>
+        </dependency>
 
         <!-- GitHub App integration: JWT generation for App auth and REST API client -->
         <dependency>
