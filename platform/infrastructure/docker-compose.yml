@@ -40,6 +40,20 @@ services:
       DB_USER: mesha
       DB_PASSWORD: mesha
       REDIS_URL: redis://redis:6379
+      # OpenTelemetry Java Agent configuration
+      OTEL_SERVICE_NAME: mesha-api
+      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-otlp}
+      OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-none}
+      OTEL_LOGS_EXPORTER: ${OTEL_LOGS_EXPORTER:-none}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
+      OTEL_PROPAGATORS: tracecontext,baggage
+      OTEL_INSTRUMENTATION_LOGBACK_MDC_ADD_BAGGAGE: "true"
+      # Loki log shipping (Loki4j Logback appender)
+      LOKI_URL: ${LOKI_URL:-}
+      LOKI_USERNAME: ${LOKI_USERNAME:-}
+      LOKI_PASSWORD: ${LOKI_PASSWORD:-}
     env_file:
       - .env
     depends_on:

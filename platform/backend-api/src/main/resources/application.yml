@@ -88,3 +88,24 @@ logging:
     com.mesha: DEBUG
     org.springframework.security: WARN
     org.hibernate.SQL: WARN
+
+# OpenTelemetry Java Agent configuration
+# These properties are read by the OTel agent at startup (via OTEL_* env vars or system properties).
+# See: https://opentelemetry.io/docs/instrumentation/java/automatic/agent-config/
+#
+# Required environment variables in production:
+#   OTEL_SERVICE_NAME=mesha-api                         (service name in traces)
+#   OTEL_EXPORTER_OTLP_ENDPOINT=<tempo-url>             (Tempo gRPC/HTTP endpoint)
+#   OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic <b64(user:token)>  (Grafana Cloud auth)
+#   OTEL_EXPORTER_OTLP_PROTOCOL=grpc                    (or http/protobuf)
+#   OTEL_TRACES_EXPORTER=otlp                           (send traces to Tempo)
+#   OTEL_METRICS_EXPORTER=none                          (metrics handled by Actuator)
+#   OTEL_LOGS_EXPORTER=none                             (logs handled by Loki4j)
+#   OTEL_PROPAGATORS=tracecontext,baggage               (W3C Trace Context + Baggage)
+#   OTEL_INSTRUMENTATION_LOGBACK_MDC_ADD_BAGGAGE=true   (inject OTel baggage into MDC)
+
+# Loki log shipping configuration (used by logback-spring.xml Loki4jAppender)
+# Required environment variables:
+#   LOKI_URL=http://loki:3100                   (or Grafana Cloud Loki URL)
+#   LOKI_USERNAME=<grafana-cloud-user-id>       (Grafana Cloud only; leave blank for local)
+#   LOKI_PASSWORD=<grafana-cloud-api-key>       (Grafana Cloud only; leave blank for local)
