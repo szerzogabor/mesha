@@ -48,9 +48,10 @@
                 <pattern>service=mesha-api,env=${APP_ENV:-local},level=%level,host=${HOSTNAME:-local}</pattern>
                 <sortByKey>true</sortByKey>
             </label>
-            <!-- Structured JSON log line — includes all MDC correlation fields and OTel trace context -->
+            <!-- Structured log line in logfmt format — Loki can parse with "| logfmt" in LogQL.
+                 We avoid %enc (a logstash-only conversion) which Loki4j's compiler does not register. -->
             <message>
-                <pattern>{"timestamp":"%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ}","level":"%level","logger":"%logger{36}","thread":"%thread","message":"%enc{%msg}{JSON}","correlationId":"%X{correlationId}","requestId":"%X{requestId}","workflowId":"%X{workflowId}","traceId":"%X{trace_id}","spanId":"%X{span_id}","userId":"%X{userId}","workspaceId":"%X{workspaceId}","requestMethod":"%X{requestMethod}","requestUri":"%X{requestUri}","exception":"%enc{%ex{short}}{JSON}"}%n</pattern>
+                <pattern>level=%level logger=%logger{36} correlationId=%X{correlationId} requestId=%X{requestId} workflowId=%X{workflowId} traceId=%X{trace_id} spanId=%X{span_id} userId=%X{userId} workspaceId=%X{workspaceId} method=%X{requestMethod} uri=%X{requestUri} msg=%message%n%ex</pattern>
             </message>
             <sortByTime>true</sortByTime>
         </format>
