@@ -26,9 +26,6 @@ export function initLogProvider(): LoggerProvider | null {
 
   const exporter = new OTLPLogExporter({
     url: `${otelConfig.otlpEndpoint}/v1/logs`,
-    headers: otelConfig.authorizationHeader
-      ? { Authorization: otelConfig.authorizationHeader }
-      : undefined,
   });
 
   _provider = new LoggerProvider({ resource });
