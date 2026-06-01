@@ -30,13 +30,15 @@
     </appender>
 
     <!-- Loki appender — ships structured log events to Loki's push API.
-         Enabled in all non-local profiles when LOKI_URL is set. -->
+         Only attached to the root logger when LOKI_URL env var is set (see <if> guards below).
+         When LOKI_URL is absent the appender is defined but never started, so no connection
+         attempts are made and no ConnectException noise appears in the logs. -->
     <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
         <http>
             <url>${LOKI_URL:-http://localhost:3100}/loki/api/v1/push</url>
             <connectionTimeoutMs>10000</connectionTimeoutMs>
             <requestTimeoutMs>10000</requestTimeoutMs>
-            <!-- Grafana Cloud basic auth — no-op when credentials are blank (local Loki) -->
+            <!-- Grafana Cloud basic auth — leave blank for local Loki -->
             <auth>
                 <username>${LOKI_USERNAME:-}</username>
                 <password>${LOKI_PASSWORD:-}</password>
@@ -49,7 +51,7 @@
                 <sortByKey>true</sortByKey>
             </label>
             <!-- Structured log line in logfmt format — Loki can parse with "| logfmt" in LogQL.
-                 We avoid %enc (a logstash-only conversion) which Loki4j's compiler does not register. -->
+                 %enc (logstash-only conversion) is intentionally avoided here. -->
             <message>
                 <pattern>level=%level logger=%logger{36} correlationId=%X{correlationId} requestId=%X{requestId} workflowId=%X{workflowId} traceId=%X{trace_id} spanId=%X{span_id} userId=%X{userId} workspaceId=%X{workspaceId} method=%X{requestMethod} uri=%X{requestUri} msg=%message%n%ex</pattern>
             </message>
@@ -77,8 +79,13 @@
         </appender>
         <root level="DEBUG">
             <appender-ref ref="READABLE_CONSOLE"/>
-            <appender-ref ref="LOKI"/>
             <appender-ref ref="SENTRY"/>
+            <!-- Only activate Loki shipping when LOKI_URL is explicitly set -->
+            <if condition='System.getenv("LOKI_URL") != null &amp;&amp; !System.getenv("LOKI_URL").isEmpty()'>
+                <then>
+                    <appender-ref ref="LOKI"/>
+                </then>
+            </if>
         </root>
         <logger name="com.mesha" level="DEBUG"/>
         <logger name="org.springframework.security" level="INFO"/>
@@ -89,8 +96,13 @@
     <springProfile name="!local">
         <root level="INFO">
             <appender-ref ref="JSON_CONSOLE"/>
-            <appender-ref ref="LOKI"/>
             <appender-ref ref="SENTRY"/>
+            <!-- Only activate Loki shipping when LOKI_URL is explicitly set -->
+            <if condition='System.getenv("LOKI_URL") != null &amp;&amp; !System.getenv("LOKI_URL").isEmpty()'>
+                <then>
+                    <appender-ref ref="LOKI"/>
+                </then>
+            </if>
         </root>
         <logger name="com.mesha" level="DEBUG"/>
         <logger name="org.springframework.security" level="WARN"/>
