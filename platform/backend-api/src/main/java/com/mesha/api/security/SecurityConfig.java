@@ -56,7 +56,15 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOriginPatterns(List.of(allowedOrigins.split(",")));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
+        config.setAllowedHeaders(List.of(
+            "Authorization",
+            "Content-Type",
+            "X-Correlation-Id",
+            "traceparent",
+            "tracestate",
+            "baggage",
+            "sentry-trace"
+        ));
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

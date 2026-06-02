@@ -56,7 +56,7 @@ services:
           type: redis
           property: connectionString
       - key: CORS_ALLOWED_ORIGINS
-        sync: false
+        value: "https://mesha-nu.vercel.app,https://mesha-*.vercel.app,http://localhost:3000"
       - key: CLERK_JWKS_URI
         sync: false
       - key: APP_ENV
