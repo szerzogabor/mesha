@@ -97,12 +97,9 @@
         <root level="INFO">
             <appender-ref ref="JSON_CONSOLE"/>
             <appender-ref ref="SENTRY"/>
-            <!-- Only activate Loki shipping when LOKI_URL is explicitly set -->
-            <if condition='System.getenv("LOKI_URL") != null &amp;&amp; !System.getenv("LOKI_URL").isEmpty()'>
-                <then>
-                    <appender-ref ref="LOKI"/>
-                </then>
-            </if>
+            <!-- Logs are shipped to Grafana Cloud via the OTel Java Agent (OTEL_LOGS_EXPORTER=otlp).
+                 Loki4j direct-push is intentionally omitted here to avoid duplicate ingestion and
+                 spurious 401 errors when only OTLP credentials are configured. -->
         </root>
         <logger name="com.mesha" level="DEBUG"/>
         <logger name="org.springframework.security" level="WARN"/>
