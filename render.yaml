@@ -77,9 +77,9 @@ services:
         value: "none"
       - key: OTEL_PROPAGATORS
         value: "tracecontext,baggage"
-      # Set in Render dashboard: Authorization=Basic <value of NEXT_PUBLIC_OTEL_EXPORTER_OTLP_AUTH>
+      # Write-only Grafana Cloud ingestion token — same credential as NEXT_PUBLIC_OTEL_EXPORTER_OTLP_AUTH
       - key: OTEL_EXPORTER_OTLP_HEADERS
-        sync: false
+        value: "Authorization=Basic MTY0OTc2ODpnbGNfZXlKdklqb2lNVGMzTVRRek9TSXNJbTRpT2lKdFpYTm9ZU0lzSW1zaU9pSndOV1J0TXpWcVYzRTBWVTFPTkRoWWRqWTRkalV5VUd3aUxDSnRJanA3SW5JaU9pSndjbTlrTFdWMUxXTmxiblJ5WVd3dE1DSjlmUT09"
 
   - type: web
     name: mesha-backend-worker
