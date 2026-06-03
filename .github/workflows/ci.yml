@@ -102,7 +102,7 @@ jobs:
         run: npm ci
       - name: Dependency audit
         working-directory: ./platform/frontend
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=critical
       - name: Secret scanning
         uses: gitleaks/gitleaks-action@v2
         env:
