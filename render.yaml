@@ -132,3 +132,22 @@ services:
         sync: false
       - key: GITHUB_WEBHOOK_SECRET
         sync: false
+      # OpenTelemetry — Grafana Cloud OTLP gateway (prod-eu-central-0)
+      # Logs and traces are shipped via the OTel Java Agent; Loki4j is disabled in production.
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: "https://otlp-gateway-prod-eu-central-0.grafana.net/otlp"
+      - key: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: "http/protobuf"
+      - key: OTEL_SERVICE_NAME
+        value: "mesha-worker"
+      - key: OTEL_TRACES_EXPORTER
+        value: "otlp"
+      - key: OTEL_LOGS_EXPORTER
+        value: "otlp"
+      - key: OTEL_METRICS_EXPORTER
+        value: "none"
+      - key: OTEL_PROPAGATORS
+        value: "tracecontext,baggage"
+      # Write-only Grafana Cloud ingestion token — same credential as mesha-backend-api
+      - key: OTEL_EXPORTER_OTLP_HEADERS
+        value: "Authorization=Basic MTY0OTc2ODpnbGNfZXlKdklqb2lNVGMzTVRRek9TSXNJbTRpT2lKdFpYTm9ZU0lzSW1zaU9pSndOV1J0TXpWcVYzRTBWVTFPTkRoWWRqWTRkalV5VUd3aUxDSnRJanA3SW5JaU9pSndjbTlrTFdWMUxXTmxiblJ5WVd3dE1DSjlmUT09"
