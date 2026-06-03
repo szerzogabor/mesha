@@ -56,8 +56,19 @@ cp platform/backend-api/.env.example platform/backend-api/.env
 Edit `platform/backend-api/.env` and set:
 
 - `CLERK_JWKS_URI` — from [Clerk dashboard](https://dashboard.clerk.com) → your app → API Keys → JWKS URL
+- `GITHUB_APP_ID` — numeric App ID from GitHub → Settings → Developer settings → GitHub Apps → your app
+- `GITHUB_APP_CLIENT_ID` — from the same GitHub App settings page
+- `GITHUB_APP_CLIENT_SECRET` — from the same GitHub App settings page
+- `GITHUB_APP_PRIVATE_KEY` — download the `.pem` from the GitHub App page, then flatten to one line:
+  ```bash
+  awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' path/to/private-key.pem
+  ```
+- `GITHUB_APP_WEBHOOK_SECRET` — the secret you configured in GitHub App settings → Webhook secret
+- `GITHUB_APP_NAME` — the slug name of your GitHub App (e.g. `mesha-github-app`)
 
 The database and Redis values default to the Docker Compose service so no changes are needed for local dev.
+
+> **GitHub App Setup URL:** In your GitHub App settings (GitHub → Settings → Developer settings → GitHub Apps → your app → General), set the **Setup URL** to `{FRONTEND_URL}/github/callback` (e.g. `http://localhost:3000/github/callback` for local dev). This is required for the installation redirect flow to work — GitHub uses this URL to send users back to the app after installing, passing `installation_id` and `state` as query parameters.
 
 ### Step 3 — Configure backend-worker
 
