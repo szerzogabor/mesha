@@ -28,7 +28,7 @@ jobs:
             backend-worker:
               - 'platform/backend-worker/**'
 
-  build-frontend:
+  validate-frontend:
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
@@ -38,14 +38,22 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
-      - name: Install frontend deps
+          cache: npm
+          cache-dependency-path: platform/frontend/package-lock.json
+      - name: Install dependencies
         working-directory: ./platform/frontend
         run: npm ci
-      - name: Build frontend
+      - name: Lint
+        working-directory: ./platform/frontend
+        run: npm run lint
+      - name: Type check
+        working-directory: ./platform/frontend
+        run: npm run type-check
+      - name: Build check
         working-directory: ./platform/frontend
         run: npm run build
 
-  build-backend-api:
+  validate-backend-api:
     needs: changes
     if: needs.changes.outputs.backend-api == 'true'
     runs-on: ubuntu-latest
@@ -56,14 +64,11 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - name: Build backend-api
+      - name: Compile and test
         working-directory: ./platform/backend-api
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_SKIP_SOURCE_BUNDLE: ${{ !secrets.SENTRY_AUTH_TOKEN }}
-        run: mvn clean package -DskipTests
+        run: mvn clean test
 
-  build-backend-worker:
+  validate-backend-worker:
     needs: changes
     if: needs.changes.outputs.backend-worker == 'true'
     runs-on: ubuntu-latest
@@ -74,30 +79,55 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - name: Build backend-worker
+      - name: Compile and test
         working-directory: ./platform/backend-worker
-        run: mvn clean package -DskipTests
+        run: mvn clean test
 
-  # Aggregator job — always runs so branch protection check "build" is always satisfied.
-  # Fails if any service build failed; passes (or skips) when no relevant paths changed.
-  build:
-    needs: [build-frontend, build-backend-api, build-backend-worker]
-    if: always()
+  quality:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: read
     steps:
-      - name: Check all builds passed
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: platform/frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: ./platform/frontend
+        run: npm ci
+      - name: Dependency audit
+        working-directory: ./platform/frontend
+        run: npm audit --audit-level=critical
+      - name: Secret scanning
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Aggregator — always runs so branch protection check "ci" is always satisfied.
+  # Fails if any validation failed; passes (or skips) when no relevant paths changed.
+  ci:
+    needs: [validate-frontend, validate-backend-api, validate-backend-worker, quality]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all validations passed
         run: |
           results=(
-            "${{ needs.build-frontend.result }}"
-            "${{ needs.build-backend-api.result }}"
-            "${{ needs.build-backend-worker.result }}"
+            "${{ needs.validate-frontend.result }}"
+            "${{ needs.validate-backend-api.result }}"
+            "${{ needs.validate-backend-worker.result }}"
+            "${{ needs.quality.result }}"
           )
           for result in "${results[@]}"; do
             if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
-              echo "A service build failed or was cancelled: $result"
+              echo "A validation job failed or was cancelled: $result"
               exit 1
             fi
           done
-          echo "All applicable builds passed (skipped services had no relevant changes)."
+          echo "All applicable validations passed."
