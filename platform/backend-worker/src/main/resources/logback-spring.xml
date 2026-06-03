@@ -82,8 +82,10 @@
     <springProfile name="!local">
         <root level="INFO">
             <appender-ref ref="JSON_CONSOLE"/>
-            <appender-ref ref="LOKI_ASYNC"/>
             <appender-ref ref="SENTRY"/>
+            <!-- Logs are shipped to Grafana Cloud via the OTel Java Agent (OTEL_LOGS_EXPORTER=otlp).
+                 Loki4j direct-push is intentionally omitted here to avoid duplicate ingestion and
+                 spurious 401 errors when only OTLP credentials are configured. -->
         </root>
         <logger name="com.mesha" level="DEBUG"/>
         <!-- Reduce noise from framework internals -->
