@@ -177,6 +177,7 @@ export default function GitHubPage({
         const paramsWithoutInstallation = new URLSearchParams(searchParams.toString());
         paramsWithoutInstallation.delete("installation_id");
         paramsWithoutInstallation.delete("setup_action");
+        paramsWithoutInstallation.delete("state");
         const nextQuery = paramsWithoutInstallation.toString();
         router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname);
         logger.github.uiStateChange("registering_installation", "registered", {
@@ -217,9 +218,7 @@ export default function GitHubPage({
               No GitHub App installations found.
             </p>
             <a
-              href={`https://github.com/apps/${process.env.NEXT_PUBLIC_GITHUB_APP_NAME ?? "mesha-github-app"}/installations/new`}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={`https://github.com/apps/${process.env.NEXT_PUBLIC_GITHUB_APP_NAME ?? "mesha-github-app"}/installations/new?state=${workspaceId}`}
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors"
             >
               Install GitHub App
