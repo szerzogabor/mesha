@@ -20,7 +20,7 @@ jobs:
               "strict": true,
               "checks": [
                 {
-                  "context": "build"
+                  "context": "ci"
                 }
               ]
             },
