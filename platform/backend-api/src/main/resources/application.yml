@@ -46,6 +46,9 @@ management:
     web:
       exposure:
         include: health,info,metrics
+  tracing:
+    sampling:
+      probability: 1.0
 
 # Sentry observability configuration
 sentry:
@@ -115,3 +118,47 @@ logging:
 # Loki4j Logback appender (optional, local development only):
 #   LOKI_URL=http://loki:3100  — enables direct Loki push alongside OTLP log export.
 #   Leave unset in production; OTLP log export via the agent replaces it.
+
+---
+spring:
+  config:
+    activate:
+      on-profile: production
+sentry:
+  traces-sample-rate: 0.1
+  profile-session-sample-rate: 0.1
+management:
+  tracing:
+    sampling:
+      probability: 0.1
+
+---
+spring:
+  config:
+    activate:
+      on-profile: staging
+sentry:
+  traces-sample-rate: 0.5
+  profile-session-sample-rate: 0.5
+management:
+  tracing:
+    sampling:
+      probability: 0.5
+
+---
+spring:
+  config:
+    activate:
+      on-profile: preview
+sentry:
+  traces-sample-rate: 1.0
+  profile-session-sample-rate: 1.0
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+sentry:
+  traces-sample-rate: 1.0
+  profile-session-sample-rate: 1.0

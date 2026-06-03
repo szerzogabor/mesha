@@ -13,9 +13,19 @@
             <includeMdcKeyName>trace_id</includeMdcKeyName>
             <includeMdcKeyName>span_id</includeMdcKeyName>
             <includeMdcKeyName>trace_flags</includeMdcKeyName>
+            <!-- traceId also populated by ApiTracer via Micrometer OTel bridge -->
+            <includeMdcKeyName>traceId</includeMdcKeyName>
             <!-- User / workspace context -->
             <includeMdcKeyName>userId</includeMdcKeyName>
             <includeMdcKeyName>workspaceId</includeMdcKeyName>
+            <!-- GitHub workflow context -->
+            <includeMdcKeyName>installationId</includeMdcKeyName>
+            <includeMdcKeyName>githubRepository</includeMdcKeyName>
+            <includeMdcKeyName>githubEventId</includeMdcKeyName>
+            <includeMdcKeyName>prNumber</includeMdcKeyName>
+            <!-- AI draft workflow context -->
+            <includeMdcKeyName>draftId</includeMdcKeyName>
+            <includeMdcKeyName>aiProvider</includeMdcKeyName>
             <!-- HTTP request metadata -->
             <includeMdcKeyName>requestMethod</includeMdcKeyName>
             <includeMdcKeyName>requestUri</includeMdcKeyName>

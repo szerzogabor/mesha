@@ -20,7 +20,10 @@
     <properties>
         <java.version>21</java.version>
         <flyway.version>11.19.1</flyway.version>
-        <sentry.version>8.41.0</sentry.version>
+        <sentry.version>8.42.0</sentry.version>
+        <logstash-logback.version>7.4</logstash-logback.version>
+        <loki4j.version>1.5.2</loki4j.version>
+        <otel.javaagent.version>2.12.0</otel.javaagent.version>
     </properties>
 
     <dependencies>
@@ -92,13 +95,26 @@
         <dependency>
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
-            <version>7.4</version>
+            <version>${logstash-logback.version}</version>
         </dependency>
         <!-- Loki4j: ships structured log events directly to Loki's push API -->
         <dependency>
             <groupId>com.github.loki4j</groupId>
             <artifactId>loki-logback-appender</artifactId>
-            <version>1.5.2</version>
+            <version>${loki4j.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- OpenTelemetry API – compile-time access to Span/Tracer from the Java agent -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-api</artifactId>
+        </dependency>
+
+        <!-- Micrometer → OTel bridge: exposes io.micrometer.tracing.Tracer backed by OTel -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-otel</artifactId>
         </dependency>
         <!-- Janino: enables <if condition> in logback-spring.xml for conditional appender wiring -->
         <dependency>
@@ -141,6 +157,12 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- In-memory tracer for unit tests -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -166,7 +188,7 @@
                                 <artifactItem>
                                     <groupId>io.opentelemetry.javaagent</groupId>
                                     <artifactId>opentelemetry-javaagent</artifactId>
-                                    <version>2.4.0</version>
+                                    <version>${otel.javaagent.version}</version>
                                     <type>jar</type>
                                     <destFileName>opentelemetry-javaagent.jar</destFileName>
                                 </artifactItem>
