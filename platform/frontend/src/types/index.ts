@@ -159,6 +159,8 @@ export interface GitHubInstallation {
   accountType: string;
   accountAvatarUrl?: string;
   status: string;
+  manageUrl?: string;
+  lastRefreshAt?: string;
   createdAt: string;
 }
 

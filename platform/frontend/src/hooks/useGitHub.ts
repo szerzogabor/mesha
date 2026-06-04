@@ -54,6 +54,23 @@ export function useRegisterInstallation(workspaceId: string) {
   });
 }
 
+export function useRefreshInstallation(workspaceId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (installationId: string) => {
+      const result = await apiClient.post<GitHubInstallation>(
+        `/api/workspaces/${workspaceId}/github/installations/${installationId}/refresh`,
+        {}
+      );
+      return result;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["github", "installations", workspaceId] });
+      qc.invalidateQueries({ queryKey: ["github", "repositories", workspaceId] });
+    },
+  });
+}
+
 export function useGitHubRepositories(workspaceId: string) {
   return useQuery({
     queryKey: ["github", "repositories", workspaceId],
