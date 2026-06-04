@@ -33,7 +33,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -47,6 +49,7 @@ public class GitHubAppService {
     private final GitHubInstallationRepository installationRepo;
     private final GitHubRepositoryRepository repositoryRepo;
     private final WorkspaceRepository workspaceRepo;
+    private final GitHubAuditLogService auditLogService;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
@@ -54,11 +57,13 @@ public class GitHubAppService {
                             GitHubInstallationRepository installationRepo,
                             GitHubRepositoryRepository repositoryRepo,
                             WorkspaceRepository workspaceRepo,
+                            GitHubAuditLogService auditLogService,
                             ObjectMapper objectMapper) {
         this.props = props;
         this.installationRepo = installationRepo;
         this.repositoryRepo = repositoryRepo;
         this.workspaceRepo = workspaceRepo;
+        this.auditLogService = auditLogService;
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
@@ -173,6 +178,8 @@ public class GitHubAppService {
             installation.setStatus("active");
 
             installation = installationRepo.save(installation);
+            auditLogService.log(installation, GitHubAuditLogService.INSTALLATION_CREATED,
+                    "accountLogin=" + accountLogin);
             log.info("GitHub App installation registered installationId={} accountLogin={} accountType={} workspaceId={}",
                     installationId, accountLogin, accountType, workspaceId);
             return installation;
@@ -342,12 +349,82 @@ public class GitHubAppService {
         return installations;
     }
 
+    /**
+     * Refreshes installation metadata, repository list, and permissions from GitHub.
+     * Detaches repositories that are no longer accessible to the installation.
+     */
+    @Transactional
+    public GitHubInstallationDto refreshInstallation(UUID installationDbId, UUID workspaceId) {
+        log.info("Refreshing installation installationDbId={} workspaceId={}", installationDbId, workspaceId);
+
+        GitHubInstallation installation = installationRepo.findById(installationDbId)
+                .filter(i -> i.getWorkspace().getId().equals(workspaceId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Installation not found for this workspace"));
+
+        if ("deleted".equals(installation.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Cannot refresh an uninstalled GitHub App installation");
+        }
+
+        try {
+            JsonNode node = fetchInstallationDetails(installation.getInstallationId());
+            installation.setAccountLogin(node.path("account").path("login").asText(installation.getAccountLogin()));
+            installation.setAccountType(node.path("account").path("type").asText(installation.getAccountType()));
+            installation.setAccountAvatarUrl(node.path("account").path("avatar_url").asText(installation.getAccountAvatarUrl()));
+
+            List<JsonNode> githubRepos = listInstallationRepositories(installation.getInstallationId());
+            Map<Long, JsonNode> repoMap = new HashMap<>();
+            for (JsonNode r : githubRepos) {
+                repoMap.put(r.path("id").asLong(), r);
+            }
+
+            List<GitHubRepository> trackedRepos = repositoryRepo.findAllByInstallationId(installationDbId);
+            for (GitHubRepository repo : trackedRepos) {
+                JsonNode ghRepo = repoMap.get(repo.getGithubRepoId());
+                if (ghRepo == null) {
+                    if (Boolean.TRUE.equals(repo.getConnected())) {
+                        repo.setConnected(false);
+                        repositoryRepo.save(repo);
+                        auditLogService.log(installation, GitHubAuditLogService.REPOSITORY_DETACHED,
+                                repo.getFullName());
+                        log.info("Repository detached (no longer accessible) fullName={} installationId={}",
+                                repo.getFullName(), installation.getInstallationId());
+                    }
+                } else {
+                    repo.setName(ghRepo.path("name").asText(repo.getName()));
+                    repo.setFullName(ghRepo.path("full_name").asText(repo.getFullName()));
+                    repo.setOwner(ghRepo.path("owner").path("login").asText(repo.getOwner()));
+                    repo.setIsPrivate(ghRepo.path("private").asBoolean(repo.getIsPrivate()));
+                    repo.setDefaultBranch(ghRepo.path("default_branch").asText(repo.getDefaultBranch()));
+                    String description = ghRepo.path("description").isNull() ? null : ghRepo.path("description").asText(null);
+                    repo.setDescription(description);
+                    repo.setHtmlUrl(ghRepo.path("html_url").asText(repo.getHtmlUrl()));
+                    repositoryRepo.save(repo);
+                }
+            }
+
+            installation.setLastRefreshAt(Instant.now());
+            installation = installationRepo.save(installation);
+            auditLogService.log(installation, GitHubAuditLogService.INSTALLATION_REFRESHED, null);
+            log.info("Installation refreshed installationId={} repositoryCount={}", installation.getInstallationId(), trackedRepos.size());
+            return GitHubInstallationDto.from(installation);
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to refresh installation installationDbId={}: {}", installationDbId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to refresh installation: " + e.getMessage());
+        }
+    }
+
     @Transactional
     public void markInstallationActive(Long installationId) {
         log.info("Marking installation active installationId={}", installationId);
         installationRepo.findByInstallationId(installationId).ifPresent(i -> {
             i.setStatus("active");
             installationRepo.save(i);
+            auditLogService.log(i, GitHubAuditLogService.INSTALLATION_UNSUSPENDED, null);
             log.info("Installation marked active installationId={}", installationId);
         });
     }
@@ -358,17 +435,37 @@ public class GitHubAppService {
         installationRepo.findByInstallationId(installationId).ifPresent(i -> {
             i.setStatus("suspended");
             installationRepo.save(i);
+            auditLogService.log(i, GitHubAuditLogService.INSTALLATION_SUSPENDED, null);
             log.info("Installation suspended installationId={}", installationId);
         });
     }
 
+    /**
+     * Marks an installation as uninstalled, disconnects all connected repositories,
+     * and records an audit trail. Repository records are kept for historical reference.
+     */
     @Transactional
     public void markInstallationDeleted(Long installationId) {
         log.info("Marking installation deleted installationId={}", installationId);
-        installationRepo.findByInstallationId(installationId).ifPresent(i -> {
-            i.setStatus("deleted");
-            installationRepo.save(i);
-            log.info("Installation marked deleted installationId={}", installationId);
+        installationRepo.findByInstallationId(installationId).ifPresent(installation -> {
+            installation.setStatus("deleted");
+            installationRepo.save(installation);
+
+            List<GitHubRepository> repos = repositoryRepo.findAllByInstallationId(installation.getId());
+            int detachedCount = 0;
+            for (GitHubRepository repo : repos) {
+                if (Boolean.TRUE.equals(repo.getConnected())) {
+                    repo.setConnected(false);
+                    repositoryRepo.save(repo);
+                    auditLogService.log(installation, GitHubAuditLogService.REPOSITORY_DETACHED,
+                            repo.getFullName());
+                    detachedCount++;
+                }
+            }
+
+            auditLogService.log(installation, GitHubAuditLogService.INSTALLATION_DELETED, null);
+            log.info("Installation marked deleted installationId={} repositoriesDetached={}",
+                    installationId, detachedCount);
         });
     }
 

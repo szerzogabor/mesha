@@ -34,6 +34,9 @@ public class GitHubInstallation {
     @Column(nullable = false)
     private String status = "active";
 
+    @Column(name = "last_refresh_at")
+    private Instant lastRefreshAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -58,6 +61,8 @@ public class GitHubInstallation {
     public void setAccountAvatarUrl(String accountAvatarUrl) { this.accountAvatarUrl = accountAvatarUrl; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public Instant getLastRefreshAt() { return lastRefreshAt; }
+    public void setLastRefreshAt(Instant lastRefreshAt) { this.lastRefreshAt = lastRefreshAt; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }
