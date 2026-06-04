@@ -67,6 +67,8 @@ jobs:
       - name: Compile and test
         working-directory: ./platform/backend-api
         run: mvn clean test
+        env:
+          SENTRY_SKIP_SOURCE_BUNDLE: "true"
 
   validate-backend-worker:
     needs: changes
