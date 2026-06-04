@@ -9,6 +9,9 @@ spring:
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: mesha-api-hikari
+      leak-detection-threshold: ${DB_LEAK_DETECTION_THRESHOLD_MS:30000}
 
   jpa:
     hibernate:
@@ -45,7 +48,13 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
 
 # Sentry observability configuration
 sentry:

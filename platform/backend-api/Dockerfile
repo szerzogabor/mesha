@@ -16,5 +16,8 @@ EXPOSE 10000
 ENTRYPOINT ["java", \
     "-XX:+UseContainerSupport", \
     "-XX:MaxRAMPercentage=75.0", \
+    "-XX:+HeapDumpOnOutOfMemoryError", \
+    "-XX:HeapDumpPath=/tmp/mesha-api-heapdump.hprof", \
+    "-XX:+ExitOnOutOfMemoryError", \
     "-javaagent:/app/opentelemetry-javaagent.jar", \
     "-jar", "app.jar"]
