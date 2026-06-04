@@ -247,7 +247,7 @@ public class GitHubAppService {
                 log.debug("Fetched installation repositories page installationId={} page={} added={} total={}",
                         installationId, page, repos.size() - countBefore, repos.size());
 
-                nextUrl = extractNextPageUrl(response.headers().firstValue("Link").orElse(null));
+                nextUrl = GitHubLinkHeaderParser.extractNextPageUrl(response.headers().firstValue("Link").orElse(null));
             }
 
             log.info("Listed installation repositories installationId={} totalCount={}", installationId, repos.size());
@@ -259,19 +259,6 @@ public class GitHubAppService {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Failed to list repositories: " + e.getMessage());
         }
-    }
-
-    private String extractNextPageUrl(String linkHeader) {
-        if (linkHeader == null) return null;
-        for (String part : linkHeader.split(",")) {
-            String[] segments = part.trim().split(";");
-            if (segments.length == 2 && segments[1].trim().equals("rel=\"next\"")) {
-                String url = segments[0].trim();
-                return url.startsWith("<") && url.endsWith(">")
-                        ? url.substring(1, url.length() - 1) : url;
-            }
-        }
-        return null;
     }
 
     /**

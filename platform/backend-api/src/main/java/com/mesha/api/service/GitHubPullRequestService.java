@@ -20,19 +20,17 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 public class GitHubPullRequestService {
 
     private static final Logger log = LoggerFactory.getLogger(GitHubPullRequestService.class);
     private static final String GITHUB_API = "https://api.github.com";
-    private static final Pattern LINK_NEXT_PATTERN = Pattern.compile("<([^>]+)>;\\s*rel=\"next\"");
 
     private final GitHubPullRequestRepository prRepo;
     private final GitHubRepositoryRepository repositoryRepo;
@@ -74,7 +72,6 @@ public class GitHubPullRequestService {
     /**
      * Syncs all open pull requests from GitHub for the given repository.
      */
-    @Transactional
     public List<GitHubPullRequestDto> syncPullRequests(UUID repositoryId) {
         log.info("Syncing pull requests from GitHub repositoryId={}", repositoryId);
 
@@ -99,6 +96,7 @@ public class GitHubPullRequestService {
                         .header("Authorization", "Bearer " + token)
                         .header("Accept", "application/vnd.github+json")
                         .header("X-GitHub-Api-Version", "2022-11-28")
+                        .timeout(Duration.ofSeconds(30))
                         .GET()
                         .build();
 
@@ -118,14 +116,13 @@ public class GitHubPullRequestService {
                 JsonNode prs = objectMapper.readTree(response.body());
                 int pageCount = 0;
                 for (JsonNode pr : prs) {
-                    boolean isNew = !prRepo.findByRepositoryIdAndGithubPrNumber(repo.getId(), pr.path("number").asInt()).isPresent();
-                    upsertPullRequest(repo, pr);
+                    boolean isNew = upsertPullRequest(repo, pr);
                     if (isNew) counts[0]++; else counts[1]++;
                     pageCount++;
                 }
                 log.debug("Pull requests page processed page={} repositoryId={} prsOnPage={}", pageNum, repositoryId, pageCount);
 
-                nextUrl = extractNextPageUrl(response.headers().firstValue("Link").orElse(null));
+                nextUrl = GitHubLinkHeaderParser.extractNextPageUrl(response.headers().firstValue("Link").orElse(null));
                 pageNum++;
             }
 
@@ -170,13 +167,8 @@ public class GitHubPullRequestService {
         log.info("Pull request webhook processed action={} fullName={} prNumber={}", action, fullName, prNumber);
     }
 
-    String extractNextPageUrl(String linkHeader) {
-        if (linkHeader == null || linkHeader.isBlank()) return null;
-        Matcher matcher = LINK_NEXT_PATTERN.matcher(linkHeader);
-        return matcher.find() ? matcher.group(1) : null;
-    }
-
-    private void upsertPullRequest(GitHubRepository repo, JsonNode prNode) {
+    @Transactional
+    boolean upsertPullRequest(GitHubRepository repo, JsonNode prNode) {
         int prNumber = prNode.path("number").asInt();
         Optional<GitHubPullRequest> existing =
                 prRepo.findByRepositoryIdAndGithubPrNumber(repo.getId(), prNumber);
@@ -206,5 +198,6 @@ public class GitHubPullRequestService {
         prRepo.save(pr);
         log.debug("Pull request upserted repositoryId={} prNumber={} state={} action={}",
                 repo.getId(), prNumber, pr.getState(), isNew ? "created" : "updated");
+        return isNew;
     }
 }
