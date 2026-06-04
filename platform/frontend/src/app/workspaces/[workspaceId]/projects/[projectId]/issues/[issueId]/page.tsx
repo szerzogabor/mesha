@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useIssue, useUpdateIssue } from "@/hooks/useIssues";
 import { useComments, useCreateComment } from "@/hooks/useComments";
 import { useActivity } from "@/hooks/useActivity";
-import { StatusBadge } from "@/components/issues/StatusBadge";
-import { PriorityBadge } from "@/components/issues/PriorityBadge";
 import { CommentThread } from "@/components/comments/CommentThread";
 import { ActivityFeed } from "@/components/activity/ActivityFeed";
 import { Spinner } from "@/components/ui/Spinner";

@@ -51,6 +51,27 @@ export function ListView({
   const [sortField, setSortField] = useState<SortField>("updatedAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
+  const sorted = useMemo(() => {
+    return [...issues].sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case "title":
+          cmp = a.title.localeCompare(b.title);
+          break;
+        case "status":
+          cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+          break;
+        case "priority":
+          cmp = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+          break;
+        case "updatedAt":
+          cmp = a.updatedAt.localeCompare(b.updatedAt);
+          break;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [issues, sortField, sortDir]);
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -86,27 +107,6 @@ export function ListView({
       </div>
     );
   }
-
-  const sorted = useMemo(() => {
-    return [...issues].sort((a, b) => {
-      let cmp = 0;
-      switch (sortField) {
-        case "title":
-          cmp = a.title.localeCompare(b.title);
-          break;
-        case "status":
-          cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
-          break;
-        case "priority":
-          cmp = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
-          break;
-        case "updatedAt":
-          cmp = a.updatedAt.localeCompare(b.updatedAt);
-          break;
-      }
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-  }, [issues, sortField, sortDir]);
 
   const SortButton = ({ field, label }: { field: SortField; label: string }) => (
     <button

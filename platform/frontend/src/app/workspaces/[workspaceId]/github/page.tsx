@@ -14,6 +14,7 @@ import {
 import { RepositoryCard } from "@/components/github/RepositoryCard";
 import { Spinner } from "@/components/ui/Spinner";
 import { logger } from "@/lib/logger";
+import Image from "next/image";
 import { GitHubInstallation } from "@/types";
 
 function InstallationStatusBadge({ status }: { status: string }) {
@@ -62,10 +63,12 @@ function InstallationCard({
     <li className="bg-bg-surface border border-border-subtle rounded-lg px-4 py-3">
       <div className="flex items-start gap-3">
         {inst.accountAvatarUrl && (
-          <img
+          <Image
             src={inst.accountAvatarUrl}
             alt={inst.accountLogin}
-            className="w-8 h-8 rounded-full shrink-0 mt-0.5"
+            width={32}
+            height={32}
+            className="rounded-full shrink-0 mt-0.5"
           />
         )}
         <div className="flex-1 min-w-0">
