@@ -84,7 +84,7 @@ public class GitHubPullRequestService {
         }
 
         GitHubInstallation installation = repo.getInstallation();
-        if (!GitHubInstallationStatus.isActive(installation.getStatus())) {
+        if (installation == null || !GitHubInstallationStatus.isActive(installation.getStatus())) {
             throw new ResponseStatusException(HttpStatus.GONE,
                     "GitHub App installation is not active");
         }
