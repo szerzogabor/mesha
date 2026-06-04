@@ -12,6 +12,8 @@ public record GitHubInstallationDto(
         String accountType,
         String accountAvatarUrl,
         String status,
+        String manageUrl,
+        Instant lastRefreshAt,
         Instant createdAt
 ) {
     public static GitHubInstallationDto from(GitHubInstallation i) {
@@ -23,6 +25,8 @@ public record GitHubInstallationDto(
                 i.getAccountType(),
                 i.getAccountAvatarUrl(),
                 i.getStatus(),
+                "https://github.com/settings/installations/" + i.getInstallationId(),
+                i.getLastRefreshAt(),
                 i.getCreatedAt()
         );
     }

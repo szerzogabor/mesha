@@ -60,4 +60,17 @@ public class GitHubAppController {
         return ResponseEntity.ok(
                 appService.listAvailableRepositories(installationId, UUID.fromString(workspaceId)));
     }
+
+    /**
+     * Refreshes installation metadata, repository list, and permissions from GitHub.
+     * Detaches any repositories that are no longer accessible to the installation.
+     */
+    @PostMapping("/installations/{id}/refresh")
+    @PreAuthorize("@workspaceSecurity.isAdminOrAbove(authentication, #workspaceId)")
+    public ResponseEntity<GitHubInstallationDto> refreshInstallation(
+            @PathVariable String workspaceId,
+            @PathVariable UUID id) {
+        log.info("Refreshing installation id={} workspaceId={}", id, workspaceId);
+        return ResponseEntity.ok(appService.refreshInstallation(id, UUID.fromString(workspaceId)));
+    }
 }
