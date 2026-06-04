@@ -27,6 +27,7 @@ export function useGitHubInstallations(workspaceId: string) {
       }
     },
     enabled: !!workspaceId,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -82,6 +83,7 @@ export function useGitHubRepositories(workspaceId: string) {
       return result;
     },
     enabled: !!workspaceId,
+    refetchOnWindowFocus: true,
   });
 }
 
