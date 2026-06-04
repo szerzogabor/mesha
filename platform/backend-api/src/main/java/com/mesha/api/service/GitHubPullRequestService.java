@@ -24,12 +24,15 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class GitHubPullRequestService {
 
     private static final Logger log = LoggerFactory.getLogger(GitHubPullRequestService.class);
     private static final String GITHUB_API = "https://api.github.com";
+    private static final Pattern LINK_NEXT_PATTERN = Pattern.compile("<([^>]+)>;\\s*rel=\"next\"");
 
     private final GitHubPullRequestRepository prRepo;
     private final GitHubRepositoryRepository repositoryRepo;
@@ -84,33 +87,53 @@ public class GitHubPullRequestService {
         String token = appService.getInstallationToken(installation.getInstallationId());
 
         try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(GITHUB_API + "/repos/" + repo.getFullName()
-                            + "/pulls?state=all&per_page=100&sort=updated&direction=desc"))
-                    .header("Authorization", "Bearer " + token)
-                    .header("Accept", "application/vnd.github+json")
-                    .header("X-GitHub-Api-Version", "2022-11-28")
-                    .GET()
-                    .build();
-
-            long start = System.currentTimeMillis();
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            long durationMs = System.currentTimeMillis() - start;
-            log.debug("GitHub pull requests API responded repositoryId={} fullName={} httpStatus={} durationMs={}",
-                    repositoryId, repo.getFullName(), response.statusCode(), durationMs);
-
-            JsonNode prs = objectMapper.readTree(response.body());
+            String nextUrl = GITHUB_API + "/repos/" + repo.getFullName()
+                    + "/pulls?state=all&per_page=100&sort=updated&direction=desc";
             int[] counts = {0, 0};
-            prs.forEach(pr -> {
-                boolean isNew = !prRepo.findByRepositoryIdAndGithubPrNumber(repo.getId(), pr.path("number").asInt()).isPresent();
-                upsertPullRequest(repo, pr);
-                if (isNew) counts[0]++; else counts[1]++;
-            });
+            int pageNum = 1;
+            long totalStart = System.currentTimeMillis();
+
+            while (nextUrl != null) {
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(nextUrl))
+                        .header("Authorization", "Bearer " + token)
+                        .header("Accept", "application/vnd.github+json")
+                        .header("X-GitHub-Api-Version", "2022-11-28")
+                        .GET()
+                        .build();
+
+                long start = System.currentTimeMillis();
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                long durationMs = System.currentTimeMillis() - start;
+                log.debug("GitHub pull requests API page={} repositoryId={} fullName={} httpStatus={} durationMs={}",
+                        pageNum, repositoryId, repo.getFullName(), response.statusCode(), durationMs);
+
+                if (response.statusCode() != 200) {
+                    log.error("GitHub pull requests API returned non-200 status page={} repositoryId={} fullName={} httpStatus={} body={}",
+                            pageNum, repositoryId, repo.getFullName(), response.statusCode(), response.body());
+                    throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                            "GitHub API returned status " + response.statusCode());
+                }
+
+                JsonNode prs = objectMapper.readTree(response.body());
+                int pageCount = 0;
+                for (JsonNode pr : prs) {
+                    boolean isNew = !prRepo.findByRepositoryIdAndGithubPrNumber(repo.getId(), pr.path("number").asInt()).isPresent();
+                    upsertPullRequest(repo, pr);
+                    if (isNew) counts[0]++; else counts[1]++;
+                    pageCount++;
+                }
+                log.debug("Pull requests page processed page={} repositoryId={} prsOnPage={}", pageNum, repositoryId, pageCount);
+
+                nextUrl = extractNextPageUrl(response.headers().firstValue("Link").orElse(null));
+                pageNum++;
+            }
 
             repo.setLastSyncedAt(Instant.now());
             repositoryRepo.save(repo);
-            log.info("Pull requests synced repositoryId={} fullName={} created={} updated={} durationMs={}",
-                    repositoryId, repo.getFullName(), counts[0], counts[1], durationMs);
+            log.info("Pull requests synced repositoryId={} fullName={} pages={} created={} updated={} totalDurationMs={}",
+                    repositoryId, repo.getFullName(), pageNum - 1, counts[0], counts[1],
+                    System.currentTimeMillis() - totalStart);
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
@@ -145,6 +168,12 @@ public class GitHubPullRequestService {
 
         upsertPullRequest(repoOpt.get(), prNode);
         log.info("Pull request webhook processed action={} fullName={} prNumber={}", action, fullName, prNumber);
+    }
+
+    String extractNextPageUrl(String linkHeader) {
+        if (linkHeader == null || linkHeader.isBlank()) return null;
+        Matcher matcher = LINK_NEXT_PATTERN.matcher(linkHeader);
+        return matcher.find() ? matcher.group(1) : null;
     }
 
     private void upsertPullRequest(GitHubRepository repo, JsonNode prNode) {
