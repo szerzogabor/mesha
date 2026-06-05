@@ -10,5 +10,6 @@ import java.util.UUID;
 public interface GitHubInstallationRepository extends JpaRepository<GitHubInstallation, UUID> {
     Optional<GitHubInstallation> findByInstallationId(Long installationId);
     List<GitHubInstallation> findAllByWorkspaceId(UUID workspaceId);
+    List<GitHubInstallation> findAllByWorkspaceIdAndStatusNot(UUID workspaceId, String status);
     boolean existsByInstallationId(Long installationId);
 }

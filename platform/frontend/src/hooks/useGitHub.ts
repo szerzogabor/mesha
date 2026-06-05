@@ -27,6 +27,8 @@ export function useGitHubInstallations(workspaceId: string) {
       }
     },
     enabled: !!workspaceId,
+    // Always treat as stale so window-focus refetch picks up uninstall events promptly
+    staleTime: 0,
   });
 }
 
