@@ -3,7 +3,6 @@ package com.mesha.api.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mesha.api.dto.GitHubPullRequestDto;
-import com.mesha.api.github.GitHubInstallationStatus;
 import com.mesha.api.model.GitHubInstallation;
 import com.mesha.api.model.GitHubPullRequest;
 import com.mesha.api.model.GitHubRepository;
@@ -79,15 +78,7 @@ public class GitHubPullRequestService {
         GitHubRepository repo = repositoryRepo.findById(repositoryId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Repository not found"));
 
-        if (!Boolean.TRUE.equals(repo.getConnected())) {
-            throw new ResponseStatusException(HttpStatus.GONE, "Repository is not connected");
-        }
-
         GitHubInstallation installation = repo.getInstallation();
-        if (installation == null || !GitHubInstallationStatus.isActive(installation.getStatus())) {
-            throw new ResponseStatusException(HttpStatus.GONE,
-                    "GitHub App installation is not active");
-        }
         log.debug("Fetching installation token for PR sync repositoryId={} installationId={} fullName={}",
                 repositoryId, installation.getInstallationId(), repo.getFullName());
         String token = appService.getInstallationToken(installation.getInstallationId());

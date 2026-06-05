@@ -26,8 +26,7 @@ public class GitHubRepositoryService {
 
     public List<GitHubRepositoryDto> listForWorkspace(UUID workspaceId) {
         long startMs = System.currentTimeMillis();
-        List<GitHubRepositoryDto> repos = repositoryRepo
-                .findConnectedWithActiveInstallationByWorkspaceId(workspaceId)
+        List<GitHubRepositoryDto> repos = repositoryRepo.findAllByWorkspaceId(workspaceId)
                 .stream().map(GitHubRepositoryDto::from).toList();
         long durationMs = System.currentTimeMillis() - startMs;
         long connected = repos.stream().filter(r -> Boolean.TRUE.equals(r.connected())).count();
