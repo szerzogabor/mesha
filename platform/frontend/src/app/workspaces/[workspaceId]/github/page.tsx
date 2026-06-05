@@ -14,11 +14,6 @@ import {
 import { RepositoryCard } from "@/components/github/RepositoryCard";
 import { Spinner } from "@/components/ui/Spinner";
 import { logger } from "@/lib/logger";
-import {
-  githubAppInstallUrl,
-  isActiveGitHubInstallation,
-  isUninstalledGitHubInstallation,
-} from "@/lib/github";
 import Image from "next/image";
 import { GitHubInstallation } from "@/types";
 
@@ -39,7 +34,7 @@ function InstallationStatusBadge({ status }: { status: string }) {
       </span>
     );
   }
-  if (status === "deleted" || status === "uninstalled") {
+  if (status === "deleted") {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
         <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
@@ -62,7 +57,7 @@ function InstallationCard({
   workspaceId: string;
 }) {
   const refresh = useRefreshInstallation(workspaceId);
-  const isUninstalled = isUninstalledGitHubInstallation(inst);
+  const isDeleted = inst.status === "deleted";
 
   return (
     <li className="bg-bg-surface border border-border-subtle rounded-lg px-4 py-3">
@@ -93,9 +88,9 @@ function InstallationCard({
 
         {/* Action buttons */}
         <div className="flex items-center gap-2 shrink-0">
-          {isUninstalled ? (
+          {isDeleted ? (
             <a
-              href={githubAppInstallUrl(workspaceId)}
+              href={`https://github.com/apps/${process.env.NEXT_PUBLIC_GITHUB_APP_NAME ?? "mesha-github-app"}/installations/new?state=${workspaceId}`}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors"
             >
               Reconnect GitHub App
@@ -179,7 +174,7 @@ function InstallationCard({
       )}
 
       {/* Uninstalled warning with reconnect CTA */}
-      {isUninstalled && (
+      {inst.status === "deleted" && (
         <div className="mt-3 flex items-start gap-2 p-2.5 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:border-red-800">
           <svg
             className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5"
@@ -356,9 +351,7 @@ export default function GitHubPage({
 
   const [showConnectForm, setShowConnectForm] = useState(false);
 
-  const activeInstallations = installations.filter(isActiveGitHubInstallation);
-  const hasUninstalledInstallations = installations.some(isUninstalledGitHubInstallation);
-  const connectedRepositories = repositories.filter((repo) => repo.connected);
+  const activeInstallations = installations.filter((i) => i.status !== "deleted");
 
   useEffect(() => {
     const installationIdParam = searchParams.get("installation_id");
@@ -451,7 +444,7 @@ export default function GitHubPage({
           <div className="rounded-lg border border-dashed border-border-subtle p-6 text-center">
             <p className="text-text-muted text-sm mb-3">No GitHub App installations found.</p>
             <a
-              href={githubAppInstallUrl(workspaceId)}
+              href={`https://github.com/apps/${process.env.NEXT_PUBLIC_GITHUB_APP_NAME ?? "mesha-github-app"}/installations/new?state=${workspaceId}`}
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors"
             >
               Install GitHub App
@@ -480,7 +473,7 @@ export default function GitHubPage({
           )}
         </div>
 
-        {showConnectForm && activeInstallations.length > 0 && (
+        {showConnectForm && (
           <ConnectRepositoryForm
             workspaceId={workspaceId}
             installations={activeInstallations}
@@ -489,25 +482,13 @@ export default function GitHubPage({
           />
         )}
 
-        {connectedRepositories.length === 0 ? (
+        {repositories.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border-subtle p-6 text-center">
-            <p className="text-text-muted text-sm">
-              {hasUninstalledInstallations && activeInstallations.length === 0
-                ? "Repositories were disconnected when the GitHub App was uninstalled."
-                : "No repositories connected yet."}
-            </p>
-            {hasUninstalledInstallations && activeInstallations.length === 0 && (
-              <a
-                href={githubAppInstallUrl(workspaceId)}
-                className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors"
-              >
-                Reinstall GitHub App
-              </a>
-            )}
+            <p className="text-text-muted text-sm">No repositories connected yet.</p>
           </div>
         ) : (
           <ul className="space-y-2">
-            {connectedRepositories.map((repo) => (
+            {repositories.map((repo) => (
               <li key={repo.id}>
                 <RepositoryCard
                   repo={repo}

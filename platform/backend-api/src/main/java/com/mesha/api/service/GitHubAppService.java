@@ -3,7 +3,6 @@ package com.mesha.api.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mesha.api.config.GitHubAppProperties;
-import com.mesha.api.github.GitHubInstallationStatus;
 import com.mesha.api.dto.AvailableRepositoryDto;
 import com.mesha.api.dto.GitHubInstallationDto;
 import com.mesha.api.dto.GitHubRepositoryDto;
@@ -286,11 +285,6 @@ public class GitHubAppService {
         GitHubInstallation installation = installationRepo.findByInstallationId(installationId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Installation not found"));
 
-        if (!GitHubInstallationStatus.isActive(installation.getStatus())) {
-            throw new ResponseStatusException(HttpStatus.GONE,
-                    "GitHub App installation is not active");
-        }
-
         Workspace workspace = workspaceRepo.findById(workspaceId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Workspace not found"));
 
@@ -339,7 +333,6 @@ public class GitHubAppService {
         log.debug("Listing available repositories for installationId={} workspaceId={}", installationId, workspaceId);
         installationRepo.findByInstallationId(installationId)
                 .filter(i -> i.getWorkspace().getId().equals(workspaceId))
-                .filter(i -> GitHubInstallationStatus.isActive(i.getStatus()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Installation not found for this workspace"));
         List<AvailableRepositoryDto> repos = listInstallationRepositories(installationId)
@@ -369,7 +362,7 @@ public class GitHubAppService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Installation not found for this workspace"));
 
-        if (GitHubInstallationStatus.isUninstalled(installation.getStatus())) {
+        if ("deleted".equals(installation.getStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Cannot refresh an uninstalled GitHub App installation");
         }
@@ -453,9 +446,9 @@ public class GitHubAppService {
      */
     @Transactional
     public void markInstallationDeleted(Long installationId) {
-        log.info("Marking installation uninstalled installationId={}", installationId);
+        log.info("Marking installation deleted installationId={}", installationId);
         installationRepo.findByInstallationId(installationId).ifPresent(installation -> {
-            installation.setStatus(GitHubInstallationStatus.UNINSTALLED);
+            installation.setStatus("deleted");
             installationRepo.save(installation);
 
             List<GitHubRepository> repos = repositoryRepo.findAllByInstallationId(installation.getId());
@@ -471,7 +464,7 @@ public class GitHubAppService {
             }
 
             auditLogService.log(installation, GitHubAuditLogService.INSTALLATION_DELETED, null);
-            log.info("Installation uninstalled installationId={} repositoriesDetached={}",
+            log.info("Installation marked deleted installationId={} repositoriesDetached={}",
                     installationId, detachedCount);
         });
     }
