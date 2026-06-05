@@ -91,9 +91,10 @@ Separate worker types:
 
 | Layer | Tool |
 |---|---|
-| Logging | Structured JSON (Logback) |
-| Error Tracking | Sentry |
-| Metrics | OpenTelemetry / Prometheus (future) |
+| Logging | Structured JSON (Logback) → Loki via OTel Java Agent |
+| Tracing | OpenTelemetry → Grafana Tempo |
+| Metrics | Micrometer → Prometheus → Grafana |
+| Dashboards | Grafana Cloud |
 
 ---
 

@@ -21,8 +21,8 @@ Every environment variable belongs to one of four categories.
 
 | Prefix | Meaning | Examples |
 |--------|---------|---------|
-| `PUBLIC_` | Safe to expose in the browser | `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SENTRY_DSN` |
-| `SERVER_` | Server-side only; must never reach the client | `CLERK_SECRET_KEY`, `SENTRY_AUTH_TOKEN` |
+| `PUBLIC_` | Safe to expose in the browser | `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_OTEL_EXPORTER_OTLP_AUTH` |
+| `SERVER_` | Server-side only; must never reach the client | `CLERK_SECRET_KEY`, `OTEL_EXPORTER_OTLP_HEADERS` |
 | `INTERNAL_` | Backend credentials; never exposed outside the service | `DB_PASSWORD`, `REDIS_URL`, `BLOCKS_API_KEY` |
 | `WEBHOOK_` | Secrets used to validate incoming webhook payloads | `GITHUB_WEBHOOK_SECRET` |
 
@@ -96,7 +96,8 @@ Edit `platform/frontend/.env.local` and set:
 
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` — from [Clerk dashboard](https://dashboard.clerk.com) → API Keys
 - `CLERK_SECRET_KEY` — from the same page (keep this secret)
-- `NEXT_PUBLIC_SENTRY_DSN` — from Sentry → your project → Client Keys (optional for local dev)
+- `NEXT_PUBLIC_OTEL_EXPORTER_OTLP_ENDPOINT` — Grafana Cloud OTLP gateway URL (optional for local dev)
+- `NEXT_PUBLIC_OTEL_EXPORTER_OTLP_AUTH` — base64-encoded Grafana Cloud credentials (optional for local dev)
 
 ### Step 5 — Run services
 
@@ -148,11 +149,11 @@ Apply each variable to the correct environment (Production / Preview / Developme
 | `NEXT_PUBLIC_API_URL` | `https://mesha-backend-api.onrender.com` | Preview backend URL | `http://localhost:8080` |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Production key | Test key | Test key |
 | `CLERK_SECRET_KEY` | Production secret | Test secret | Test secret |
-| `NEXT_PUBLIC_SENTRY_DSN` | Production DSN | Preview DSN | (optional) |
 | `NEXT_PUBLIC_ENVIRONMENT` | `production` | `preview` | `local` |
-| `APP_ENV` (backend) | `production` | `preview` | `local` |
 | `NEXT_PUBLIC_APP_VERSION` | Git tag | Git SHA | (optional) |
-| `SENTRY_AUTH_TOKEN` | Auth token | Auth token | (optional) |
+| `NEXT_PUBLIC_OTEL_EXPORTER_OTLP_ENDPOINT` | Grafana Cloud OTLP URL | same | (optional) |
+| `NEXT_PUBLIC_OTEL_EXPORTER_OTLP_AUTH` | base64 credentials | same | (optional) |
+| `APP_ENV` (backend) | `production` | `preview` | `local` |
 
 ---
 
@@ -221,7 +222,7 @@ Rotate a secret by following these steps:
 | `GITHUB_WEBHOOK_SECRET` | Update in GitHub App settings and in Render simultaneously; brief validation failures are expected during rotation |
 | `BLOCKS_API_KEY` | Blocks dashboard → regenerate API key |
 | `DB_PASSWORD` | Render dashboard → database → rotate credentials; update backend services |
-| `SENTRY_AUTH_TOKEN` | Sentry → Account settings → API auth tokens → revoke old, create new |
+| `OTEL_EXPORTER_OTLP_HEADERS` | Grafana Cloud → Access Policies → regenerate token; update OTLP_HEADERS value |
 
 ---
 

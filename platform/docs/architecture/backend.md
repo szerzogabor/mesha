@@ -168,4 +168,4 @@ Webhook Received → PR Synced To Platform
 | Cache / Queue | Redis (Upstash) |
 | Object Storage | Cloudflare R2 |
 | Vector Search | pgvector (future) |
-| Observability | Structured JSON logs, Sentry, OpenTelemetry |
+| Observability | Structured JSON logs, OpenTelemetry, Grafana Cloud (Loki + Tempo + Prometheus) |

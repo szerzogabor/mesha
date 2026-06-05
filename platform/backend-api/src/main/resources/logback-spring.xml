@@ -64,12 +64,6 @@
         <verbose>false</verbose>
     </appender>
 
-    <!-- Sentry appender — forwards WARN+ log events as Sentry issues, DEBUG+ as breadcrumbs -->
-    <appender name="SENTRY" class="io.sentry.logback.SentryAppender">
-        <minimumEventLevel>WARN</minimumEventLevel>
-        <minimumBreadcrumbLevel>DEBUG</minimumBreadcrumbLevel>
-    </appender>
-
     <springProfile name="local">
         <!-- Human-readable console for local development -->
         <appender name="READABLE_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
@@ -79,7 +73,6 @@
         </appender>
         <root level="DEBUG">
             <appender-ref ref="READABLE_CONSOLE"/>
-            <appender-ref ref="SENTRY"/>
             <!-- Only activate Loki shipping when LOKI_URL is explicitly set -->
             <if condition='System.getenv("LOKI_URL") != null &amp;&amp; !System.getenv("LOKI_URL").isEmpty()'>
                 <then>
@@ -96,7 +89,6 @@
     <springProfile name="!local">
         <root level="INFO">
             <appender-ref ref="JSON_CONSOLE"/>
-            <appender-ref ref="SENTRY"/>
             <!-- Logs are shipped to Grafana Cloud via the OTel Java Agent (OTEL_LOGS_EXPORTER=otlp).
                  Loki4j direct-push is intentionally omitted here to avoid duplicate ingestion and
                  spurious 401 errors when only OTLP credentials are configured. -->

@@ -1,6 +1,5 @@
 package com.mesha.api.observability;
 
-import io.sentry.Sentry;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,7 +17,7 @@ import java.util.UUID;
 
 /**
  * Populates MDC with per-request context so every log line emitted during the request carries
- * correlation fields automatically. Also propagates IDs to Sentry scope and response headers.
+ * correlation fields automatically. Also returns the correlation ID in a response header.
  *
  * MDC keys set here:
  *   correlationId  — client-supplied or newly generated UUID (also returned in X-Correlation-ID)
@@ -59,13 +58,6 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
         MDC.put(REQUEST_METHOD_MDC_KEY, request.getMethod());
         MDC.put(REQUEST_URI_MDC_KEY, sanitizedUri);
         MDC.put(USER_AGENT_MDC_KEY, request.getHeader("User-Agent"));
-
-        Sentry.configureScope(scope -> {
-            scope.setTag("correlationId", correlationId);
-            scope.setTag("requestId", requestId);
-            scope.setTag("httpMethod", request.getMethod());
-            scope.setTag("httpPath", sanitizedUri);
-        });
 
         response.setHeader(CORRELATION_ID_HEADER, correlationId);
 

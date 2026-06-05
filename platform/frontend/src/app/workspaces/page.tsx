@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useWorkspaces, useCreateWorkspace } from "@/hooks/useWorkspaces";
 import { Spinner } from "@/components/ui/Spinner";
 import { Modal } from "@/components/ui/Modal";
-import * as Sentry from "@sentry/nextjs";
+import { logger } from "@/lib/logger";
 
 const inputClass =
   "w-full border border-input-border rounded-lg px-3 py-2 text-sm bg-input-bg text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-2 focus:ring-accent";
@@ -27,7 +27,7 @@ export default function WorkspacesPage() {
       setSlug("");
       setShowCreate(false);
     } catch (err) {
-      Sentry.captureException(err);
+      logger.error("Failed to create workspace", err instanceof Error ? err : undefined);
       setCreateError(err instanceof Error ? err.message : "Failed to create workspace");
     }
   };

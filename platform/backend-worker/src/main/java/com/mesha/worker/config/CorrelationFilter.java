@@ -1,7 +1,6 @@
 package com.mesha.worker.config;
 
 import io.opentelemetry.api.trace.Span;
-import io.sentry.Sentry;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -17,7 +16,7 @@ import java.util.UUID;
 
 /**
  * Servlet filter that establishes correlation IDs for every inbound request.
- * Propagates through MDC (for structured logs) and Sentry scope (for error correlation).
+ * Propagates through MDC for structured log correlation in Loki.
  *
  * MDC keys populated:
  *   correlationId   — from X-Correlation-ID header, or a fresh UUID
@@ -70,17 +69,6 @@ public class CorrelationFilter implements Filter {
             MDC.put(MDC_TRACE_ID, traceId);
         }
 
-        final String corrId = correlationId;
-        final String reqId = requestId;
-        final String instId = installationId;
-        Sentry.configureScope(scope -> {
-            scope.setTag(MDC_CORRELATION_ID, corrId);
-            scope.setTag(MDC_REQUEST_ID, reqId);
-            if (instId != null && !instId.isBlank()) {
-                scope.setTag(MDC_INSTALLATION_ID, instId);
-            }
-        });
-
         try {
             chain.doFilter(request, response);
         } finally {
@@ -88,11 +76,6 @@ public class CorrelationFilter implements Filter {
             MDC.remove(MDC_REQUEST_ID);
             MDC.remove(MDC_INSTALLATION_ID);
             MDC.remove(MDC_TRACE_ID);
-            Sentry.configureScope(scope -> {
-                scope.removeTag(MDC_CORRELATION_ID);
-                scope.removeTag(MDC_REQUEST_ID);
-                scope.removeTag(MDC_INSTALLATION_ID);
-            });
         }
     }
 }
