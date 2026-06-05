@@ -344,7 +344,7 @@ public class GitHubAppService {
     public List<GitHubInstallationDto> listInstallations(UUID workspaceId) {
         log.debug("Listing installations workspaceId={}", workspaceId);
         List<GitHubInstallationDto> installations = installationRepo
-                .findAllByWorkspaceIdAndStatusNot(workspaceId, "deleted")
+                .findAllByWorkspaceIdAndStatus(workspaceId, "active")
                 .stream().map(GitHubInstallationDto::from).toList();
         log.debug("Listed installations workspaceId={} count={}", workspaceId, installations.size());
         return installations;
