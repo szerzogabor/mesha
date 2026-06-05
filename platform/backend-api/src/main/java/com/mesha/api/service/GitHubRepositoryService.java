@@ -26,11 +26,10 @@ public class GitHubRepositoryService {
 
     public List<GitHubRepositoryDto> listForWorkspace(UUID workspaceId) {
         long startMs = System.currentTimeMillis();
-        List<GitHubRepositoryDto> repos = repositoryRepo.findAllByWorkspaceId(workspaceId)
+        List<GitHubRepositoryDto> repos = repositoryRepo.findAllByWorkspaceIdAndConnectedTrue(workspaceId)
                 .stream().map(GitHubRepositoryDto::from).toList();
         long durationMs = System.currentTimeMillis() - startMs;
-        long connected = repos.stream().filter(r -> Boolean.TRUE.equals(r.connected())).count();
-        log.info("Listed repositories total={} connected={} durationMs={}", repos.size(), connected, durationMs);
+        log.info("Listed repositories connected={} durationMs={}", repos.size(), durationMs);
         return repos;
     }
 
