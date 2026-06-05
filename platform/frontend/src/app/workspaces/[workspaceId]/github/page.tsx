@@ -352,6 +352,7 @@ export default function GitHubPage({
   const [showConnectForm, setShowConnectForm] = useState(false);
 
   const activeInstallations = installations.filter((i) => i.status !== "deleted");
+  const visibleInstallations = activeInstallations;
 
   useEffect(() => {
     const installationIdParam = searchParams.get("installation_id");
@@ -440,7 +441,7 @@ export default function GitHubPage({
       {/* Installations */}
       <section className="mb-8">
         <h2 className="text-lg font-semibold text-text-primary mb-3">App Installations</h2>
-        {installations.length === 0 ? (
+        {visibleInstallations.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border-subtle p-6 text-center">
             <p className="text-text-muted text-sm mb-3">No GitHub App installations found.</p>
             <a
@@ -452,7 +453,7 @@ export default function GitHubPage({
           </div>
         ) : (
           <ul className="space-y-2">
-            {installations.map((inst) => (
+            {visibleInstallations.map((inst) => (
               <InstallationCard key={inst.id} inst={inst} workspaceId={workspaceId} />
             ))}
           </ul>
