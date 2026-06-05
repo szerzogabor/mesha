@@ -11,5 +11,6 @@ public interface GitHubInstallationRepository extends JpaRepository<GitHubInstal
     Optional<GitHubInstallation> findByInstallationId(Long installationId);
     List<GitHubInstallation> findAllByWorkspaceId(UUID workspaceId);
     List<GitHubInstallation> findAllByWorkspaceIdAndStatusNot(UUID workspaceId, String status);
+    List<GitHubInstallation> findAllByWorkspaceIdAndStatus(UUID workspaceId, String status);
     boolean existsByInstallationId(Long installationId);
 }
