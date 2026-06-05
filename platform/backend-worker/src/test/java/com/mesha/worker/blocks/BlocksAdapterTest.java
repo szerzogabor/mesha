@@ -20,17 +20,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class BlocksAdapterTest {
 
-    // Explicit mocks for each level of the POST chain
     @Mock private RestClient restClient;
     @Mock private RestClient.RequestBodyUriSpec postSpec;
     @Mock private RestClient.RequestBodySpec requestBodySpec;
     @Mock private RestClient.ResponseSpec responseSpec;
-    // Raw type to avoid wildcard-generic issues with RequestHeadersUriSpec<?>
     @SuppressWarnings("rawtypes")
     @Mock private RestClient.RequestHeadersUriSpec getSpec;
 
@@ -38,22 +35,22 @@ class BlocksAdapterTest {
     private AutoCloseable mocks;
 
     @BeforeEach
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     void setUp() {
         mocks = MockitoAnnotations.openMocks(this);
         adapter = new BlocksAdapter(new WorkflowTracer(new SimpleTracer()), restClient);
 
-        // POST chain: post() → uri() → body() → retrieve() → body(Class)
-        when(restClient.post()).thenReturn(postSpec);
-        when(postSpec.uri(anyString())).thenReturn(requestBodySpec);
-        when(requestBodySpec.body(any())).thenReturn(requestBodySpec);
-        when(requestBodySpec.retrieve()).thenReturn(responseSpec);
+        // POST chain — doReturn avoids invoking the generic <T> body(T) method during
+        // stub registration, which can lose the any() matcher due to type-erasure quirks.
+        doReturn(postSpec).when(restClient).post();
+        doReturn(requestBodySpec).when(postSpec).uri(anyString());
+        doReturn(requestBodySpec).when(requestBodySpec).body(any(Object.class));
+        doReturn(responseSpec).when(requestBodySpec).retrieve();
 
-        // GET chain: get() → uri() → retrieve() → body(Class)
-        when(restClient.get()).thenReturn(getSpec);
-        // uri(String, Object...) — use doReturn to handle raw-type + varargs safely
-        doReturn(getSpec).when(getSpec).uri(anyString(), any(Object[].class));
-        when(getSpec.retrieve()).thenReturn(responseSpec);
+        // GET chain
+        doReturn(getSpec).when(restClient).get();
+        doReturn(getSpec).when(getSpec).uri(anyString(), (Object[]) any());
+        doReturn(responseSpec).when(getSpec).retrieve();
     }
 
     @AfterEach
@@ -73,8 +70,8 @@ class BlocksAdapterTest {
 
     @Test
     void createSession_returnsPendingResultWithProviderSessionId() {
-        when(responseSpec.body(BlocksAdapter.CreateSessionResponse.class))
-                .thenReturn(new BlocksAdapter.CreateSessionResponse("sess-abc", "pending"));
+        doReturn(new BlocksAdapter.CreateSessionResponse("sess-abc", "pending"))
+                .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
 
         var result = adapter.createSession(new SessionRequest("issue-1", "Fix bug", "Details", "main"));
 
@@ -85,8 +82,8 @@ class BlocksAdapterTest {
 
     @Test
     void createSession_clearsMdcAfterSuccess() {
-        when(responseSpec.body(BlocksAdapter.CreateSessionResponse.class))
-                .thenReturn(new BlocksAdapter.CreateSessionResponse("sess-xyz", "pending"));
+        doReturn(new BlocksAdapter.CreateSessionResponse("sess-xyz", "pending"))
+                .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
 
         adapter.createSession(new SessionRequest("i-1", "T", "D", "R"));
 
@@ -96,8 +93,8 @@ class BlocksAdapterTest {
 
     @Test
     void createSession_throwsWhenSessionIdIsNull() {
-        when(responseSpec.body(BlocksAdapter.CreateSessionResponse.class))
-                .thenReturn(new BlocksAdapter.CreateSessionResponse(null, "pending"));
+        doReturn(new BlocksAdapter.CreateSessionResponse(null, "pending"))
+                .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
 
         assertThatThrownBy(() -> adapter.createSession(new SessionRequest("i-1", "T", "D", "R")))
                 .isInstanceOf(RuntimeException.class)
@@ -106,7 +103,7 @@ class BlocksAdapterTest {
 
     @Test
     void createSession_throwsWhenResponseIsNull() {
-        when(responseSpec.body(BlocksAdapter.CreateSessionResponse.class)).thenReturn(null);
+        doReturn(null).when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
 
         assertThatThrownBy(() -> adapter.createSession(new SessionRequest("i-1", "T", "D", "R")))
                 .isInstanceOf(RuntimeException.class)
@@ -115,8 +112,8 @@ class BlocksAdapterTest {
 
     @Test
     void createSession_propagatesRestClientException() {
-        when(responseSpec.body(BlocksAdapter.CreateSessionResponse.class))
-                .thenThrow(new RestClientException("network error"));
+        doThrow(new RestClientException("network error"))
+                .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
 
         assertThatThrownBy(() -> adapter.createSession(new SessionRequest("i-1", "T", "D", "R")))
                 .isInstanceOf(RestClientException.class)
@@ -125,8 +122,8 @@ class BlocksAdapterTest {
 
     @Test
     void createSession_clearsMdcAfterException() {
-        when(responseSpec.body(BlocksAdapter.CreateSessionResponse.class))
-                .thenThrow(new RestClientException("fail"));
+        doThrow(new RestClientException("fail"))
+                .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
 
         try {
             adapter.createSession(new SessionRequest("i-1", "T", "D", "R"));
@@ -140,8 +137,8 @@ class BlocksAdapterTest {
 
     @Test
     void pollSession_returnsResultWithSessionIdAndStatus() {
-        when(responseSpec.body(BlocksAdapter.PollSessionResponse.class))
-                .thenReturn(new BlocksAdapter.PollSessionResponse("sess-1", "running", null));
+        doReturn(new BlocksAdapter.PollSessionResponse("sess-1", "running", null))
+                .when(responseSpec).body(BlocksAdapter.PollSessionResponse.class);
 
         var result = adapter.pollSession("sess-1");
 
@@ -152,8 +149,8 @@ class BlocksAdapterTest {
 
     @Test
     void pollSession_extractsFinalMessageOnCompletion() {
-        when(responseSpec.body(BlocksAdapter.PollSessionResponse.class))
-                .thenReturn(new BlocksAdapter.PollSessionResponse("sess-2", "completed", "PR opened successfully"));
+        doReturn(new BlocksAdapter.PollSessionResponse("sess-2", "completed", "PR opened successfully"))
+                .when(responseSpec).body(BlocksAdapter.PollSessionResponse.class);
 
         var result = adapter.pollSession("sess-2");
 
@@ -163,7 +160,7 @@ class BlocksAdapterTest {
 
     @Test
     void pollSession_throwsWhenResponseIsNull() {
-        when(responseSpec.body(BlocksAdapter.PollSessionResponse.class)).thenReturn(null);
+        doReturn(null).when(responseSpec).body(BlocksAdapter.PollSessionResponse.class);
 
         assertThatThrownBy(() -> adapter.pollSession("sess-null"))
                 .isInstanceOf(RuntimeException.class)
@@ -172,8 +169,8 @@ class BlocksAdapterTest {
 
     @Test
     void pollSession_propagatesRestClientException() {
-        when(responseSpec.body(BlocksAdapter.PollSessionResponse.class))
-                .thenThrow(new RestClientException("timeout"));
+        doThrow(new RestClientException("timeout"))
+                .when(responseSpec).body(BlocksAdapter.PollSessionResponse.class);
 
         assertThatThrownBy(() -> adapter.pollSession("sess-err"))
                 .isInstanceOf(RestClientException.class)
@@ -182,8 +179,8 @@ class BlocksAdapterTest {
 
     @Test
     void pollSession_clearsMdcAfterSuccess() {
-        when(responseSpec.body(BlocksAdapter.PollSessionResponse.class))
-                .thenReturn(new BlocksAdapter.PollSessionResponse("sess-3", "running", null));
+        doReturn(new BlocksAdapter.PollSessionResponse("sess-3", "running", null))
+                .when(responseSpec).body(BlocksAdapter.PollSessionResponse.class);
 
         adapter.pollSession("sess-3");
 
