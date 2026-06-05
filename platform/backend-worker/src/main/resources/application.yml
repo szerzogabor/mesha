@@ -31,26 +31,6 @@ management:
     sampling:
       probability: 1.0
 
-sentry:
-  dsn: ${SENTRY_DSN:https://c2f30f5b2b577059370f00a36ee7476f@o4511348602241024.ingest.de.sentry.io/4511423699877968}
-  environment: ${APP_ENV:local}
-  release: ${SENTRY_RELEASE:${APP_VERSION:0.0.1-SNAPSHOT}}
-  # PII is handled by SentryConfig.BeforeSendCallback — do not enable default PII collection
-  send-default-pii: false
-  logs:
-    enabled: true
-  # SentryAppender is configured directly in logback-spring.xml; disable auto-configured
-  # appender to prevent duplicate event capture in Sentry.
-  logging:
-    enabled: false
-  traces-sample-rate: 1.0
-  profile-session-sample-rate: 1.0
-  profile-lifecycle: TRACE
-  # Attach thread info to events for async worker context
-  attach-threads: true
-  # Instrument Spring Security, scheduled tasks, etc.
-  enable-automatic-session-tracking: false
-
 mesha:
   blocks:
     api-url: ${BLOCKS_API_URL}
@@ -65,9 +45,6 @@ spring:
   config:
     activate:
       on-profile: production
-sentry:
-  traces-sample-rate: 0.1
-  profile-session-sample-rate: 0.1
 management:
   tracing:
     sampling:
@@ -78,28 +55,7 @@ spring:
   config:
     activate:
       on-profile: staging
-sentry:
-  traces-sample-rate: 0.5
-  profile-session-sample-rate: 0.5
 management:
   tracing:
     sampling:
       probability: 0.5
-
----
-spring:
-  config:
-    activate:
-      on-profile: preview
-sentry:
-  traces-sample-rate: 1.0
-  profile-session-sample-rate: 1.0
-
----
-spring:
-  config:
-    activate:
-      on-profile: local
-sentry:
-  traces-sample-rate: 1.0
-  profile-session-sample-rate: 1.0

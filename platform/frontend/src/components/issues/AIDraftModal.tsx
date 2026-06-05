@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import * as Sentry from "@sentry/nextjs";
 import { Modal } from "@/components/ui/Modal";
+import { logger } from "@/lib/logger";
 import { AIDraft, IssuePriority, IssueStatus } from "@/types";
 import {
   useGenerateDraft,
@@ -92,7 +92,7 @@ export function AIDraftModal({ open, projectId, onClose }: AIDraftModalProps) {
       populateEditFields(result);
       setStep("review");
     } catch (err) {
-      Sentry.captureException(err);
+      logger.error("AI draft modal error", err instanceof Error ? err : undefined);
       setError(err instanceof Error ? err.message : "Generation failed");
     }
   }
@@ -110,7 +110,7 @@ export function AIDraftModal({ open, projectId, onClose }: AIDraftModalProps) {
       });
       resetAndClose();
     } catch (err) {
-      Sentry.captureException(err);
+      logger.error("AI draft modal error", err instanceof Error ? err : undefined);
       setError(err instanceof Error ? err.message : "Failed to create issue");
     }
   }
@@ -122,7 +122,7 @@ export function AIDraftModal({ open, projectId, onClose }: AIDraftModalProps) {
       await reject.mutateAsync(draft.id);
       resetAndClose();
     } catch (err) {
-      Sentry.captureException(err);
+      logger.error("AI draft modal error", err instanceof Error ? err : undefined);
       setError(err instanceof Error ? err.message : "Failed to reject draft");
     }
   }
@@ -139,7 +139,7 @@ export function AIDraftModal({ open, projectId, onClose }: AIDraftModalProps) {
       setDraft(result);
       populateEditFields(result);
     } catch (err) {
-      Sentry.captureException(err);
+      logger.error("AI draft modal error", err instanceof Error ? err : undefined);
       setError(err instanceof Error ? err.message : "Regeneration failed");
     }
   }

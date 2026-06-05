@@ -2,7 +2,6 @@ FROM maven:3.9-eclipse-temurin-21-alpine AS build
 WORKDIR /app
 COPY pom.xml .
 COPY src ./src
-ENV SENTRY_SKIP_SOURCE_BUNDLE=true
 # maven-dependency-plugin:copy-otel-agent downloads opentelemetry-javaagent.jar into
 # target/agents/ — separate from target/*.jar so the wildcard COPY below matches only
 # the single Spring Boot fat JAR.

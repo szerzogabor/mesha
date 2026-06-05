@@ -19,7 +19,6 @@
 
     <properties>
         <java.version>21</java.version>
-        <sentry.version>8.42.0</sentry.version>
         <logstash-logback.version>7.4</logstash-logback.version>
         <loki4j.version>1.5.2</loki4j.version>
         <otel.javaagent.version>2.12.0</otel.javaagent.version>
@@ -54,27 +53,6 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
-        </dependency>
-
-        <!-- Sentry Spring Boot Starter (Jakarta for Spring Boot 3) -->
-        <dependency>
-            <groupId>io.sentry</groupId>
-            <artifactId>sentry-spring-boot-starter-jakarta</artifactId>
-            <version>${sentry.version}</version>
-        </dependency>
-
-        <!-- Sentry async profiler -->
-        <dependency>
-            <groupId>io.sentry</groupId>
-            <artifactId>sentry-async-profiler</artifactId>
-            <version>${sentry.version}</version>
-        </dependency>
-
-        <!-- Sentry Logback integration for breadcrumbs and error capture from logs -->
-        <dependency>
-            <groupId>io.sentry</groupId>
-            <artifactId>sentry-logback</artifactId>
-            <version>${sentry.version}</version>
         </dependency>
 
         <!-- Structured JSON logging -->
@@ -127,42 +105,4 @@
         </plugins>
     </build>
 
-    <profiles>
-        <!--
-            Sentry source-bundle upload — only activates when SENTRY_AUTH_TOKEN is present
-            in the environment (i.e. release builds / CD pipeline), so CI builds that lack
-            the token are not blocked.
-        -->
-        <profile>
-            <id>sentry-source-upload</id>
-            <activation>
-                <property>
-                    <name>env.SENTRY_AUTH_TOKEN</name>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>io.sentry</groupId>
-                        <artifactId>sentry-maven-plugin</artifactId>
-                        <version>0.11.0</version>
-                        <extensions>true</extensions>
-                        <configuration>
-                            <debugSentryCli>true</debugSentryCli>
-                            <org>ogbar</org>
-                            <project>mesha-worker-java-spring-boot</project>
-                            <authToken>${env.SENTRY_AUTH_TOKEN}</authToken>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>uploadSourceBundle</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>

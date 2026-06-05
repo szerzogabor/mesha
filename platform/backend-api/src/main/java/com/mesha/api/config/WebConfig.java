@@ -1,6 +1,5 @@
 package com.mesha.api.config;
 
-import com.mesha.api.observability.SentryUserContextInterceptor;
 import com.mesha.api.observability.WorkspaceContextInterceptor;
 import com.mesha.api.security.CurrentUserArgumentResolver;
 import org.springframework.context.annotation.Configuration;
@@ -14,14 +13,11 @@ import java.util.List;
 public class WebConfig implements WebMvcConfigurer {
 
     private final CurrentUserArgumentResolver currentUserArgumentResolver;
-    private final SentryUserContextInterceptor sentryUserContextInterceptor;
     private final WorkspaceContextInterceptor workspaceContextInterceptor;
 
     public WebConfig(CurrentUserArgumentResolver currentUserArgumentResolver,
-                     SentryUserContextInterceptor sentryUserContextInterceptor,
                      WorkspaceContextInterceptor workspaceContextInterceptor) {
         this.currentUserArgumentResolver = currentUserArgumentResolver;
-        this.sentryUserContextInterceptor = sentryUserContextInterceptor;
         this.workspaceContextInterceptor = workspaceContextInterceptor;
     }
 
@@ -32,7 +28,6 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(sentryUserContextInterceptor);
         registry.addInterceptor(workspaceContextInterceptor)
                 .addPathPatterns("/api/workspaces/**");
     }

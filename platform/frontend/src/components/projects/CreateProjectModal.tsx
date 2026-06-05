@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import * as Sentry from "@sentry/nextjs";
 import { Modal } from "@/components/ui/Modal";
+import { logger } from "@/lib/logger";
 
 const inputClass =
   "w-full border border-input-border rounded-lg px-3 py-2 text-sm bg-input-bg text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-2 focus:ring-accent";
@@ -30,7 +30,7 @@ export function CreateProjectModal({ open, onClose, onSubmit }: CreateProjectMod
       setDescription("");
       onClose();
     } catch (err) {
-      Sentry.captureException(err);
+      logger.error("Failed to create project", err instanceof Error ? err : undefined);
       setError(err instanceof Error ? err.message : "Failed to create project");
     } finally {
       setLoading(false);

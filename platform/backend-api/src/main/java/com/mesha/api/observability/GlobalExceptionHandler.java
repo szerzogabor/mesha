@@ -1,7 +1,5 @@
 package com.mesha.api.observability;
 
-import io.sentry.Sentry;
-import io.sentry.SentryLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -16,8 +14,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.net.URI;
 
 /**
- * Centralized exception handler that captures errors to Sentry with structured context
- * and returns consistent RFC-9457 ProblemDetail responses.
+ * Centralized exception handler that returns consistent RFC-9457 ProblemDetail responses.
+ * Errors are logged via SLF4J and exported to Loki/Tempo through the OpenTelemetry Java Agent.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -30,19 +28,8 @@ public class GlobalExceptionHandler {
 
         if (status.is5xxServerError()) {
             log.error("Server error: {}", ex.getReason(), ex);
-            Sentry.withScope(scope -> {
-                scope.setLevel(SentryLevel.ERROR);
-                scope.setTag("errorType", "server_error");
-                Sentry.captureException(ex);
-            });
         } else if (status == HttpStatus.UNAUTHORIZED || status == HttpStatus.FORBIDDEN) {
             log.warn("Auth failure status={} reason={}", status.value(), ex.getReason());
-            Sentry.withScope(scope -> {
-                scope.setLevel(SentryLevel.WARNING);
-                scope.setTag("errorType", "auth_failure");
-                scope.setTag("httpStatus", String.valueOf(status.value()));
-                Sentry.captureException(ex);
-            });
         } else {
             log.debug("Client error status={} reason={}", status.value(), ex.getReason());
         }
@@ -55,22 +42,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthenticationException.class)
     public ProblemDetail handleAuthentication(AuthenticationException ex) {
         log.warn("Authentication failure: {}", ex.getMessage());
-        Sentry.withScope(scope -> {
-            scope.setLevel(SentryLevel.WARNING);
-            scope.setTag("errorType", "authentication_failure");
-            Sentry.captureException(ex);
-        });
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Authentication required");
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
         log.warn("Authorization failure: {}", ex.getMessage());
-        Sentry.withScope(scope -> {
-            scope.setLevel(SentryLevel.WARNING);
-            scope.setTag("errorType", "authorization_failure");
-            Sentry.captureException(ex);
-        });
         return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Access denied");
     }
 
@@ -90,11 +67,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleUnexpected(Exception ex) {
         log.error("Unexpected error: {}", ex.getMessage(), ex);
-        Sentry.withScope(scope -> {
-            scope.setLevel(SentryLevel.ERROR);
-            scope.setTag("errorType", "unexpected_error");
-            Sentry.captureException(ex);
-        });
         return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR,
                 "An unexpected error occurred");
     }

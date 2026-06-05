@@ -56,25 +56,6 @@ management:
     tags:
       application: ${spring.application.name}
 
-# Sentry observability configuration
-sentry:
-  dsn: ${SENTRY_DSN:https://b63b87ccbf37de2bfa73122d07404172@o4511348602241024.ingest.de.sentry.io/4511410200576080}
-  environment: ${APP_ENV:local}
-  release: ${APP_VERSION:0.0.1-SNAPSHOT}@${GIT_COMMIT:unknown}
-  # Capture 100% of transactions in non-production; tune down in production via env var
-  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:1.0}
-  profile-session-sample-rate: ${SENTRY_PROFILE_SAMPLE_RATE:1.0}
-  profile-lifecycle: TRACE
-  # SentryAppender is configured directly in logback-spring.xml; disable auto-configured
-  # appender to prevent duplicate event capture in Sentry.
-  logging:
-    enabled: false
-  # Attach request headers and IP for context; PII is scrubbed in BeforeSendCallback
-  send-default-pii: true
-  # Tag every event with the service name
-  tags:
-    service: mesha-api
-
 ai:
   anthropic:
     api-key: ${ANTHROPIC_API_KEY:}

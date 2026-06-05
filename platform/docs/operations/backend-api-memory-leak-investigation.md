@@ -79,7 +79,7 @@ Severity: Low
 
 The reviewed backend API service code does not define custom `ExecutorService`, `Thread`, `@Async`, or `@Scheduled` workloads. GitHub webhook processing and GitHub API sync currently run synchronously in request-handling flows.
 
-Impact: backend-api-specific thread leak risk is currently low. The main threads to monitor are the embedded web server, JVM common pool usage from JDK internals, database pool, Redis client resources, and OpenTelemetry/Sentry background threads.
+Impact: backend-api-specific thread leak risk is currently low. The main threads to monitor are the embedded web server, JVM common pool usage from JDK internals, database pool, Redis client resources, and OpenTelemetry background threads.
 
 Recommendation: if repository synchronization or AI orchestration becomes asynchronous, define bounded thread pools with explicit queue sizes, shutdown behavior, thread-name prefixes, and thread-count metrics.
 
@@ -175,7 +175,7 @@ Capture this before and after a representative workload. Compare object counts a
 - Hibernate entity classes under `com.mesha.api.model`
 - servlet request/response wrappers
 - GitHub webhook payload strings
-- OpenTelemetry and Sentry queues/buffers
+- OpenTelemetry queues/buffers
 
 ### Capture heap dump
 
@@ -218,10 +218,9 @@ jcmd <pid> Thread.print > thread-dump-3.txt
 Review:
 
 - total thread count trend;
-- Tomcat request threads blocked on database, GitHub API, Redis, Sentry, or logging;
+- Tomcat request threads blocked on database, GitHub API, Redis, or logging;
 - Hikari housekeeper and connection pool threads;
 - OpenTelemetry exporter threads;
-- Sentry profiler/background threads;
 - JDK HTTP client selector/worker threads;
 - blocked or waiting states that accumulate across dumps.
 

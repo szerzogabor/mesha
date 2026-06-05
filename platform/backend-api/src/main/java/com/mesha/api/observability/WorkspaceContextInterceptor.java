@@ -1,6 +1,5 @@
 package com.mesha.api.observability;
 
-import io.sentry.Sentry;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.MDC;
@@ -24,7 +23,6 @@ public class WorkspaceContextInterceptor implements HandlerInterceptor {
             String workspaceId = pathVars.get("workspaceId");
             if (workspaceId != null) {
                 MDC.put(WORKSPACE_ID_MDC_KEY, workspaceId);
-                Sentry.configureScope(scope -> scope.setTag("workspaceId", workspaceId));
             }
         }
         return true;
@@ -34,6 +32,5 @@ public class WorkspaceContextInterceptor implements HandlerInterceptor {
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
                                 Object handler, Exception ex) {
         MDC.remove(WORKSPACE_ID_MDC_KEY);
-        Sentry.configureScope(scope -> scope.removeTag("workspaceId"));
     }
 }

@@ -48,7 +48,6 @@ export function initTracer(): WebTracerProvider | null {
   _provider.addSpanProcessor(new BatchSpanProcessor(exporter));
 
   // Register as global provider with W3C TraceContext propagation.
-  // On the browser, Sentry v10 does not use the global OTel provider so this is safe.
   _provider.register({
     propagator: new W3CTraceContextPropagator(),
   });

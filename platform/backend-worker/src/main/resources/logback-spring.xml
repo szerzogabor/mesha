@@ -56,12 +56,6 @@
         <neverBlock>true</neverBlock>
     </appender>
 
-    <!-- Sentry appender: sends ERROR logs as events, INFO+ as breadcrumbs -->
-    <appender name="SENTRY" class="io.sentry.logback.SentryAppender">
-        <minimumEventLevel>ERROR</minimumEventLevel>
-        <minimumBreadcrumbLevel>INFO</minimumBreadcrumbLevel>
-    </appender>
-
     <springProfile name="local">
         <!-- Human-readable console for local development -->
         <appender name="READABLE_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
@@ -71,7 +65,6 @@
         </appender>
         <root level="DEBUG">
             <appender-ref ref="READABLE_CONSOLE"/>
-            <appender-ref ref="SENTRY"/>
         </root>
         <logger name="com.mesha" level="DEBUG"/>
         <logger name="org.hibernate" level="WARN"/>
@@ -82,7 +75,6 @@
     <springProfile name="!local">
         <root level="INFO">
             <appender-ref ref="JSON_CONSOLE"/>
-            <appender-ref ref="SENTRY"/>
             <!-- Logs are shipped to Grafana Cloud via the OTel Java Agent (OTEL_LOGS_EXPORTER=otlp).
                  Loki4j direct-push is intentionally omitted here to avoid duplicate ingestion and
                  spurious 401 errors when only OTLP credentials are configured. -->

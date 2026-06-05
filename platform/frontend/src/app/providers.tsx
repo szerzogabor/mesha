@@ -3,7 +3,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { useEffect, useRef, useState } from "react";
-import * as Sentry from "@sentry/nextjs";
 import { apiClient, setTokenGetter } from "@/lib/api-client";
 import { AuthSyncContext, AuthSyncStatus } from "@/lib/auth-sync";
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -63,10 +62,6 @@ function ClerkTokenBridge({ onStatusChange }: { onStatusChange: (status: AuthSyn
       .catch((error) => {
         logger.auth.syncFailed(error, { userId: user.id });
         changeStatus("ready");
-        Sentry.captureException(error, {
-          tags: { source: "auth-sync" },
-          extra: { userId: user.id },
-        });
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, user]);
