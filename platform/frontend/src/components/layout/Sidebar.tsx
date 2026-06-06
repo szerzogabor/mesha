@@ -80,6 +80,19 @@ export function Sidebar({ workspace, projects, onCreateProject }: SidebarProps) 
             GitHub
           </Link>
         </li>
+        <li>
+          <Link
+            href={`/workspaces/${workspace.id}/blocks`}
+            className={cn(
+              "block px-3 py-2 rounded-lg text-sm truncate transition-colors",
+              pathname.startsWith(`/workspaces/${workspace.id}/blocks`)
+                ? "bg-sidebar-item-active text-white"
+                : "text-sidebar-text hover:bg-sidebar-item-hover hover:text-sidebar-text-active"
+            )}
+          >
+            Blocks
+          </Link>
+        </li>
       </ul>
 
       <div className="px-4 py-3 border-t border-sidebar-border mt-auto">

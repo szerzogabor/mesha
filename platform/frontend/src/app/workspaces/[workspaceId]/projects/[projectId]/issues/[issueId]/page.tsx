@@ -289,6 +289,7 @@ export default function IssueDetailPage({
           </div>
 
           <AssignToBlocksPanel
+            workspaceId={workspaceId}
             projectId={projectId}
             issueId={issueId}
             hasActiveSession={!!issue.aiAssignmentState && !["DONE", "FAILED", "CANCELED"].includes(issue.aiAssignmentState)}

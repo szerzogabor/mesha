@@ -22,19 +22,28 @@ public class BlocksSessionService {
     private final BlocksSessionRepository blocksSessionRepository;
     private final IssueRepository issueRepository;
     private final ActivityService activityService;
+    private final BlocksConfigService blocksConfigService;
 
     public BlocksSessionService(BlocksSessionRepository blocksSessionRepository,
                                 IssueRepository issueRepository,
-                                ActivityService activityService) {
+                                ActivityService activityService,
+                                BlocksConfigService blocksConfigService) {
         this.blocksSessionRepository = blocksSessionRepository;
         this.issueRepository = issueRepository;
         this.activityService = activityService;
+        this.blocksConfigService = blocksConfigService;
     }
 
     @Transactional
     public BlocksSession assignToBlocks(UUID issueId, User actor) {
         Issue issue = issueRepository.findById(issueId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found"));
+
+        UUID workspaceId = issue.getProject().getWorkspace().getId();
+        if (!blocksConfigService.isConnected(workspaceId)) {
+            throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED,
+                "Blocks is not connected for this workspace. Configure it in Workspace Settings → Integrations → Blocks.");
+        }
 
         blocksSessionRepository.findActiveByIssueId(issueId).ifPresent(existing -> {
             throw new ResponseStatusException(HttpStatus.CONFLICT,

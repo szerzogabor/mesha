@@ -192,6 +192,14 @@ export interface GitHubRepository {
   updatedAt: string;
 }
 
+export interface BlocksConfig {
+  id: string;
+  workspaceId: string;
+  status: string;
+  connectedAt: string;
+  updatedAt: string;
+}
+
 export interface GitHubPullRequest {
   id: string;
   repositoryId: string;
