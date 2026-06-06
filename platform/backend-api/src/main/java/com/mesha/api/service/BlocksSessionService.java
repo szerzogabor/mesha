@@ -138,6 +138,40 @@ public class BlocksSessionService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No active Blocks session for issue"));
     }
 
+    @Transactional
+    public void handleWebhookStateUpdate(String providerSessionId, AIExecutionState newState,
+                                         String prUrl, Integer prNumber, String branchName,
+                                         String errorMessage) {
+        BlocksSession session = blocksSessionRepository.findByProviderSessionId(providerSessionId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "No Blocks session with providerSessionId: " + providerSessionId));
+
+        if (session.getExecutionState() == AIExecutionState.DONE
+                || session.getExecutionState() == AIExecutionState.CANCELED) {
+            log.warn("Ignoring webhook state update for terminal session sessionId={} currentState={}",
+                    session.getId(), session.getExecutionState());
+            return;
+        }
+
+        String oldState = session.getExecutionState().name();
+        session.setExecutionState(newState);
+        if (prUrl != null) session.setPrUrl(prUrl);
+        if (prNumber != null) session.setPrNumber(prNumber);
+        if (branchName != null) session.setBranchName(branchName);
+        if (errorMessage != null) session.setErrorMessage(errorMessage);
+        session = blocksSessionRepository.save(session);
+
+        Issue issue = session.getIssue();
+        issue.setAiAssignmentState(session.getExecutionState().name());
+        issueRepository.save(issue);
+
+        ActivityEventType eventType = resolveActivityEventType(session.getExecutionState());
+        activityService.record(issue, null, eventType, oldState, session.getExecutionState().name());
+
+        log.info("Blocks session state advanced via webhook sessionId={} from={} to={}",
+                session.getId(), oldState, session.getExecutionState());
+    }
+
     private ActivityEventType resolveActivityEventType(AIExecutionState state) {
         return switch (state) {
             case PR_OPENED -> ActivityEventType.AI_PR_OPENED;

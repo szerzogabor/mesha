@@ -62,6 +62,10 @@ ai:
     model: ${ANTHROPIC_MODEL:claude-haiku-4-5-20251001}
     base-url: https://api.anthropic.com
 
+blocks:
+  webhook:
+    secret: ${BLOCKS_WEBHOOK_SECRET:}
+
 github:
   app:
     app-id: ${GITHUB_APP_ID:0}

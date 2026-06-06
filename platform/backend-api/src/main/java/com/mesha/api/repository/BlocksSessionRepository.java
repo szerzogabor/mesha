@@ -18,4 +18,6 @@ public interface BlocksSessionRepository extends JpaRepository<BlocksSession, UU
     Optional<BlocksSession> findActiveByIssueId(UUID issueId);
 
     List<BlocksSession> findByExecutionState(AIExecutionState executionState);
+
+    Optional<BlocksSession> findByProviderSessionId(String providerSessionId);
 }
