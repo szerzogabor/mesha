@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/workspaces/{workspaceId}/github/repositories/{repositoryId}/pull-requests")
@@ -23,11 +24,16 @@ public class GitHubPullRequestController {
         this.prService = prService;
     }
 
+    private static final Set<String> VALID_STATUSES = Set.of("open", "merged", "closed");
+
     @GetMapping
     @PreAuthorize("@workspaceSecurity.isMember(authentication, #workspaceId)")
     public ResponseEntity<List<GitHubPullRequestDto>> list(@PathVariable String workspaceId,
-                                                           @PathVariable String repositoryId) {
-        return ResponseEntity.ok(prService.listForRepository(UUID.fromString(repositoryId)));
+                                                           @PathVariable String repositoryId,
+                                                           @RequestParam(required = false) String status) {
+        String resolvedStatus = (status != null && VALID_STATUSES.contains(status.toLowerCase()))
+                ? status.toLowerCase() : null;
+        return ResponseEntity.ok(prService.listForRepository(UUID.fromString(repositoryId), resolvedStatus));
     }
 
     @GetMapping("/{prId}")

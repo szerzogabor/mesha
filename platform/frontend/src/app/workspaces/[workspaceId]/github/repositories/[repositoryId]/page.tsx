@@ -1,13 +1,22 @@
 "use client";
 
 import { use } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
   useGitHubPullRequests,
   useSyncPullRequests,
+  PullRequestStatus,
 } from "@/hooks/useGitHub";
 import { PullRequestRow } from "@/components/github/PullRequestRow";
 import { Spinner } from "@/components/ui/Spinner";
 import Link from "next/link";
+
+const STATUS_OPTIONS: { value: PullRequestStatus | "all"; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "open", label: "Open" },
+  { value: "merged", label: "Merged" },
+  { value: "closed", label: "Closed" },
+];
 
 export default function RepositoryDetailPage({
   params,
@@ -15,11 +24,33 @@ export default function RepositoryDetailPage({
   params: Promise<{ workspaceId: string; repositoryId: string }>;
 }) {
   const { workspaceId, repositoryId } = use(params);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const rawStatus = searchParams.get("status");
+  // "all" means no filter; null (no param) defaults to "open"
+  const activeTab: PullRequestStatus | "all" =
+    rawStatus === "all" ? "all"
+    : rawStatus === "merged" ? "merged"
+    : rawStatus === "closed" ? "closed"
+    : "open";
+
+  const filterStatus: PullRequestStatus | undefined =
+    activeTab === "all" ? undefined : activeTab;
+
   const { data: pullRequests = [], isLoading } = useGitHubPullRequests(
     workspaceId,
-    repositoryId
+    repositoryId,
+    filterStatus
   );
   const sync = useSyncPullRequests(workspaceId, repositoryId);
+
+  function handleStatusChange(value: PullRequestStatus | "all") {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("status", value);
+    router.push(`${pathname}?${params.toString()}`);
+  }
 
   if (isLoading) {
     return (
@@ -28,10 +59,6 @@ export default function RepositoryDetailPage({
       </div>
     );
   }
-
-  const open = pullRequests.filter((pr) => pr.state === "open" && !pr.draft);
-  const drafts = pullRequests.filter((pr) => pr.draft);
-  const closed = pullRequests.filter((pr) => pr.state !== "open");
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
@@ -48,7 +75,7 @@ export default function RepositoryDetailPage({
         </span>
       </div>
 
-      <div className="flex items-center justify-between mb-6 mt-2">
+      <div className="flex items-center justify-between mb-4 mt-2">
         <h1 className="text-2xl font-bold text-text-primary">Pull Requests</h1>
         <button
           onClick={() => sync.mutate()}
@@ -59,45 +86,45 @@ export default function RepositoryDetailPage({
         </button>
       </div>
 
+      <div className="flex gap-1 mb-4 bg-bg-subtle rounded-lg p-1 w-fit">
+        {STATUS_OPTIONS.map(({ value, label }) => (
+          <button
+            key={value}
+            onClick={() => handleStatusChange(value)}
+            className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
+              activeTab === value
+                ? "bg-bg-surface text-text-primary shadow-sm"
+                : "text-text-muted hover:text-text-primary"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {pullRequests.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border-subtle p-8 text-center">
-          <p className="text-text-muted text-sm mb-2">No pull requests synced yet.</p>
-          <p className="text-text-muted text-xs">
-            Click &quot;Sync from GitHub&quot; to fetch pull requests.
+          <p className="text-text-muted text-sm mb-2">
+            No {activeTab !== "all" ? activeTab : ""} pull requests found.
           </p>
+          {activeTab === "all" && (
+            <p className="text-text-muted text-xs">
+              Click &quot;Sync from GitHub&quot; to fetch pull requests.
+            </p>
+          )}
         </div>
       ) : (
         <div className="bg-bg-surface border border-border-subtle rounded-lg divide-y divide-border-subtle">
-          {open.length > 0 && (
-            <section className="px-4 py-2">
-              <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">
-                Open ({open.length})
-              </h3>
-              {open.map((pr) => (
-                <PullRequestRow key={pr.id} pr={pr} />
-              ))}
-            </section>
-          )}
-          {drafts.length > 0 && (
-            <section className="px-4 py-2">
-              <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">
-                Drafts ({drafts.length})
-              </h3>
-              {drafts.map((pr) => (
-                <PullRequestRow key={pr.id} pr={pr} />
-              ))}
-            </section>
-          )}
-          {closed.length > 0 && (
-            <section className="px-4 py-2">
-              <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">
-                Closed / Merged ({closed.length})
-              </h3>
-              {closed.map((pr) => (
-                <PullRequestRow key={pr.id} pr={pr} />
-              ))}
-            </section>
-          )}
+          <section className="px-4 py-2">
+            <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">
+              {activeTab === "all"
+                ? `All (${pullRequests.length})`
+                : `${STATUS_OPTIONS.find((s) => s.value === activeTab)?.label} (${pullRequests.length})`}
+            </h3>
+            {pullRequests.map((pr) => (
+              <PullRequestRow key={pr.id} pr={pr} />
+            ))}
+          </section>
         </div>
       )}
     </div>
