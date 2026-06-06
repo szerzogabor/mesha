@@ -39,6 +39,13 @@ mesha:
     app-id: ${GITHUB_APP_ID}
     private-key: ${GITHUB_APP_PRIVATE_KEY}
     webhook-secret: ${GITHUB_WEBHOOK_SECRET}
+  polling:
+    interval-ms: 5000
+    max-session-age-hours: 24
+    backoff:
+      base-ms: 5000
+      max-ms: 300000
+      multiplier: 2.0
 
 ---
 spring:
