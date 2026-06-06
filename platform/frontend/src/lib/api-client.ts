@@ -45,7 +45,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       errorBody = await res.text().catch(() => res.statusText);
     }
     const errorMessage = `API error ${res.status}: ${errorBody}`;
-    const error = new Error(errorMessage);
+    const error = new Error(errorMessage) as Error & { status: number };
+    error.status = res.status;
 
     if (res.status === 401 || res.status === 403) {
       logger.api.authFailure(path, res.status, method);
