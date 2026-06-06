@@ -65,6 +65,8 @@ ai:
 blocks:
   webhook:
     secret: ${BLOCKS_WEBHOOK_SECRET:}
+  encryption:
+    secret: ${BLOCKS_ENCRYPTION_SECRET:}
 
 github:
   app:

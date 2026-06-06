@@ -1,18 +1,24 @@
 "use client";
 
+import Link from "next/link";
 import { AIExecutionTimeline } from "./AIExecutionTimeline";
 import { useActiveBlocksSession, useAssignToBlocks, useCancelBlocksSession } from "@/hooks/useBlocksSessions";
+import { useBlocksConfig } from "@/hooks/useBlocksConfig";
 
 interface Props {
+  workspaceId: string;
   projectId: string;
   issueId: string;
   hasActiveSession: boolean;
 }
 
-export function AssignToBlocksPanel({ projectId, issueId, hasActiveSession }: Props) {
+export function AssignToBlocksPanel({ workspaceId, projectId, issueId, hasActiveSession }: Props) {
   const { data: activeSession, isLoading } = useActiveBlocksSession(projectId, issueId, hasActiveSession);
+  const { data: blocksConfig, isLoading: configLoading } = useBlocksConfig(workspaceId);
   const assignMutation = useAssignToBlocks(projectId, issueId);
   const cancelMutation = useCancelBlocksSession(projectId, issueId);
+
+  const isConnected = !!blocksConfig;
 
   if (isLoading && hasActiveSession) {
     return (
@@ -33,6 +39,29 @@ export function AssignToBlocksPanel({ projectId, issueId, hasActiveSession }: Pr
           onCancel={() => cancelMutation.mutate(activeSession.id)}
           cancelPending={cancelMutation.isPending}
         />
+      </div>
+    );
+  }
+
+  if (configLoading) {
+    return null;
+  }
+
+  if (!isConnected) {
+    return (
+      <div className="bg-bg-surface rounded-xl border border-border-default p-4 space-y-2">
+        <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wide">
+          Blocks AI
+        </p>
+        <p className="text-xs text-text-tertiary">
+          Blocks is not connected for this workspace.{" "}
+          <Link
+            href={`/workspaces/${workspaceId}/blocks`}
+            className="text-accent hover:underline"
+          >
+            Set it up in Integrations.
+          </Link>
+        </p>
       </div>
     );
   }
