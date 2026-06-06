@@ -51,11 +51,13 @@ public class GitHubPullRequestService {
         this.httpClient = HttpClient.newHttpClient();
     }
 
-    public List<GitHubPullRequestDto> listForRepository(UUID repositoryId) {
+    public List<GitHubPullRequestDto> listForRepository(UUID repositoryId, String status) {
         long startMs = System.currentTimeMillis();
-        List<GitHubPullRequestDto> prs = prRepo.findAllByRepositoryId(repositoryId)
+        String normalizedStatus = (status == null || status.isBlank()) ? null : status.toLowerCase();
+        List<GitHubPullRequestDto> prs = prRepo.findByRepositoryIdAndStatus(repositoryId, normalizedStatus)
                 .stream().map(GitHubPullRequestDto::from).toList();
-        log.info("Listed pull requests repositoryId={} count={} durationMs={}", repositoryId, prs.size(), System.currentTimeMillis() - startMs);
+        log.info("Listed pull requests repositoryId={} status={} count={} durationMs={}",
+                repositoryId, normalizedStatus, prs.size(), System.currentTimeMillis() - startMs);
         return prs;
     }
 
@@ -120,7 +122,7 @@ public class GitHubPullRequestService {
                     "Failed to sync pull requests: " + e.getMessage());
         }
 
-        return prRepo.findAllByRepositoryId(repositoryId)
+        return prRepo.findByRepositoryIdAndStatus(repositoryId, null)
                 .stream().map(GitHubPullRequestDto::from).toList();
     }
 

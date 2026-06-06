@@ -146,13 +146,20 @@ export function useDisconnectRepository(workspaceId: string) {
   });
 }
 
-export function useGitHubPullRequests(workspaceId: string, repositoryId: string) {
+export type PullRequestStatus = "open" | "merged" | "closed";
+
+export function useGitHubPullRequests(
+  workspaceId: string,
+  repositoryId: string,
+  status?: PullRequestStatus
+) {
   return useQuery({
-    queryKey: ["github", "pull-requests", repositoryId],
+    queryKey: ["github", "pull-requests", repositoryId, status ?? "all"],
     queryFn: async () => {
-      const result = await apiClient.get<GitHubPullRequest[]>(
-        `/api/workspaces/${workspaceId}/github/repositories/${repositoryId}/pull-requests`
-      );
+      const url = status
+        ? `/api/workspaces/${workspaceId}/github/repositories/${repositoryId}/pull-requests?status=${status}`
+        : `/api/workspaces/${workspaceId}/github/repositories/${repositoryId}/pull-requests`;
+      const result = await apiClient.get<GitHubPullRequest[]>(url);
       logger.github.pullRequestsFetched(repositoryId, result?.length ?? 0);
       return result;
     },
