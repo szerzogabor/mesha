@@ -23,7 +23,7 @@ public class ActivityService {
 
     @Transactional(propagation = Propagation.REQUIRED)
     public void record(Issue issue, User user, ActivityEventType type, String oldValue, String newValue) {
-        log.debug("Recording activity issueId={} eventType={} userId={}", issue.getId(), type, user.getId());
+        log.debug("Recording activity issueId={} eventType={} userId={}", issue.getId(), type, user != null ? user.getId() : "system");
         ActivityEvent event = new ActivityEvent();
         event.setIssue(issue);
         event.setUser(user);
