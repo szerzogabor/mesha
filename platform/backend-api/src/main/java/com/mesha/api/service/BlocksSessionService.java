@@ -2,6 +2,7 @@ package com.mesha.api.service;
 
 import com.mesha.api.dto.UpdateBlocksSessionRequest;
 import com.mesha.api.model.*;
+import com.mesha.api.repository.BlocksMessageRepository;
 import com.mesha.api.repository.BlocksSessionRepository;
 import com.mesha.api.repository.IssueRepository;
 import org.slf4j.Logger;
@@ -23,15 +24,18 @@ public class BlocksSessionService {
     private final IssueRepository issueRepository;
     private final ActivityService activityService;
     private final BlocksConfigService blocksConfigService;
+    private final BlocksMessageRepository blocksMessageRepository;
 
     public BlocksSessionService(BlocksSessionRepository blocksSessionRepository,
                                 IssueRepository issueRepository,
                                 ActivityService activityService,
-                                BlocksConfigService blocksConfigService) {
+                                BlocksConfigService blocksConfigService,
+                                BlocksMessageRepository blocksMessageRepository) {
         this.blocksSessionRepository = blocksSessionRepository;
         this.issueRepository = issueRepository;
         this.activityService = activityService;
         this.blocksConfigService = blocksConfigService;
+        this.blocksMessageRepository = blocksMessageRepository;
     }
 
     @Transactional
@@ -59,6 +63,12 @@ public class BlocksSessionService {
         issueRepository.save(issue);
 
         activityService.record(issue, actor, ActivityEventType.AI_ASSIGNED, null, session.getId().toString());
+
+        BlocksMessage startMsg = new BlocksMessage();
+        startMsg.setSession(session);
+        startMsg.setMessage("Session started");
+        blocksMessageRepository.save(startMsg);
+
         log.info("Blocks session created issueId={} sessionId={}", issueId, session.getId());
         return session;
     }

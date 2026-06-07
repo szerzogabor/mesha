@@ -28,15 +28,18 @@ class SessionPollService {
             AIExecutionState.DONE, AIExecutionState.FAILED, AIExecutionState.CANCELED);
 
     private final BlocksSessionPollerRepository sessionRepo;
+    private final BlocksMessageWorkerRepository messageRepo;
     private final BlocksAdapter blocksAdapter;
     private final RedisTemplate<String, String> redisTemplate;
     private final PollingProperties props;
 
     SessionPollService(BlocksSessionPollerRepository sessionRepo,
+                       BlocksMessageWorkerRepository messageRepo,
                        BlocksAdapter blocksAdapter,
                        RedisTemplate<String, String> redisTemplate,
                        PollingProperties props) {
         this.sessionRepo = sessionRepo;
+        this.messageRepo = messageRepo;
         this.blocksAdapter = blocksAdapter;
         this.redisTemplate = redisTemplate;
         this.props = props;
@@ -100,13 +103,14 @@ class SessionPollService {
             SessionResult result = blocksAdapter.pollSession(session.getProviderSessionId());
             AIExecutionState newState = mapToExecutionState(result.status(), session.getExecutionState());
 
-            String oldState = session.getExecutionState().name();
+            AIExecutionState prevState = session.getExecutionState();
             session.setRetryCount(session.getRetryCount() + 1);
 
-            if (newState != session.getExecutionState()) {
+            if (newState != prevState) {
                 session.setExecutionState(newState);
                 log.info("session_state_changed session_id={} from={} to={} provider_session_id={}",
-                        session.getId(), oldState, newState, session.getProviderSessionId());
+                        session.getId(), prevState, newState, session.getProviderSessionId());
+                recordStateTransitionMessage(session.getId(), newState, result.finalMessage());
             } else {
                 log.debug("session_state_unchanged session_id={} state={} poll_count={}",
                         session.getId(), newState, session.getRetryCount());
@@ -121,6 +125,28 @@ class SessionPollService {
         }
     }
 
+    private void recordStateTransitionMessage(java.util.UUID sessionId, AIExecutionState newState, String providerMessage) {
+        String text = switch (newState) {
+            case PLANNING   -> "Analyzing requirements and planning implementation";
+            case EXECUTING  -> "Writing code and making changes";
+            case WAITING_REVIEW -> "Implementation complete, opening pull request";
+            case PR_OPENED  -> "Pull request created";
+            case DONE       -> providerMessage != null ? providerMessage : "Implementation successfully completed";
+            case FAILED     -> providerMessage != null ? "Session failed: " + providerMessage : "Session failed";
+            case CANCELED   -> "Session canceled";
+            default         -> null;
+        };
+        if (text == null) return;
+        try {
+            BlocksMessageRecord msg = new BlocksMessageRecord();
+            msg.setSessionId(sessionId);
+            msg.setMessage(text);
+            messageRepo.save(msg);
+        } catch (Exception e) {
+            log.warn("blocks_message_save_failed session_id={} state={} error={}", sessionId, newState, e.getMessage());
+        }
+    }
+
     private void failSession(BlocksSessionRecord session, String reason) {
         Duration age = Duration.between(session.getCreatedAt(), Instant.now());
         log.warn("session_expired session_id={} age_hours={} reason={}",
@@ -128,6 +154,7 @@ class SessionPollService {
         session.setExecutionState(AIExecutionState.FAILED);
         session.setErrorMessage(reason);
         sessionRepo.save(session);
+        recordStateTransitionMessage(session.getId(), AIExecutionState.FAILED, reason);
     }
 
     /**

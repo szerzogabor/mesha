@@ -27,6 +27,7 @@ import static org.mockito.Mockito.*;
 class SessionPollServiceTest {
 
     @Mock private BlocksSessionPollerRepository sessionRepo;
+    @Mock private BlocksMessageWorkerRepository messageRepo;
     @Mock private BlocksAdapter blocksAdapter;
     @Mock private RedisTemplate<String, String> redisTemplate;
     @Mock private ValueOperations<String, String> valueOps;
@@ -40,7 +41,7 @@ class SessionPollServiceTest {
         mocks = MockitoAnnotations.openMocks(this);
         props = new PollingProperties(5000L, 24L,
                 new PollingProperties.BackoffProperties(5000L, 300_000L, 2.0));
-        service = new SessionPollService(sessionRepo, blocksAdapter, redisTemplate, props);
+        service = new SessionPollService(sessionRepo, messageRepo, blocksAdapter, redisTemplate, props);
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
     }
 

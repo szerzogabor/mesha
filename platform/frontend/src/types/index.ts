@@ -140,6 +140,13 @@ export interface BlocksSession {
   updatedAt: string;
 }
 
+export interface BlocksMessage {
+  id: string;
+  sessionId: string;
+  message: string;
+  createdAt: string;
+}
+
 export interface PullRequest {
   id: string;
   issueId: string;
