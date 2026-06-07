@@ -31,6 +31,7 @@ class SessionPollServiceTest {
     @Mock private IssueWorkerRepository issueRepo;
     @Mock private BlocksMessageWorkerRepository messageRepo;
     @Mock private BlocksAdapter blocksAdapter;
+    @Mock private BlocksApiKeyService apiKeyService;
     @Mock private RedisTemplate<String, String> redisTemplate;
     @Mock private ValueOperations<String, String> valueOps;
 
@@ -43,7 +44,7 @@ class SessionPollServiceTest {
         mocks = MockitoAnnotations.openMocks(this);
         props = new PollingProperties(5000L, 24L,
                 new PollingProperties.BackoffProperties(5000L, 300_000L, 2.0));
-        service = new SessionPollService(sessionRepo, issueRepo, messageRepo, blocksAdapter, redisTemplate, props);
+        service = new SessionPollService(sessionRepo, issueRepo, messageRepo, blocksAdapter, apiKeyService, redisTemplate, props);
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
     }
 
@@ -79,6 +80,7 @@ class SessionPollServiceTest {
         IssueWorkerRecord issue = issueRecord(issueId, "Fix login bug", "Description here");
         when(sessionRepo.findById(sessionId)).thenReturn(Optional.of(session));
         when(issueRepo.findById(issueId)).thenReturn(Optional.of(issue));
+        when(apiKeyService.resolveApiKey(issueId)).thenReturn(Optional.of("ws-api-key-xyz"));
         when(blocksAdapter.createSession(any(SessionRequest.class)))
                 .thenReturn(new SessionResult("prov-123", SessionStatus.PENDING, null));
 
@@ -88,6 +90,7 @@ class SessionPollServiceTest {
         verify(blocksAdapter).createSession(reqCaptor.capture());
         assertThat(reqCaptor.getValue().issueId()).isEqualTo(issueId.toString());
         assertThat(reqCaptor.getValue().issueTitle()).isEqualTo("Fix login bug");
+        assertThat(reqCaptor.getValue().apiKey()).isEqualTo("ws-api-key-xyz");
 
         ArgumentCaptor<BlocksSessionRecord> saved = ArgumentCaptor.forClass(BlocksSessionRecord.class);
         verify(sessionRepo).save(saved.capture());
@@ -111,6 +114,24 @@ class SessionPollServiceTest {
     }
 
     @Test
+    void processSession_failsSessionWhenApiKeyNotFound() {
+        UUID sessionId = UUID.randomUUID();
+        UUID issueId = UUID.randomUUID();
+        BlocksSessionRecord session = sessionWithIssue(sessionId, CREATED, null, 0, Instant.now().minusSeconds(10), issueId);
+        IssueWorkerRecord issue = issueRecord(issueId, "Fix login bug", "Description here");
+        when(sessionRepo.findById(sessionId)).thenReturn(Optional.of(session));
+        when(issueRepo.findById(issueId)).thenReturn(Optional.of(issue));
+        when(apiKeyService.resolveApiKey(issueId)).thenReturn(Optional.empty());
+
+        service.processSession(sessionId);
+
+        verifyNoInteractions(blocksAdapter);
+        ArgumentCaptor<BlocksSessionRecord> saved = ArgumentCaptor.forClass(BlocksSessionRecord.class);
+        verify(sessionRepo).save(saved.capture());
+        assertThat(saved.getValue().getExecutionState()).isEqualTo(FAILED);
+    }
+
+    @Test
     void processSession_doesNotSaveWhenDispatchThrows() {
         UUID sessionId = UUID.randomUUID();
         UUID issueId = UUID.randomUUID();
@@ -118,6 +139,7 @@ class SessionPollServiceTest {
         IssueWorkerRecord issue = issueRecord(issueId, "Fix login bug", null);
         when(sessionRepo.findById(sessionId)).thenReturn(Optional.of(session));
         when(issueRepo.findById(issueId)).thenReturn(Optional.of(issue));
+        when(apiKeyService.resolveApiKey(issueId)).thenReturn(Optional.of("ws-api-key-xyz"));
         when(blocksAdapter.createSession(any())).thenThrow(new RestClientException("connection refused"));
 
         service.processSession(sessionId);

@@ -32,6 +32,7 @@ class SessionPollService {
     private final IssueWorkerRepository issueRepo;
     private final BlocksMessageWorkerRepository messageRepo;
     private final BlocksAdapter blocksAdapter;
+    private final BlocksApiKeyService apiKeyService;
     private final RedisTemplate<String, String> redisTemplate;
     private final PollingProperties props;
 
@@ -39,12 +40,14 @@ class SessionPollService {
                        IssueWorkerRepository issueRepo,
                        BlocksMessageWorkerRepository messageRepo,
                        BlocksAdapter blocksAdapter,
+                       BlocksApiKeyService apiKeyService,
                        RedisTemplate<String, String> redisTemplate,
                        PollingProperties props) {
         this.sessionRepo = sessionRepo;
         this.issueRepo = issueRepo;
         this.messageRepo = messageRepo;
         this.blocksAdapter = blocksAdapter;
+        this.apiKeyService = apiKeyService;
         this.redisTemplate = redisTemplate;
         this.props = props;
     }
@@ -88,12 +91,21 @@ class SessionPollService {
             return;
         }
 
+        String apiKey = apiKeyService.resolveApiKey(session.getIssueId()).orElse(null);
+        if (apiKey == null) {
+            log.error("session_dispatch_no_api_key session_id={} issue_id={}",
+                    session.getId(), session.getIssueId());
+            failSession(session, "Blocks API key not configured for workspace");
+            return;
+        }
+
         try {
             SessionRequest request = new SessionRequest(
                     issue.getId().toString(),
                     issue.getTitle(),
                     issue.getDescription(),
-                    null
+                    null,
+                    apiKey
             );
             SessionResult result = blocksAdapter.createSession(request);
             session.setProviderSessionId(result.providerSessionId());

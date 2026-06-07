@@ -31,6 +31,10 @@ management:
     sampling:
       probability: 1.0
 
+blocks:
+  encryption:
+    secret: ${BLOCKS_ENCRYPTION_SECRET:}
+
 mesha:
   blocks:
     api-url: ${BLOCKS_API_URL}
