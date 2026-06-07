@@ -17,6 +17,9 @@ public class BlocksSessionRecord {
     @Column(columnDefinition = "uuid")
     private UUID id;
 
+    @Column(name = "issue_id", columnDefinition = "uuid", nullable = false, updatable = false)
+    private UUID issueId;
+
     @Column(name = "provider_session_id")
     private String providerSessionId;
 
@@ -42,7 +45,9 @@ public class BlocksSessionRecord {
     }
 
     public UUID getId() { return id; }
+    public UUID getIssueId() { return issueId; }
     public String getProviderSessionId() { return providerSessionId; }
+    public void setProviderSessionId(String providerSessionId) { this.providerSessionId = providerSessionId; }
     public AIExecutionState getExecutionState() { return executionState; }
     public void setExecutionState(AIExecutionState executionState) { this.executionState = executionState; }
     public int getRetryCount() { return retryCount; }
