@@ -44,7 +44,7 @@ class BlocksAdapterTest {
         // stub registration, which can lose the any() matcher due to type-erasure quirks.
         doReturn(postSpec).when(restClient).post();
         doReturn(requestBodySpec).when(postSpec).uri(anyString());
-        doReturn(requestBodySpec).when(requestBodySpec).header(anyString(), any(String[].class));
+        doReturn(requestBodySpec).when(requestBodySpec).headers(any());
         doReturn(requestBodySpec).when(requestBodySpec).body(any(Object.class));
         doReturn(responseSpec).when(requestBodySpec).retrieve();
 
