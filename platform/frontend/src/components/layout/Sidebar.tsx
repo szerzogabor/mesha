@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Project, Workspace } from "@/types";
 import { cn } from "@/lib/utils";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 interface SidebarProps {
   workspace: Workspace;
@@ -96,11 +95,10 @@ export function Sidebar({ workspace, projects, onCreateProject }: SidebarProps) 
         </li>
       </ul>
 
-      <div className="px-4 py-3 border-t border-sidebar-border mt-auto flex items-center justify-between">
+      <div className="px-4 py-3 border-t border-sidebar-border mt-auto">
         <Link href="/workspaces" className="text-xs text-sidebar-text-muted hover:text-sidebar-text-active transition-colors">
           Switch workspace
         </Link>
-        <ThemeToggle />
       </div>
     </aside>
   );
