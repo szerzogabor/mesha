@@ -1,10 +1,12 @@
 package com.mesha.api.controller;
 
+import com.mesha.api.dto.BlocksMessageDto;
 import com.mesha.api.dto.BlocksSessionDto;
 import com.mesha.api.dto.UpdateBlocksSessionRequest;
 import com.mesha.api.model.BlocksSession;
 import com.mesha.api.model.User;
 import com.mesha.api.security.CurrentUser;
+import com.mesha.api.service.BlocksMessageService;
 import com.mesha.api.service.BlocksSessionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,9 +25,12 @@ public class BlocksSessionController {
     private static final Logger log = LoggerFactory.getLogger(BlocksSessionController.class);
 
     private final BlocksSessionService blocksSessionService;
+    private final BlocksMessageService blocksMessageService;
 
-    public BlocksSessionController(BlocksSessionService blocksSessionService) {
+    public BlocksSessionController(BlocksSessionService blocksSessionService,
+                                   BlocksMessageService blocksMessageService) {
         this.blocksSessionService = blocksSessionService;
+        this.blocksMessageService = blocksMessageService;
     }
 
     @PostMapping
@@ -76,6 +81,17 @@ public class BlocksSessionController {
             @RequestBody UpdateBlocksSessionRequest req) {
         BlocksSession session = blocksSessionService.updateSession(sessionId, req, user);
         return ResponseEntity.ok(BlocksSessionDto.from(session));
+    }
+
+    @GetMapping("/{sessionId}/messages")
+    @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    public ResponseEntity<List<BlocksMessageDto>> getMessages(
+            @PathVariable UUID projectId,
+            @PathVariable UUID issueId,
+            @PathVariable UUID sessionId) {
+        List<BlocksMessageDto> messages = blocksMessageService.getMessagesForSession(sessionId)
+            .stream().map(BlocksMessageDto::from).toList();
+        return ResponseEntity.ok(messages);
     }
 
     @PostMapping("/{sessionId}/cancel")

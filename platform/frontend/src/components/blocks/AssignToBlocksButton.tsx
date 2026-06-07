@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AIExecutionTimeline } from "./AIExecutionTimeline";
+import { BlocksActivityFeed } from "./BlocksActivityFeed";
 import { useActiveBlocksSession, useAssignToBlocks, useCancelBlocksSession } from "@/hooks/useBlocksSessions";
 import { useBlocksConfig } from "@/hooks/useBlocksConfig";
 
@@ -24,7 +24,7 @@ export function AssignToBlocksPanel({ workspaceId, projectId, issueId, hasActive
     return (
       <div className="bg-bg-surface rounded-xl border border-border-default p-4">
         <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wide mb-3">
-          AI Execution
+          Blocks Activity
         </p>
         <div className="h-4 bg-border-default rounded animate-pulse w-2/3" />
       </div>
@@ -34,8 +34,10 @@ export function AssignToBlocksPanel({ workspaceId, projectId, issueId, hasActive
   if (activeSession) {
     return (
       <div className="bg-bg-surface rounded-xl border border-border-default p-4">
-        <AIExecutionTimeline
+        <BlocksActivityFeed
           session={activeSession}
+          projectId={projectId}
+          issueId={issueId}
           onCancel={() => cancelMutation.mutate(activeSession.id)}
           cancelPending={cancelMutation.isPending}
         />
