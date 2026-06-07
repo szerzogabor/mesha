@@ -26,6 +26,18 @@ function eventDescription(event: ActivityEvent): string {
       return `${actor} updated the description`;
     case "ISSUE_CREATED_FROM_AI_DRAFT":
       return `${actor} created this issue from an AI draft`;
+    case "AI_ASSIGNED":
+      return `${actor} assigned this issue to Blocks AI`;
+    case "AI_STATE_CHANGED":
+      return `Blocks AI updated session state from ${event.oldValue} to ${event.newValue}`;
+    case "AI_PR_OPENED":
+      return `Blocks AI opened a pull request`;
+    case "AI_COMPLETED":
+      return `Blocks AI completed the implementation`;
+    case "AI_FAILED":
+      return `Blocks AI session failed`;
+    case "AI_CANCELED":
+      return `Blocks AI session was canceled`;
     default:
       return `${actor} made a change`;
   }
@@ -42,6 +54,12 @@ const eventIcons: Record<ActivityEventType, string> = {
   TITLE_CHANGED: "✎",
   DESCRIPTION_CHANGED: "✎",
   ISSUE_CREATED_FROM_AI_DRAFT: "✦",
+  AI_ASSIGNED: "◉",
+  AI_STATE_CHANGED: "◉",
+  AI_PR_OPENED: "◉",
+  AI_COMPLETED: "◉",
+  AI_FAILED: "◉",
+  AI_CANCELED: "◉",
 };
 
 interface ActivityFeedProps {

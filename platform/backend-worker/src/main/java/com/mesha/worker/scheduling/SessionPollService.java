@@ -1,6 +1,7 @@
 package com.mesha.worker.scheduling;
 
 import com.mesha.worker.blocks.BlocksAdapter;
+import com.mesha.worker.orchestration.SessionRequest;
 import com.mesha.worker.orchestration.SessionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,17 +29,20 @@ class SessionPollService {
             AIExecutionState.DONE, AIExecutionState.FAILED, AIExecutionState.CANCELED);
 
     private final BlocksSessionPollerRepository sessionRepo;
+    private final IssueWorkerRepository issueRepo;
     private final BlocksMessageWorkerRepository messageRepo;
     private final BlocksAdapter blocksAdapter;
     private final RedisTemplate<String, String> redisTemplate;
     private final PollingProperties props;
 
     SessionPollService(BlocksSessionPollerRepository sessionRepo,
+                       IssueWorkerRepository issueRepo,
                        BlocksMessageWorkerRepository messageRepo,
                        BlocksAdapter blocksAdapter,
                        RedisTemplate<String, String> redisTemplate,
                        PollingProperties props) {
         this.sessionRepo = sessionRepo;
+        this.issueRepo = issueRepo;
         this.messageRepo = messageRepo;
         this.blocksAdapter = blocksAdapter;
         this.redisTemplate = redisTemplate;
@@ -64,8 +68,7 @@ class SessionPollService {
         }
 
         if (session.getProviderSessionId() == null) {
-            log.debug("session_no_provider_id session_id={} state={}",
-                    sessionId, session.getExecutionState());
+            dispatchSession(session);
             return;
         }
 
@@ -74,6 +77,33 @@ class SessionPollService {
         }
 
         poll(session);
+    }
+
+    private void dispatchSession(BlocksSessionRecord session) {
+        IssueWorkerRecord issue = issueRepo.findById(session.getIssueId()).orElse(null);
+        if (issue == null) {
+            log.error("session_dispatch_no_issue session_id={} issue_id={}",
+                    session.getId(), session.getIssueId());
+            failSession(session, "Issue not found for session dispatch");
+            return;
+        }
+
+        try {
+            SessionRequest request = new SessionRequest(
+                    issue.getId().toString(),
+                    issue.getTitle(),
+                    issue.getDescription(),
+                    null
+            );
+            SessionResult result = blocksAdapter.createSession(request);
+            session.setProviderSessionId(result.providerSessionId());
+            sessionRepo.save(session);
+            log.info("session_dispatched session_id={} provider_session_id={}",
+                    session.getId(), result.providerSessionId());
+        } catch (Exception e) {
+            log.error("session_dispatch_failure session_id={} issue_id={} error={}",
+                    session.getId(), session.getIssueId(), e.getMessage(), e);
+        }
     }
 
     private boolean isExpired(BlocksSessionRecord session) {

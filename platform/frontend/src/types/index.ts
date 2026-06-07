@@ -36,7 +36,13 @@ export type ActivityEventType =
   | "COMMENT_ADDED"
   | "TITLE_CHANGED"
   | "DESCRIPTION_CHANGED"
-  | "ISSUE_CREATED_FROM_AI_DRAFT";
+  | "ISSUE_CREATED_FROM_AI_DRAFT"
+  | "AI_ASSIGNED"
+  | "AI_STATE_CHANGED"
+  | "AI_PR_OPENED"
+  | "AI_COMPLETED"
+  | "AI_FAILED"
+  | "AI_CANCELED";
 
 export type AIDraftStatus = "PENDING" | "COMPLETED" | "FAILED" | "APPROVED" | "REJECTED";
 

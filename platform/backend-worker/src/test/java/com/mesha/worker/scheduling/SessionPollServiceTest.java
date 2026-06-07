@@ -1,6 +1,7 @@
 package com.mesha.worker.scheduling;
 
 import com.mesha.worker.blocks.BlocksAdapter;
+import com.mesha.worker.orchestration.SessionRequest;
 import com.mesha.worker.orchestration.SessionResult;
 import com.mesha.worker.orchestration.SessionResult.SessionStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +28,7 @@ import static org.mockito.Mockito.*;
 class SessionPollServiceTest {
 
     @Mock private BlocksSessionPollerRepository sessionRepo;
+    @Mock private IssueWorkerRepository issueRepo;
     @Mock private BlocksMessageWorkerRepository messageRepo;
     @Mock private BlocksAdapter blocksAdapter;
     @Mock private RedisTemplate<String, String> redisTemplate;
@@ -41,7 +43,7 @@ class SessionPollServiceTest {
         mocks = MockitoAnnotations.openMocks(this);
         props = new PollingProperties(5000L, 24L,
                 new PollingProperties.BackoffProperties(5000L, 300_000L, 2.0));
-        service = new SessionPollService(sessionRepo, messageRepo, blocksAdapter, redisTemplate, props);
+        service = new SessionPollService(sessionRepo, issueRepo, messageRepo, blocksAdapter, redisTemplate, props);
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
     }
 
@@ -70,14 +72,56 @@ class SessionPollServiceTest {
     }
 
     @Test
-    void processSession_skipsWhenProviderSessionIdIsNull() {
-        UUID id = UUID.randomUUID();
-        BlocksSessionRecord session = sessionWith(id, CREATED, null, 0, Instant.now().minusSeconds(10));
-        when(sessionRepo.findById(id)).thenReturn(Optional.of(session));
+    void processSession_dispatchesSessionWhenProviderSessionIdIsNull() {
+        UUID sessionId = UUID.randomUUID();
+        UUID issueId = UUID.randomUUID();
+        BlocksSessionRecord session = sessionWithIssue(sessionId, CREATED, null, 0, Instant.now().minusSeconds(10), issueId);
+        IssueWorkerRecord issue = issueRecord(issueId, "Fix login bug", "Description here");
+        when(sessionRepo.findById(sessionId)).thenReturn(Optional.of(session));
+        when(issueRepo.findById(issueId)).thenReturn(Optional.of(issue));
+        when(blocksAdapter.createSession(any(SessionRequest.class)))
+                .thenReturn(new SessionResult("prov-123", SessionStatus.PENDING, null));
 
-        service.processSession(id);
+        service.processSession(sessionId);
+
+        ArgumentCaptor<SessionRequest> reqCaptor = ArgumentCaptor.forClass(SessionRequest.class);
+        verify(blocksAdapter).createSession(reqCaptor.capture());
+        assertThat(reqCaptor.getValue().issueId()).isEqualTo(issueId.toString());
+        assertThat(reqCaptor.getValue().issueTitle()).isEqualTo("Fix login bug");
+
+        ArgumentCaptor<BlocksSessionRecord> saved = ArgumentCaptor.forClass(BlocksSessionRecord.class);
+        verify(sessionRepo).save(saved.capture());
+        assertThat(saved.getValue().getProviderSessionId()).isEqualTo("prov-123");
+    }
+
+    @Test
+    void processSession_failsSessionWhenIssueNotFound() {
+        UUID sessionId = UUID.randomUUID();
+        UUID issueId = UUID.randomUUID();
+        BlocksSessionRecord session = sessionWithIssue(sessionId, CREATED, null, 0, Instant.now().minusSeconds(10), issueId);
+        when(sessionRepo.findById(sessionId)).thenReturn(Optional.of(session));
+        when(issueRepo.findById(issueId)).thenReturn(Optional.empty());
+
+        service.processSession(sessionId);
 
         verifyNoInteractions(blocksAdapter);
+        ArgumentCaptor<BlocksSessionRecord> saved = ArgumentCaptor.forClass(BlocksSessionRecord.class);
+        verify(sessionRepo).save(saved.capture());
+        assertThat(saved.getValue().getExecutionState()).isEqualTo(FAILED);
+    }
+
+    @Test
+    void processSession_doesNotSaveWhenDispatchThrows() {
+        UUID sessionId = UUID.randomUUID();
+        UUID issueId = UUID.randomUUID();
+        BlocksSessionRecord session = sessionWithIssue(sessionId, CREATED, null, 0, Instant.now().minusSeconds(10), issueId);
+        IssueWorkerRecord issue = issueRecord(issueId, "Fix login bug", null);
+        when(sessionRepo.findById(sessionId)).thenReturn(Optional.of(session));
+        when(issueRepo.findById(issueId)).thenReturn(Optional.of(issue));
+        when(blocksAdapter.createSession(any())).thenThrow(new RestClientException("connection refused"));
+
+        service.processSession(sessionId);
+
         verify(sessionRepo, never()).save(any());
     }
 
@@ -295,31 +339,56 @@ class SessionPollServiceTest {
         verify(valueOps).setIfAbsent(eq("mesha:session:poll:" + id), anyString(), any(Duration.class));
     }
 
-    // ---- helper ----
+    // ---- helpers ----
 
     private BlocksSessionRecord sessionWith(UUID id, AIExecutionState state,
                                             String providerSessionId, int retryCount,
                                             Instant createdAt) {
+        return sessionWithIssue(id, state, providerSessionId, retryCount, createdAt, UUID.randomUUID());
+    }
+
+    private BlocksSessionRecord sessionWithIssue(UUID id, AIExecutionState state,
+                                                  String providerSessionId, int retryCount,
+                                                  Instant createdAt, UUID issueId) {
         try {
             var ctor = BlocksSessionRecord.class.getDeclaredConstructor();
             ctor.setAccessible(true);
             BlocksSessionRecord s = ctor.newInstance();
 
-            setField(s, "id", id);
-            setField(s, "executionState", state);
-            setField(s, "providerSessionId", providerSessionId);
-            setField(s, "retryCount", retryCount);
-            setField(s, "createdAt", createdAt);
-            setField(s, "updatedAt", createdAt);
+            setField(s, BlocksSessionRecord.class, "id", id);
+            setField(s, BlocksSessionRecord.class, "issueId", issueId);
+            setField(s, BlocksSessionRecord.class, "executionState", state);
+            setField(s, BlocksSessionRecord.class, "providerSessionId", providerSessionId);
+            setField(s, BlocksSessionRecord.class, "retryCount", retryCount);
+            setField(s, BlocksSessionRecord.class, "createdAt", createdAt);
+            setField(s, BlocksSessionRecord.class, "updatedAt", createdAt);
             return s;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    private void setField(Object obj, String fieldName, Object value) throws Exception {
-        var field = BlocksSessionRecord.class.getDeclaredField(fieldName);
+    private IssueWorkerRecord issueRecord(UUID id, String title, String description) {
+        try {
+            var ctor = IssueWorkerRecord.class.getDeclaredConstructor();
+            ctor.setAccessible(true);
+            IssueWorkerRecord issue = ctor.newInstance();
+            setField(issue, IssueWorkerRecord.class, "id", id);
+            setField(issue, IssueWorkerRecord.class, "title", title);
+            setField(issue, IssueWorkerRecord.class, "description", description);
+            return issue;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void setField(Object obj, Class<?> clazz, String fieldName, Object value) throws Exception {
+        var field = clazz.getDeclaredField(fieldName);
         field.setAccessible(true);
         field.set(obj, value);
+    }
+
+    private void setField(Object obj, String fieldName, Object value) throws Exception {
+        setField(obj, BlocksSessionRecord.class, fieldName, value);
     }
 }
