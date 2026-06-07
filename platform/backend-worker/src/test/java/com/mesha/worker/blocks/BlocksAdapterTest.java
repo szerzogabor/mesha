@@ -44,6 +44,7 @@ class BlocksAdapterTest {
         // stub registration, which can lose the any() matcher due to type-erasure quirks.
         doReturn(postSpec).when(restClient).post();
         doReturn(requestBodySpec).when(postSpec).uri(anyString());
+        doReturn(requestBodySpec).when(requestBodySpec).header(anyString(), any(String[].class));
         doReturn(requestBodySpec).when(requestBodySpec).body(any(Object.class));
         doReturn(responseSpec).when(requestBodySpec).retrieve();
 
@@ -73,7 +74,7 @@ class BlocksAdapterTest {
         doReturn(new BlocksAdapter.CreateSessionResponse("sess-abc", "pending"))
                 .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
 
-        var result = adapter.createSession(new SessionRequest("issue-1", "Fix bug", "Details", "main"));
+        var result = adapter.createSession(new SessionRequest("issue-1", "Fix bug", "Details", "main", "test-key"));
 
         assertThat(result.providerSessionId()).isEqualTo("sess-abc");
         assertThat(result.status()).isEqualTo(PENDING);
@@ -85,7 +86,7 @@ class BlocksAdapterTest {
         doReturn(new BlocksAdapter.CreateSessionResponse("sess-xyz", "pending"))
                 .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
 
-        adapter.createSession(new SessionRequest("i-1", "T", "D", "R"));
+        adapter.createSession(new SessionRequest("i-1", "T", "D", "R", "test-key"));
 
         assertThat(MDC.get("sessionId")).isNull();
         assertThat(MDC.get("provider")).isNull();
@@ -96,7 +97,7 @@ class BlocksAdapterTest {
         doReturn(new BlocksAdapter.CreateSessionResponse(null, "pending"))
                 .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
 
-        assertThatThrownBy(() -> adapter.createSession(new SessionRequest("i-1", "T", "D", "R")))
+        assertThatThrownBy(() -> adapter.createSession(new SessionRequest("i-1", "T", "D", "R", "test-key")))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("empty or missing session_id");
     }
@@ -105,7 +106,7 @@ class BlocksAdapterTest {
     void createSession_throwsWhenResponseIsNull() {
         doReturn(null).when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
 
-        assertThatThrownBy(() -> adapter.createSession(new SessionRequest("i-1", "T", "D", "R")))
+        assertThatThrownBy(() -> adapter.createSession(new SessionRequest("i-1", "T", "D", "R", "test-key")))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("empty or missing session_id");
     }
@@ -115,7 +116,7 @@ class BlocksAdapterTest {
         doThrow(new RestClientException("network error"))
                 .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
 
-        assertThatThrownBy(() -> adapter.createSession(new SessionRequest("i-1", "T", "D", "R")))
+        assertThatThrownBy(() -> adapter.createSession(new SessionRequest("i-1", "T", "D", "R", "test-key")))
                 .isInstanceOf(RestClientException.class)
                 .hasMessage("network error");
     }
@@ -126,7 +127,7 @@ class BlocksAdapterTest {
                 .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
 
         try {
-            adapter.createSession(new SessionRequest("i-1", "T", "D", "R"));
+            adapter.createSession(new SessionRequest("i-1", "T", "D", "R", "test-key"));
         } catch (RestClientException ignored) {}
 
         assertThat(MDC.get("sessionId")).isNull();
