@@ -8,5 +8,6 @@ public record UpdateBlocksSessionRequest(
     String prUrl,
     Integer prNumber,
     String branchName,
-    String errorMessage
+    String errorMessage,
+    String sessionUrl
 ) {}

@@ -17,6 +17,7 @@ public record BlocksSessionDto(
     Integer prNumber,
     String branchName,
     String errorMessage,
+    String sessionUrl,
     Instant createdAt,
     Instant updatedAt
 ) {
@@ -32,6 +33,7 @@ public record BlocksSessionDto(
             s.getPrNumber(),
             s.getBranchName(),
             s.getErrorMessage(),
+            s.getSessionUrl(),
             s.getCreatedAt(),
             s.getUpdatedAt()
         );

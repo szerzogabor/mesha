@@ -104,6 +104,10 @@ public class BlocksSessionService {
         if (req.errorMessage() != null) {
             session.setErrorMessage(req.errorMessage());
         }
+        if (req.sessionUrl() != null) {
+            session.setSessionUrl(req.sessionUrl());
+            log.info("blocks_session_url_set session_id={} session_url={}", sessionId, req.sessionUrl());
+        }
 
         session = blocksSessionRepository.save(session);
 
@@ -144,8 +148,11 @@ public class BlocksSessionService {
     }
 
     public BlocksSession getById(UUID sessionId) {
-        return blocksSessionRepository.findById(sessionId)
+        BlocksSession session = blocksSessionRepository.findById(sessionId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blocks session not found"));
+        log.debug("blocks_session_retrieved session_id={} session_url={}",
+                sessionId, session.getSessionUrl() != null ? session.getSessionUrl() : "none");
+        return session;
     }
 
     public List<BlocksSession> getSessionsForIssue(UUID issueId) {
@@ -160,7 +167,7 @@ public class BlocksSessionService {
     @Transactional
     public void handleWebhookStateUpdate(String providerSessionId, AIExecutionState newState,
                                          String prUrl, Integer prNumber, String branchName,
-                                         String errorMessage) {
+                                         String errorMessage, String sessionUrl) {
         BlocksSession session = blocksSessionRepository.findByProviderSessionId(providerSessionId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                 "No Blocks session with providerSessionId: " + providerSessionId));
@@ -178,6 +185,11 @@ public class BlocksSessionService {
         if (prNumber != null) session.setPrNumber(prNumber);
         if (branchName != null) session.setBranchName(branchName);
         if (errorMessage != null) session.setErrorMessage(errorMessage);
+        if (sessionUrl != null && session.getSessionUrl() == null) {
+            session.setSessionUrl(sessionUrl);
+            log.info("blocks_session_url_set_via_webhook session_id={} provider_session_id={} session_url={}",
+                    session.getId(), providerSessionId, sessionUrl);
+        }
         session = blocksSessionRepository.save(session);
 
         Issue issue = session.getIssue();

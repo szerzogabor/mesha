@@ -132,17 +132,19 @@ public class BlocksWebhookService {
                     log.warn("Blocks webhook event '{}' unknown state '{}', skipping", eventType, stateRaw);
                     return;
                 }
-                String prUrl       = payload.path("prUrl").asText(null);
-                Integer prNumber   = payload.hasNonNull("prNumber") ? payload.path("prNumber").asInt() : null;
-                String branchName  = payload.path("branchName").asText(null);
+                String prUrl        = payload.path("prUrl").asText(null);
+                Integer prNumber    = payload.hasNonNull("prNumber") ? payload.path("prNumber").asInt() : null;
+                String branchName   = payload.path("branchName").asText(null);
                 String errorMessage = payload.path("errorMessage").asText(null);
-                blocksSessionService.handleWebhookStateUpdate(providerSessionId, newState, prUrl, prNumber, branchName, errorMessage);
+                String sessionUrl   = payload.path("sessionUrl").asText(null);
+                blocksSessionService.handleWebhookStateUpdate(providerSessionId, newState, prUrl, prNumber, branchName, errorMessage, sessionUrl);
             }
             case "pr.created" -> {
                 String prUrl      = payload.path("prUrl").asText(null);
                 Integer prNumber  = payload.hasNonNull("prNumber") ? payload.path("prNumber").asInt() : null;
                 String branchName = payload.path("branchName").asText(null);
-                blocksSessionService.handleWebhookStateUpdate(providerSessionId, AIExecutionState.PR_OPENED, prUrl, prNumber, branchName, null);
+                String sessionUrl = payload.path("sessionUrl").asText(null);
+                blocksSessionService.handleWebhookStateUpdate(providerSessionId, AIExecutionState.PR_OPENED, prUrl, prNumber, branchName, null, sessionUrl);
             }
             default -> log.debug("Unhandled Blocks webhook event type: {}", eventType);
         }

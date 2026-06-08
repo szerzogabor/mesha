@@ -57,6 +57,7 @@ class SessionPollService {
     private final BlocksApiKeyService apiKeyService;
     private final RedisTemplate<String, String> redisTemplate;
     private final PollingProperties props;
+    private final String blocksDashboardUrl;
 
     SessionPollService(BlocksSessionRepository sessionRepo,
                        IssueRepository issueRepo,
@@ -66,7 +67,8 @@ class SessionPollService {
                        BlocksAdapter blocksAdapter,
                        BlocksApiKeyService apiKeyService,
                        RedisTemplate<String, String> redisTemplate,
-                       PollingProperties props) {
+                       PollingProperties props,
+                       @org.springframework.beans.factory.annotation.Value("${mesha.blocks.dashboard-url:https://app.blocks.team}") String blocksDashboardUrl) {
         this.sessionRepo = sessionRepo;
         this.issueRepo = issueRepo;
         this.commentRepo = commentRepo;
@@ -76,6 +78,7 @@ class SessionPollService {
         this.apiKeyService = apiKeyService;
         this.redisTemplate = redisTemplate;
         this.props = props;
+        this.blocksDashboardUrl = blocksDashboardUrl;
     }
 
     /**
@@ -175,9 +178,11 @@ class SessionPollService {
             );
             SessionResult result = blocksAdapter.createSession(request);
             session.setProviderSessionId(result.providerSessionId());
+            String sessionUrl = blocksDashboardUrl.stripTrailing() + "/sessions/" + result.providerSessionId();
+            session.setSessionUrl(sessionUrl);
             sessionRepo.save(session);
-            log.info("session_dispatched session_id={} provider_session_id={}",
-                    session.getId(), result.providerSessionId());
+            log.info("session_dispatched session_id={} provider_session_id={} session_url={}",
+                    session.getId(), result.providerSessionId(), sessionUrl);
         } catch (HttpClientErrorException e) {
             log.error("session_dispatch_failure session_id={} issue_id={} error={}",
                     session.getId(), issueId, e.getMessage(), e);
