@@ -142,6 +142,7 @@ export interface BlocksSession {
   prNumber?: number;
   branchName?: string;
   errorMessage?: string;
+  sessionUrl?: string;
   createdAt: string;
   updatedAt: string;
 }

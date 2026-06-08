@@ -45,6 +45,9 @@ public class BlocksSession {
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
+    @Column(name = "session_url", columnDefinition = "TEXT")
+    private String sessionUrl;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -75,6 +78,8 @@ public class BlocksSession {
     public void setBranchName(String branchName) { this.branchName = branchName; }
     public String getErrorMessage() { return errorMessage; }
     public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+    public String getSessionUrl() { return sessionUrl; }
+    public void setSessionUrl(String sessionUrl) { this.sessionUrl = sessionUrl; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }
