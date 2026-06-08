@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -71,6 +72,9 @@ class SessionPollService {
         }
 
         if (session.getProviderSessionId() == null) {
+            if (session.getRetryCount() > 0 && !acquireBackoffLock(session)) {
+                return;
+            }
             dispatchSession(session);
             return;
         }
@@ -112,9 +116,15 @@ class SessionPollService {
             sessionRepo.save(session);
             log.info("session_dispatched session_id={} provider_session_id={}",
                     session.getId(), result.providerSessionId());
+        } catch (HttpClientErrorException e) {
+            log.error("session_dispatch_failure session_id={} issue_id={} error={}",
+                    session.getId(), session.getIssueId(), e.getMessage(), e);
+            failSession(session, "Blocks API rejected session creation: " + e.getMessage());
         } catch (Exception e) {
             log.error("session_dispatch_failure session_id={} issue_id={} error={}",
                     session.getId(), session.getIssueId(), e.getMessage(), e);
+            session.setRetryCount(session.getRetryCount() + 1);
+            sessionRepo.save(session);
         }
     }
 
