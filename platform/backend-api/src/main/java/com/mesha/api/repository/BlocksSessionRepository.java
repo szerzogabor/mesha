@@ -4,7 +4,9 @@ import com.mesha.api.model.AIExecutionState;
 import com.mesha.api.model.BlocksSession;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,4 +22,7 @@ public interface BlocksSessionRepository extends JpaRepository<BlocksSession, UU
     List<BlocksSession> findByExecutionState(AIExecutionState executionState);
 
     Optional<BlocksSession> findByProviderSessionId(String providerSessionId);
+
+    @Query("SELECT s FROM BlocksSession s WHERE s.executionState NOT IN :states")
+    List<BlocksSession> findAllByExecutionStateNotIn(@Param("states") Collection<AIExecutionState> states);
 }

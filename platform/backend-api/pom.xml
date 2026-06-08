@@ -116,6 +116,12 @@
             <version>1.78.1</version>
         </dependency>
 
+        <!-- Micrometer OTel bridge: provides io.micrometer.tracing.Tracer backed by OTel agent -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-otel</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -124,6 +130,12 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- In-memory tracer for unit tests -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
