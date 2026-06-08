@@ -3,9 +3,14 @@ package com.mesha.api.worker.scheduling;
 import com.mesha.api.model.AIExecutionState;
 import com.mesha.api.model.BlocksMessage;
 import com.mesha.api.model.BlocksSession;
+import com.mesha.api.model.Comment;
+import com.mesha.api.model.GitHubRepository;
 import com.mesha.api.model.Issue;
+import com.mesha.api.model.Label;
 import com.mesha.api.repository.BlocksMessageRepository;
 import com.mesha.api.repository.BlocksSessionRepository;
+import com.mesha.api.repository.CommentRepository;
+import com.mesha.api.repository.GitHubRepositoryRepository;
 import com.mesha.api.repository.IssueRepository;
 import com.mesha.api.worker.blocks.BlocksAdapter;
 import com.mesha.api.worker.orchestration.SessionRequest;
@@ -20,8 +25,10 @@ import org.springframework.web.client.HttpClientErrorException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Transactional helper invoked once per active session during each polling cycle.
@@ -43,6 +50,8 @@ class SessionPollService {
 
     private final BlocksSessionRepository sessionRepo;
     private final IssueRepository issueRepo;
+    private final CommentRepository commentRepo;
+    private final GitHubRepositoryRepository gitHubRepoRepo;
     private final BlocksMessageRepository messageRepo;
     private final BlocksAdapter blocksAdapter;
     private final BlocksApiKeyService apiKeyService;
@@ -51,6 +60,8 @@ class SessionPollService {
 
     SessionPollService(BlocksSessionRepository sessionRepo,
                        IssueRepository issueRepo,
+                       CommentRepository commentRepo,
+                       GitHubRepositoryRepository gitHubRepoRepo,
                        BlocksMessageRepository messageRepo,
                        BlocksAdapter blocksAdapter,
                        BlocksApiKeyService apiKeyService,
@@ -58,6 +69,8 @@ class SessionPollService {
                        PollingProperties props) {
         this.sessionRepo = sessionRepo;
         this.issueRepo = issueRepo;
+        this.commentRepo = commentRepo;
+        this.gitHubRepoRepo = gitHubRepoRepo;
         this.messageRepo = messageRepo;
         this.blocksAdapter = blocksAdapter;
         this.apiKeyService = apiKeyService;
@@ -114,12 +127,50 @@ class SessionPollService {
             return;
         }
 
+        String projectName = issue.getProject() != null ? issue.getProject().getName() : null;
+        String workspaceName = (issue.getProject() != null && issue.getProject().getWorkspace() != null)
+                ? issue.getProject().getWorkspace().getName() : null;
+        UUID workspaceId = (issue.getProject() != null && issue.getProject().getWorkspace() != null)
+                ? issue.getProject().getWorkspace().getId() : null;
+
+        String assigneeName = null;
+        if (issue.getAssignee() != null) {
+            String name = issue.getAssignee().getName();
+            assigneeName = (name != null && !name.isBlank()) ? name : issue.getAssignee().getEmail();
+        }
+
+        List<String> labelNames = issue.getLabels().stream()
+                .map(Label::getName)
+                .collect(Collectors.toList());
+
+        List<String> comments = loadComments(issueId);
+        GitHubRepository repo = loadRepository(workspaceId);
+
+        log.info("session_dispatch_context session_id={} issue_id={} workspace={} project={} repo={} comment_count={} label_count={}",
+                session.getId(), issueId,
+                workspaceName != null ? workspaceName : "none",
+                projectName != null ? projectName : "none",
+                repo != null ? repo.getHtmlUrl() : "none",
+                comments.size(),
+                labelNames.size());
+
         try {
             SessionRequest request = new SessionRequest(
                     issue.getId().toString(),
                     issue.getTitle(),
                     issue.getDescription(),
-                    null,
+                    issue.getStatus() != null ? issue.getStatus().name() : null,
+                    issue.getPriority() != null ? issue.getPriority().name() : null,
+                    assigneeName,
+                    labelNames,
+                    issue.getCreatedAt() != null ? issue.getCreatedAt().toString() : null,
+                    issue.getUpdatedAt() != null ? issue.getUpdatedAt().toString() : null,
+                    workspaceName,
+                    projectName,
+                    repo != null ? repo.getName() : null,
+                    repo != null ? repo.getHtmlUrl() : null,
+                    repo != null ? repo.getDefaultBranch() : null,
+                    comments,
                     apiKey
             );
             SessionResult result = blocksAdapter.createSession(request);
@@ -136,6 +187,37 @@ class SessionPollService {
                     session.getId(), issueId, e.getMessage(), e);
             session.setRetryCount(session.getRetryCount() + 1);
             sessionRepo.save(session);
+        }
+    }
+
+    private List<String> loadComments(UUID issueId) {
+        try {
+            return commentRepo.findAllByIssueId(issueId).stream()
+                    .map(c -> {
+                        String author = resolveAuthorName(c);
+                        return "**" + author + "** (" + c.getCreatedAt() + "):\n" + c.getBody();
+                    })
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.warn("session_dispatch_comments_load_failed issue_id={} error={}", issueId, e.getMessage());
+            return List.of();
+        }
+    }
+
+    private String resolveAuthorName(Comment comment) {
+        if (comment.getAuthor() == null) return "Unknown";
+        String name = comment.getAuthor().getName();
+        return (name != null && !name.isBlank()) ? name : comment.getAuthor().getEmail();
+    }
+
+    private GitHubRepository loadRepository(UUID workspaceId) {
+        if (workspaceId == null) return null;
+        try {
+            List<GitHubRepository> repos = gitHubRepoRepo.findAllByWorkspaceIdAndConnectedTrue(workspaceId);
+            return repos.isEmpty() ? null : repos.get(0);
+        } catch (Exception e) {
+            log.warn("session_dispatch_repo_load_failed workspace_id={} error={}", workspaceId, e.getMessage());
+            return null;
         }
     }
 
