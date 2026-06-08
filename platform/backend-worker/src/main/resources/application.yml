@@ -39,6 +39,7 @@ mesha:
   blocks:
     api-url: ${BLOCKS_API_URL}
     api-key: ${BLOCKS_API_KEY}
+    agent-name: ${BLOCKS_AGENT_NAME:claude}
   github:
     app-id: ${GITHUB_APP_ID}
     private-key: ${GITHUB_APP_PRIVATE_KEY}

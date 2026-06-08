@@ -76,6 +76,7 @@ mesha:
   blocks:
     api-url: ${BLOCKS_API_URL:}
     api-key: ${BLOCKS_API_KEY:}
+    agent-name: ${BLOCKS_AGENT_NAME:claude}
   polling:
     interval-ms: 5000
     max-session-age-hours: 24

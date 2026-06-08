@@ -9,10 +9,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -26,11 +29,14 @@ public class BlocksAdapter implements ProviderAdapter {
 
     private final WorkflowTracer workflowTracer;
     private final RestClient restClient;
+    private final String agentName;
 
     public BlocksAdapter(WorkflowTracer workflowTracer,
-                         @Qualifier("blocksRestClient") RestClient restClient) {
+                         @Qualifier("blocksRestClient") RestClient restClient,
+                         @Value("${mesha.blocks.agent-name:claude}") String agentName) {
         this.workflowTracer = workflowTracer;
         this.restClient = restClient;
+        this.agentName = agentName;
     }
 
     @Override
@@ -48,28 +54,27 @@ public class BlocksAdapter implements ProviderAdapter {
                 providerName(), request.issueId(), localSessionId);
 
         try {
-            var body = new CreateSessionRequest(
-                    request.issueId(),
-                    request.issueTitle(),
-                    request.issueDescription(),
-                    request.repositoryContext()
-            );
+            var body = new CreateSessionRequest(agentName, buildMessage(request));
 
             var response = restClient.post()
-                    .uri("/sessions")
+                    .uri("/rest/v1/sessions")
                     .headers(h -> h.set("Authorization", "ApiKey " + request.apiKey()))
                     .body(body)
                     .retrieve()
                     .body(CreateSessionResponse.class);
 
-            if (response == null || response.sessionId() == null) {
-                throw new IllegalStateException("Blocks API returned empty or missing session_id");
+            if (response == null || response.id() == null
+                    || response.links() == null
+                    || response.links().finalMessage() == null
+                    || response.links().finalMessage().href() == null) {
+                throw new IllegalStateException("Blocks API returned incomplete session response");
             }
 
-            log.info("session_create_success provider={} issue_id={} provider_session_id={}",
-                    providerName(), request.issueId(), response.sessionId());
+            String pollUrl = response.links().finalMessage().href();
+            log.info("session_create_success provider={} issue_id={} session_id={} poll_url={}",
+                    providerName(), request.issueId(), response.id(), pollUrl);
 
-            return new SessionResult(response.sessionId(), SessionResult.SessionStatus.PENDING, null);
+            return new SessionResult(pollUrl, SessionResult.SessionStatus.PENDING, null);
 
         } catch (RestClientException e) {
             workflowTracer.captureAiProviderFailure(providerName(), "createSession", 0, e);
@@ -84,37 +89,33 @@ public class BlocksAdapter implements ProviderAdapter {
     }
 
     @Override
-    public SessionResult pollSession(String providerSessionId) {
-        MDC.put("sessionId", providerSessionId);
+    public SessionResult pollSession(String pollUrl) {
         MDC.put("provider", providerName());
 
-        log.info("session_poll_start provider={} session_id={}", providerName(), providerSessionId);
+        log.info("session_poll_start provider={} poll_url={}", providerName(), pollUrl);
 
         try {
             var response = restClient.get()
-                    .uri("/sessions/{id}", providerSessionId)
+                    .uri(URI.create(pollUrl))
                     .retrieve()
-                    .body(PollSessionResponse.class);
+                    .body(FinalMessagePage.class);
 
-            if (response == null) {
-                throw new IllegalStateException("Blocks API returned empty response for session " + providerSessionId);
+            if (response == null || response.items() == null || response.items().isEmpty()) {
+                log.debug("session_poll_pending provider={}", providerName());
+                return new SessionResult(pollUrl, SessionResult.SessionStatus.PENDING, null);
             }
 
-            SessionResult.SessionStatus status = mapStatus(response.status());
-
-            log.info("session_poll_result provider={} session_id={} status={}",
-                    providerName(), providerSessionId, status);
-
-            return new SessionResult(providerSessionId, status, response.finalMessage());
+            String finalMessage = response.items().get(0).message();
+            log.info("session_poll_completed provider={}", providerName());
+            return new SessionResult(pollUrl, SessionResult.SessionStatus.COMPLETED, finalMessage);
 
         } catch (RestClientException e) {
-            workflowTracer.capturePollingFailure(providerName(), providerSessionId, 1, e);
+            workflowTracer.capturePollingFailure(providerName(), pollUrl, 1, e);
             throw e;
         } catch (Exception e) {
-            workflowTracer.capturePollingFailure(providerName(), providerSessionId, 1, e);
+            workflowTracer.capturePollingFailure(providerName(), pollUrl, 1, e);
             throw new RuntimeException("Failed to poll Blocks session: " + e.getMessage(), e);
         } finally {
-            MDC.remove("sessionId");
             MDC.remove("provider");
         }
     }
@@ -136,23 +137,42 @@ public class BlocksAdapter implements ProviderAdapter {
         };
     }
 
-    // --- Request / Response DTOs (package-private for testability) ---
+    private String buildMessage(SessionRequest request) {
+        var sb = new StringBuilder("Implement the following issue:\n\n");
+        if (request.issueTitle() != null && !request.issueTitle().isBlank()) {
+            sb.append("**").append(request.issueTitle()).append("**\n\n");
+        }
+        if (request.issueDescription() != null && !request.issueDescription().isBlank()) {
+            sb.append(request.issueDescription());
+        }
+        return sb.toString();
+    }
+
+    // --- Request / Response DTOs ---
 
     record CreateSessionRequest(
-            @JsonProperty("issue_id") String issueId,
-            @JsonProperty("issue_title") String issueTitle,
-            @JsonProperty("issue_description") String issueDescription,
-            @JsonProperty("repository_context") String repositoryContext
+            @JsonProperty("agent_name") String agentName,
+            @JsonProperty("message") String message
     ) {}
 
     record CreateSessionResponse(
-            @JsonProperty("session_id") String sessionId,
-            @JsonProperty("status") String status
-    ) {}
+            @JsonProperty("id") String id,
+            @JsonProperty("_links") Links links
+    ) {
+        record Links(
+                @JsonProperty("final_message") FinalMessageLink finalMessage
+        ) {
+            record FinalMessageLink(
+                    @JsonProperty("href") String href
+            ) {}
+        }
+    }
 
-    record PollSessionResponse(
-            @JsonProperty("session_id") String sessionId,
-            @JsonProperty("status") String status,
-            @JsonProperty("final_message") String finalMessage
-    ) {}
+    record FinalMessagePage(
+            @JsonProperty("items") List<FinalMessageItem> items
+    ) {
+        record FinalMessageItem(
+                @JsonProperty("message") String message
+        ) {}
+    }
 }
