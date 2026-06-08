@@ -1,0 +1,241 @@
+package com.mesha.api.worker.scheduling;
+
+import com.mesha.api.model.AIExecutionState;
+import com.mesha.api.model.BlocksMessage;
+import com.mesha.api.model.BlocksSession;
+import com.mesha.api.model.Issue;
+import com.mesha.api.repository.BlocksMessageRepository;
+import com.mesha.api.repository.BlocksSessionRepository;
+import com.mesha.api.repository.IssueRepository;
+import com.mesha.api.worker.blocks.BlocksAdapter;
+import com.mesha.api.worker.orchestration.SessionRequest;
+import com.mesha.api.worker.orchestration.SessionResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.EnumSet;
+import java.util.Set;
+import java.util.UUID;
+
+/**
+ * Transactional helper invoked once per active session during each polling cycle.
+ * Keeping per-session work in its own transaction means a failure on one session
+ * never rolls back updates already applied to others.
+ *
+ * Operates on the API's canonical JPA entities (BlocksSession, Issue, BlocksMessage)
+ * rather than the worker's lightweight record projections. The polling algorithm and
+ * state-machine logic are identical to the backend-worker implementation, preserving
+ * the extraction path back to a standalone service.
+ */
+@Service
+class SessionPollService {
+
+    private static final Logger log = LoggerFactory.getLogger(SessionPollService.class);
+
+    static final Set<AIExecutionState> TERMINAL_STATES = EnumSet.of(
+            AIExecutionState.DONE, AIExecutionState.FAILED, AIExecutionState.CANCELED);
+
+    private final BlocksSessionRepository sessionRepo;
+    private final IssueRepository issueRepo;
+    private final BlocksMessageRepository messageRepo;
+    private final BlocksAdapter blocksAdapter;
+    private final BlocksApiKeyService apiKeyService;
+    private final RedisTemplate<String, String> redisTemplate;
+    private final PollingProperties props;
+
+    SessionPollService(BlocksSessionRepository sessionRepo,
+                       IssueRepository issueRepo,
+                       BlocksMessageRepository messageRepo,
+                       BlocksAdapter blocksAdapter,
+                       BlocksApiKeyService apiKeyService,
+                       RedisTemplate<String, String> redisTemplate,
+                       PollingProperties props) {
+        this.sessionRepo = sessionRepo;
+        this.issueRepo = issueRepo;
+        this.messageRepo = messageRepo;
+        this.blocksAdapter = blocksAdapter;
+        this.apiKeyService = apiKeyService;
+        this.redisTemplate = redisTemplate;
+        this.props = props;
+    }
+
+    /**
+     * Processes a single session: applies the max-age guard first, then attempts
+     * an exponential-backoff-gated poll against the Blocks API.
+     */
+    @Transactional
+    void processSession(UUID sessionId) {
+        BlocksSession session = sessionRepo.findById(sessionId).orElse(null);
+        if (session == null || TERMINAL_STATES.contains(session.getExecutionState())) {
+            return;
+        }
+
+        if (isExpired(session)) {
+            failSession(session, "Session exceeded maximum age of " + props.maxSessionAgeHours() + " hours");
+            return;
+        }
+
+        if (session.getProviderSessionId() == null) {
+            dispatchSession(session);
+            return;
+        }
+
+        if (!acquireBackoffLock(session)) {
+            return;
+        }
+
+        poll(session);
+    }
+
+    private void dispatchSession(BlocksSession session) {
+        UUID issueId = session.getIssue().getId();
+        Issue issue = issueRepo.findById(issueId).orElse(null);
+        if (issue == null) {
+            log.error("session_dispatch_no_issue session_id={} issue_id={}",
+                    session.getId(), issueId);
+            failSession(session, "Issue not found for session dispatch");
+            return;
+        }
+
+        String apiKey = apiKeyService.resolveApiKey(issueId).orElse(null);
+        if (apiKey == null) {
+            log.error("session_dispatch_no_api_key session_id={} issue_id={}",
+                    session.getId(), issueId);
+            failSession(session, "Blocks API key not configured for workspace");
+            return;
+        }
+
+        try {
+            SessionRequest request = new SessionRequest(
+                    issue.getId().toString(),
+                    issue.getTitle(),
+                    issue.getDescription(),
+                    null,
+                    apiKey
+            );
+            SessionResult result = blocksAdapter.createSession(request);
+            session.setProviderSessionId(result.providerSessionId());
+            sessionRepo.save(session);
+            log.info("session_dispatched session_id={} provider_session_id={}",
+                    session.getId(), result.providerSessionId());
+        } catch (Exception e) {
+            log.error("session_dispatch_failure session_id={} issue_id={} error={}",
+                    session.getId(), issueId, e.getMessage(), e);
+        }
+    }
+
+    private boolean isExpired(BlocksSession session) {
+        Duration age = Duration.between(session.getCreatedAt(), Instant.now());
+        return age.toHours() >= props.maxSessionAgeHours();
+    }
+
+    /**
+     * Uses Redis setIfAbsent as a combined distributed lock and backoff gate.
+     * The TTL equals the computed backoff interval, so the session cannot be
+     * polled again until that interval elapses — even across multiple instances.
+     */
+    private boolean acquireBackoffLock(BlocksSession session) {
+        Duration backoff = computeBackoff(session.getRetryCount());
+        String key = "mesha:session:poll:" + session.getId();
+        Boolean acquired = redisTemplate.opsForValue().setIfAbsent(key, "1", backoff);
+        if (!Boolean.TRUE.equals(acquired)) {
+            log.debug("session_backoff_active session_id={} backoff_ms={}",
+                    session.getId(), backoff.toMillis());
+            return false;
+        }
+        return true;
+    }
+
+    private void poll(BlocksSession session) {
+        try {
+            SessionResult result = blocksAdapter.pollSession(session.getProviderSessionId());
+            AIExecutionState newState = mapToExecutionState(result.status(), session.getExecutionState());
+
+            AIExecutionState prevState = session.getExecutionState();
+            session.setRetryCount(session.getRetryCount() + 1);
+
+            if (newState != prevState) {
+                session.setExecutionState(newState);
+                log.info("session_state_changed session_id={} from={} to={} provider_session_id={}",
+                        session.getId(), prevState, newState, session.getProviderSessionId());
+                recordStateTransitionMessage(session, newState, result.finalMessage());
+            } else {
+                log.debug("session_state_unchanged session_id={} state={} poll_count={}",
+                        session.getId(), newState, session.getRetryCount());
+            }
+
+            sessionRepo.save(session);
+
+        } catch (Exception e) {
+            log.error("session_poll_failure session_id={} provider_session_id={} error={}",
+                    session.getId(), session.getProviderSessionId(), e.getMessage(), e);
+            // Let the backoff lock expire; session will be retried on next eligible cycle.
+        }
+    }
+
+    private void recordStateTransitionMessage(BlocksSession session, AIExecutionState newState, String providerMessage) {
+        String text = switch (newState) {
+            case PLANNING   -> "Analyzing requirements and planning implementation";
+            case EXECUTING  -> "Writing code and making changes";
+            case WAITING_REVIEW -> "Implementation complete, opening pull request";
+            case PR_OPENED  -> "Pull request created";
+            case DONE       -> providerMessage != null ? providerMessage : "Implementation successfully completed";
+            case FAILED     -> providerMessage != null ? "Session failed: " + providerMessage : "Session failed";
+            case CANCELED   -> "Session canceled";
+            default         -> null;
+        };
+        if (text == null) return;
+        try {
+            BlocksMessage msg = new BlocksMessage();
+            msg.setSession(session);
+            msg.setMessage(text);
+            messageRepo.save(msg);
+        } catch (Exception e) {
+            log.warn("blocks_message_save_failed session_id={} state={} error={}", session.getId(), newState, e.getMessage());
+        }
+    }
+
+    private void failSession(BlocksSession session, String reason) {
+        Duration age = Duration.between(session.getCreatedAt(), Instant.now());
+        log.warn("session_expired session_id={} age_hours={} reason={}",
+                session.getId(), age.toHours(), reason);
+        session.setExecutionState(AIExecutionState.FAILED);
+        session.setErrorMessage(reason);
+        sessionRepo.save(session);
+        recordStateTransitionMessage(session, AIExecutionState.FAILED, reason);
+    }
+
+    /**
+     * Computes the backoff interval for the next poll.
+     * Formula: min(baseMs × multiplier^pollCount, maxMs)
+     */
+    Duration computeBackoff(int pollCount) {
+        double backoffMs = props.backoff().baseMs();
+        for (int i = 0; i < pollCount; i++) {
+            backoffMs *= props.backoff().multiplier();
+            if (backoffMs >= props.backoff().maxMs()) {
+                return Duration.ofMillis(props.backoff().maxMs());
+            }
+        }
+        return Duration.ofMillis((long) Math.min(backoffMs, props.backoff().maxMs()));
+    }
+
+    /**
+     * Maps a Blocks API status to the canonical AIExecutionState.
+     * PENDING is treated as PLANNING on first poll (CREATED → PLANNING),
+     * or left unchanged if the session is already further along.
+     */
+    AIExecutionState mapToExecutionState(SessionResult.SessionStatus status, AIExecutionState current) {
+        return switch (status) {
+            case PENDING -> current == AIExecutionState.CREATED ? AIExecutionState.PLANNING : current;
+            case RUNNING -> AIExecutionState.EXECUTING;
+            case COMPLETED -> AIExecutionState.DONE;
+            case FAILED -> AIExecutionState.FAILED;
+        };
+    }
+}

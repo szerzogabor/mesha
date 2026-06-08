@@ -68,6 +68,22 @@ blocks:
   encryption:
     secret: ${BLOCKS_ENCRYPTION_SECRET:}
 
+# Worker responsibilities executed inline within backend-api.
+# Set BLOCKS_API_URL and BLOCKS_API_KEY to enable session dispatch and polling.
+# When absent, the scheduler runs but sessions remain in CREATED state and
+# dispatch attempts fail gracefully with logged errors.
+mesha:
+  blocks:
+    api-url: ${BLOCKS_API_URL:}
+    api-key: ${BLOCKS_API_KEY:}
+  polling:
+    interval-ms: 5000
+    max-session-age-hours: 24
+    backoff:
+      base-ms: 5000
+      max-ms: 300000
+      multiplier: 2.0
+
 github:
   app:
     app-id: ${GITHUB_APP_ID:0}

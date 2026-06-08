@@ -80,74 +80,10 @@ services:
       # Write-only Grafana Cloud ingestion token — same credential as NEXT_PUBLIC_OTEL_EXPORTER_OTLP_AUTH
       - key: OTEL_EXPORTER_OTLP_HEADERS
         value: "Authorization=Basic MTY0OTc2ODpnbGNfZXlKdklqb2lNVGMzTVRRek9TSXNJbTRpT2lKdFpYTm9ZU0lzSW1zaU9pSndOV1J0TXpWcVYzRTBWVTFPTkRoWWRqWTRkalV5VUd3aUxDSnRJanA3SW5JaU9pSndjbTlrTFdWMUxXTmxiblJ5WVd3dE1DSjlmUT09"
-
-  - type: web
-    name: mesha-backend-worker
-    env: docker
-    plan: free
-    rootDir: platform/backend-worker
-    branch: main
-    autoDeploy: true
-    buildFilter:
-      paths:
-        - render.yaml
-        - platform/backend-worker/**
-    envVars:
-      - key: PORT
-        value: "10000"
-      - key: DB_HOST
-        fromDatabase:
-          name: mesha-db
-          property: host
-      - key: DB_PORT
-        fromDatabase:
-          name: mesha-db
-          property: port
-      - key: DB_NAME
-        fromDatabase:
-          name: mesha-db
-          property: database
-      - key: DB_USER
-        fromDatabase:
-          name: mesha-db
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: mesha-db
-          property: password
-      - key: REDIS_URL
-        fromService:
-          name: mesha-redis
-          type: redis
-          property: connectionString
-      - key: APP_ENV
-        value: production
+      # Worker responsibilities — session polling runs inside backend-api
       - key: BLOCKS_API_URL
         sync: false
       - key: BLOCKS_API_KEY
         sync: false
-      - key: GITHUB_APP_ID
+      - key: BLOCKS_ENCRYPTION_SECRET
         sync: false
-      - key: GITHUB_APP_PRIVATE_KEY
-        sync: false
-      - key: GITHUB_WEBHOOK_SECRET
-        sync: false
-      # OpenTelemetry — Grafana Cloud OTLP gateway (prod-eu-central-0)
-      # Logs and traces are shipped via the OTel Java Agent; Loki4j is disabled in production.
-      - key: OTEL_EXPORTER_OTLP_ENDPOINT
-        value: "https://otlp-gateway-prod-eu-central-0.grafana.net/otlp"
-      - key: OTEL_EXPORTER_OTLP_PROTOCOL
-        value: "http/protobuf"
-      - key: OTEL_SERVICE_NAME
-        value: "mesha-worker"
-      - key: OTEL_TRACES_EXPORTER
-        value: "otlp"
-      - key: OTEL_LOGS_EXPORTER
-        value: "otlp"
-      - key: OTEL_METRICS_EXPORTER
-        value: "none"
-      - key: OTEL_PROPAGATORS
-        value: "tracecontext,baggage"
-      # Write-only Grafana Cloud ingestion token — same credential as mesha-backend-api
-      - key: OTEL_EXPORTER_OTLP_HEADERS
-        value: "Authorization=Basic MTY0OTc2ODpnbGNfZXlKdklqb2lNVGMzTVRRek9TSXNJbTRpT2lKdFpYTm9ZU0lzSW1zaU9pSndOV1J0TXpWcVYzRTBWVTFPTkRoWWRqWTRkalV5VUd3aUxDSnRJanA3SW5JaU9pSndjbTlrTFdWMUxXTmxiblJ5WVd3dE1DSjlmUT09"
