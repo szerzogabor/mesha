@@ -8,13 +8,13 @@ import com.mesha.worker.orchestration.SessionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,12 +31,17 @@ public class BlocksAdapter implements ProviderAdapter {
     private final RestClient restClient;
     private final String agentName;
 
+    @Autowired
     public BlocksAdapter(WorkflowTracer workflowTracer,
                          @Qualifier("blocksRestClient") RestClient restClient,
                          @Value("${mesha.blocks.agent-name:claude}") String agentName) {
         this.workflowTracer = workflowTracer;
         this.restClient = restClient;
         this.agentName = agentName;
+    }
+
+    BlocksAdapter(WorkflowTracer workflowTracer, RestClient restClient) {
+        this(workflowTracer, restClient, "claude");
     }
 
     @Override
@@ -50,11 +55,15 @@ public class BlocksAdapter implements ProviderAdapter {
         MDC.put("sessionId", localSessionId);
         MDC.put("provider", providerName());
 
-        log.info("session_create_start provider={} issue_id={} session_id={}",
-                providerName(), request.issueId(), localSessionId);
+        String message = buildMessage(request);
+        log.info("session_create_start provider={} issue_id={} session_id={} repo={} comment_count={} prompt_size={}",
+                providerName(), request.issueId(), localSessionId,
+                request.repositoryUrl() != null ? request.repositoryUrl() : "none",
+                request.comments() != null ? request.comments().size() : 0,
+                message.length());
 
         try {
-            var body = new CreateSessionRequest(agentName, buildMessage(request));
+            var body = new CreateSessionRequest(agentName, message);
 
             var response = restClient.post()
                     .uri("/rest/v1/sessions")
@@ -63,18 +72,14 @@ public class BlocksAdapter implements ProviderAdapter {
                     .retrieve()
                     .body(CreateSessionResponse.class);
 
-            if (response == null || response.id() == null
-                    || response.links() == null
-                    || response.links().finalMessage() == null
-                    || response.links().finalMessage().href() == null) {
-                throw new IllegalStateException("Blocks API returned incomplete session response");
+            if (response == null || response.id() == null || response.id().isBlank()) {
+                throw new IllegalStateException("Blocks API returned empty or missing session_id");
             }
 
-            String pollUrl = response.links().finalMessage().href();
-            log.info("session_create_success provider={} issue_id={} session_id={} poll_url={}",
-                    providerName(), request.issueId(), response.id(), pollUrl);
+            log.info("session_create_success provider={} issue_id={} provider_session_id={}",
+                    providerName(), request.issueId(), response.id());
 
-            return new SessionResult(pollUrl, SessionResult.SessionStatus.PENDING, null);
+            return new SessionResult(response.id(), SessionResult.SessionStatus.PENDING, null);
 
         } catch (RestClientException e) {
             workflowTracer.captureAiProviderFailure(providerName(), "createSession", 0, e);
@@ -89,31 +94,32 @@ public class BlocksAdapter implements ProviderAdapter {
     }
 
     @Override
-    public SessionResult pollSession(String pollUrl) {
+    public SessionResult pollSession(String sessionId) {
         MDC.put("provider", providerName());
 
-        log.info("session_poll_start provider={} poll_url={}", providerName(), pollUrl);
+        log.info("session_poll_start provider={} session_id={}", providerName(), sessionId);
 
         try {
             var response = restClient.get()
-                    .uri(URI.create(pollUrl))
+                    .uri("/rest/v1/sessions/{id}", sessionId)
                     .retrieve()
-                    .body(FinalMessagePage.class);
+                    .body(PollSessionResponse.class);
 
-            if (response == null || response.items() == null || response.items().isEmpty()) {
-                log.debug("session_poll_pending provider={}", providerName());
-                return new SessionResult(pollUrl, SessionResult.SessionStatus.PENDING, null);
+            if (response == null) {
+                throw new IllegalStateException("Blocks API returned empty response");
             }
 
-            String finalMessage = response.items().get(0).message();
-            log.info("session_poll_completed provider={}", providerName());
-            return new SessionResult(pollUrl, SessionResult.SessionStatus.COMPLETED, finalMessage);
+            SessionResult.SessionStatus status = mapStatus(response.status());
+            log.info("session_poll_result provider={} session_id={} status={}",
+                    providerName(), sessionId, status);
+
+            return new SessionResult(sessionId, status, response.finalMessage());
 
         } catch (RestClientException e) {
-            workflowTracer.capturePollingFailure(providerName(), pollUrl, 1, e);
+            workflowTracer.capturePollingFailure(providerName(), sessionId, 1, e);
             throw e;
         } catch (Exception e) {
-            workflowTracer.capturePollingFailure(providerName(), pollUrl, 1, e);
+            workflowTracer.capturePollingFailure(providerName(), sessionId, 1, e);
             throw new RuntimeException("Failed to poll Blocks session: " + e.getMessage(), e);
         } finally {
             MDC.remove("provider");
@@ -138,13 +144,80 @@ public class BlocksAdapter implements ProviderAdapter {
     }
 
     private String buildMessage(SessionRequest request) {
-        var sb = new StringBuilder("Implement the following issue:\n\n");
+        var sb = new StringBuilder();
+
+        sb.append("You are working inside Mesha.\n");
+        sb.append("The complete issue context is provided below.\n");
+        sb.append("Do not search Linear.\n");
+        sb.append("Do not require Linear issue IDs.\n");
+        sb.append("Use only the information contained in this session.\n\n");
+        sb.append("---\n\n");
+
+        sb.append("## Issue\n\n");
+        if (request.issueId() != null) {
+            sb.append("**ID:** ").append(request.issueId()).append("\n");
+        }
         if (request.issueTitle() != null && !request.issueTitle().isBlank()) {
-            sb.append("**").append(request.issueTitle()).append("**\n\n");
+            sb.append("**Title:** ").append(request.issueTitle()).append("\n");
         }
+        if (request.issueStatus() != null) {
+            sb.append("**Status:** ").append(request.issueStatus()).append("\n");
+        }
+        if (request.issuePriority() != null) {
+            sb.append("**Priority:** ").append(request.issuePriority()).append("\n");
+        }
+        if (request.issueAssigneeName() != null) {
+            sb.append("**Assignee:** ").append(request.issueAssigneeName()).append("\n");
+        }
+        if (request.issueLabels() != null && !request.issueLabels().isEmpty()) {
+            sb.append("**Labels:** ").append(String.join(", ", request.issueLabels())).append("\n");
+        }
+        if (request.issueCreatedAt() != null) {
+            sb.append("**Created:** ").append(request.issueCreatedAt()).append("\n");
+        }
+        if (request.issueUpdatedAt() != null) {
+            sb.append("**Updated:** ").append(request.issueUpdatedAt()).append("\n");
+        }
+        sb.append("\n");
+
         if (request.issueDescription() != null && !request.issueDescription().isBlank()) {
-            sb.append(request.issueDescription());
+            sb.append("### Description\n\n");
+            sb.append(request.issueDescription()).append("\n\n");
         }
+
+        boolean hasProjectContext = request.workspaceName() != null
+                || request.projectName() != null
+                || request.repositoryName() != null;
+        if (hasProjectContext) {
+            sb.append("---\n\n## Project Context\n\n");
+            if (request.workspaceName() != null) {
+                sb.append("**Workspace:** ").append(request.workspaceName()).append("\n");
+            }
+            if (request.projectName() != null) {
+                sb.append("**Project:** ").append(request.projectName()).append("\n");
+            }
+            if (request.repositoryName() != null) {
+                sb.append("**Repository:** ").append(request.repositoryName()).append("\n");
+            }
+            if (request.repositoryUrl() != null) {
+                sb.append("**Repository URL:** ").append(request.repositoryUrl()).append("\n");
+            }
+            if (request.repositoryDefaultBranch() != null) {
+                sb.append("**Default Branch:** ").append(request.repositoryDefaultBranch()).append("\n");
+            }
+            sb.append("\n");
+        }
+
+        if (request.comments() != null && !request.comments().isEmpty()) {
+            sb.append("---\n\n## Comments\n\n");
+            for (String comment : request.comments()) {
+                sb.append(comment).append("\n\n");
+            }
+        }
+
+        sb.append("---\n\n");
+        sb.append("Implement this issue. Start immediately.");
+
         return sb.toString();
     }
 
@@ -157,22 +230,12 @@ public class BlocksAdapter implements ProviderAdapter {
 
     record CreateSessionResponse(
             @JsonProperty("id") String id,
-            @JsonProperty("_links") Links links
-    ) {
-        record Links(
-                @JsonProperty("final_message") FinalMessageLink finalMessage
-        ) {
-            record FinalMessageLink(
-                    @JsonProperty("href") String href
-            ) {}
-        }
-    }
+            @JsonProperty("status") String status
+    ) {}
 
-    record FinalMessagePage(
-            @JsonProperty("items") List<FinalMessageItem> items
-    ) {
-        record FinalMessageItem(
-                @JsonProperty("message") String message
-        ) {}
-    }
+    record PollSessionResponse(
+            @JsonProperty("id") String id,
+            @JsonProperty("status") String status,
+            @JsonProperty("final_message") String finalMessage
+    ) {}
 }

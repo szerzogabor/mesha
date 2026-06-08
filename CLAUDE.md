@@ -51,4 +51,16 @@ All AI agents (Claude Code, Codex, Gemini, etc.) working on this repository MUST
 1. Make sure ONLY "szerzogabor@gmail.com" is in the contributor list for every commit
 
 This ensures additional code review coverage and maintains code quality standards.
+
+## Worker Code Location
+
+**IMPORTANT:** The `platform/backend-worker` module is **NOT** the active worker implementation and must remain untouched.
+
+All worker-related changes (session polling, Blocks adapter, scheduling, orchestration) must be made exclusively under:
+
+```
+platform/backend-api/src/main/java/com/mesha/api/worker/
+```
+
+The worker logic lives inside the `backend-api` Spring Boot service and uses the full JPA entity model directly. Never create separate projection classes or modify files under `platform/backend-worker/` for worker tasks.
 -

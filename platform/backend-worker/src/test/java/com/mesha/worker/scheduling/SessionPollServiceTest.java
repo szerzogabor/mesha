@@ -18,6 +18,7 @@ import org.springframework.web.client.RestClientException;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,6 +31,8 @@ class SessionPollServiceTest {
 
     @Mock private BlocksSessionPollerRepository sessionRepo;
     @Mock private IssueWorkerRepository issueRepo;
+    @Mock private CommentWorkerRepository commentRepo;
+    @Mock private GitHubRepositoryWorkerRepository repoWorkerRepo;
     @Mock private BlocksMessageWorkerRepository messageRepo;
     @Mock private BlocksAdapter blocksAdapter;
     @Mock private BlocksApiKeyService apiKeyService;
@@ -45,8 +48,11 @@ class SessionPollServiceTest {
         mocks = MockitoAnnotations.openMocks(this);
         props = new PollingProperties(5000L, 24L,
                 new PollingProperties.BackoffProperties(5000L, 300_000L, 2.0));
-        service = new SessionPollService(sessionRepo, issueRepo, messageRepo, blocksAdapter, apiKeyService, redisTemplate, props);
+        service = new SessionPollService(sessionRepo, issueRepo, commentRepo, repoWorkerRepo,
+                messageRepo, blocksAdapter, apiKeyService, redisTemplate, props);
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        when(commentRepo.findByIssueIdOrderByCreatedAt(any())).thenReturn(List.of());
+        when(repoWorkerRepo.findConnectedByIssueId(any())).thenReturn(List.of());
     }
 
     // ---- processSession skips ----
@@ -447,9 +453,5 @@ class SessionPollServiceTest {
         var field = clazz.getDeclaredField(fieldName);
         field.setAccessible(true);
         field.set(obj, value);
-    }
-
-    private void setField(Object obj, String fieldName, Object value) throws Exception {
-        setField(obj, BlocksSessionRecord.class, fieldName, value);
     }
 }
