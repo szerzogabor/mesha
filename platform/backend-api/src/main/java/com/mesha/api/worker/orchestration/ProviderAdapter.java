@@ -7,4 +7,6 @@ public interface ProviderAdapter {
     SessionResult createSession(SessionRequest request);
 
     SessionResult pollSession(String providerSessionId);
+
+    default void cancelSession(String providerSessionId) {}
 }

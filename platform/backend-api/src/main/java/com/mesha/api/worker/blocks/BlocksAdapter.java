@@ -95,6 +95,32 @@ public class BlocksAdapter implements ProviderAdapter {
     }
 
     @Override
+    public void cancelSession(String providerSessionId) {
+        MDC.put("provider", providerName());
+        MDC.put("sessionId", providerSessionId);
+
+        log.info("session_cancel_start provider={} provider_session_id={}", providerName(), providerSessionId);
+
+        try {
+            restClient.delete()
+                    .uri("/rest/v1/sessions/{id}", providerSessionId)
+                    .retrieve()
+                    .toBodilessEntity();
+
+            log.info("session_cancel_success provider={} provider_session_id={}", providerName(), providerSessionId);
+        } catch (RestClientException e) {
+            workflowTracer.captureAiProviderFailure(providerName(), "cancelSession", 0, e);
+            throw e;
+        } catch (Exception e) {
+            workflowTracer.captureAiProviderFailure(providerName(), "cancelSession", 0, e);
+            throw new RuntimeException("Failed to cancel Blocks session: " + e.getMessage(), e);
+        } finally {
+            MDC.remove("sessionId");
+            MDC.remove("provider");
+        }
+    }
+
+    @Override
     public SessionResult pollSession(String sessionId) {
         MDC.put("provider", providerName());
         MDC.put("sessionId", sessionId);
