@@ -15,7 +15,7 @@ import java.time.Duration;
  *
  * Required environment variables (fail-fast at startup if absent or blank):
  *   BLOCKS_API_URL — base URL of the Blocks REST API
- *   BLOCKS_API_KEY — bearer token for authentication
+ *   BLOCKS_API_KEY — API key for authentication (Authorization: ApiKey <key>)
  */
 @Configuration
 class BlocksConfig {
@@ -47,7 +47,7 @@ class BlocksConfig {
         return RestClient.builder()
                 .requestFactory(requestFactory)
                 .baseUrl(apiUrl)
-                .defaultHeader("Authorization", "Bearer " + apiKey)
+                .defaultHeader("Authorization", "ApiKey " + apiKey)
                 .defaultHeader("Content-Type", "application/json")
                 .build();
     }
