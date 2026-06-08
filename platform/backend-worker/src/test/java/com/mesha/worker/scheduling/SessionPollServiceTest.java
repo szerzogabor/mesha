@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 
 import java.time.Duration;
@@ -132,7 +133,7 @@ class SessionPollServiceTest {
     }
 
     @Test
-    void processSession_doesNotSaveWhenDispatchThrows() {
+    void processSession_incrementsRetryCountOnTransientDispatchFailure() {
         UUID sessionId = UUID.randomUUID();
         UUID issueId = UUID.randomUUID();
         BlocksSessionRecord session = sessionWithIssue(sessionId, CREATED, null, 0, Instant.now().minusSeconds(10), issueId);
@@ -144,6 +145,44 @@ class SessionPollServiceTest {
 
         service.processSession(sessionId);
 
+        ArgumentCaptor<BlocksSessionRecord> saved = ArgumentCaptor.forClass(BlocksSessionRecord.class);
+        verify(sessionRepo).save(saved.capture());
+        assertThat(saved.getValue().getRetryCount()).isEqualTo(1);
+        assertThat(saved.getValue().getExecutionState()).isEqualTo(CREATED);
+    }
+
+    @Test
+    void processSession_failsSessionOnClientErrorDuringDispatch() {
+        UUID sessionId = UUID.randomUUID();
+        UUID issueId = UUID.randomUUID();
+        BlocksSessionRecord session = sessionWithIssue(sessionId, CREATED, null, 0, Instant.now().minusSeconds(10), issueId);
+        IssueWorkerRecord issue = issueRecord(issueId, "Fix login bug", null);
+        when(sessionRepo.findById(sessionId)).thenReturn(Optional.of(session));
+        when(issueRepo.findById(issueId)).thenReturn(Optional.of(issue));
+        when(apiKeyService.resolveApiKey(issueId)).thenReturn(Optional.of("ws-api-key-xyz"));
+        when(blocksAdapter.createSession(any())).thenThrow(
+                HttpClientErrorException.create(org.springframework.http.HttpStatus.FORBIDDEN,
+                        "Forbidden", org.springframework.http.HttpHeaders.EMPTY,
+                        "{\"message\":\"Forbidden\"}".getBytes(), null));
+
+        service.processSession(sessionId);
+
+        ArgumentCaptor<BlocksSessionRecord> saved = ArgumentCaptor.forClass(BlocksSessionRecord.class);
+        verify(sessionRepo, atLeastOnce()).save(saved.capture());
+        assertThat(saved.getAllValues()).anyMatch(s -> s.getExecutionState() == FAILED);
+    }
+
+    @Test
+    void processSession_appliesBackoffOnDispatchRetry() {
+        UUID sessionId = UUID.randomUUID();
+        UUID issueId = UUID.randomUUID();
+        BlocksSessionRecord session = sessionWithIssue(sessionId, CREATED, null, 1, Instant.now().minusSeconds(10), issueId);
+        when(sessionRepo.findById(sessionId)).thenReturn(Optional.of(session));
+        when(valueOps.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(false);
+
+        service.processSession(sessionId);
+
+        verifyNoInteractions(blocksAdapter);
         verify(sessionRepo, never()).save(any());
     }
 
