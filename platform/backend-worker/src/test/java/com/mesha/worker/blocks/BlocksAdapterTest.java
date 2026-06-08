@@ -15,6 +15,8 @@ import org.slf4j.MDC;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.util.List;
+
 import static com.mesha.worker.orchestration.SessionResult.SessionStatus.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -74,7 +76,7 @@ class BlocksAdapterTest {
         doReturn(new BlocksAdapter.CreateSessionResponse("sess-abc", "pending"))
                 .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
 
-        var result = adapter.createSession(new SessionRequest("issue-1", "Fix bug", "Details", "main", "test-key"));
+        var result = adapter.createSession(minimalRequest("issue-1", "Fix bug", "Details"));
 
         assertThat(result.providerSessionId()).isEqualTo("sess-abc");
         assertThat(result.status()).isEqualTo(PENDING);
@@ -86,7 +88,7 @@ class BlocksAdapterTest {
         doReturn(new BlocksAdapter.CreateSessionResponse("sess-xyz", "pending"))
                 .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
 
-        adapter.createSession(new SessionRequest("i-1", "T", "D", "R", "test-key"));
+        adapter.createSession(minimalRequest("i-1", "T", "D"));
 
         assertThat(MDC.get("sessionId")).isNull();
         assertThat(MDC.get("provider")).isNull();
@@ -97,7 +99,7 @@ class BlocksAdapterTest {
         doReturn(new BlocksAdapter.CreateSessionResponse(null, "pending"))
                 .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
 
-        assertThatThrownBy(() -> adapter.createSession(new SessionRequest("i-1", "T", "D", "R", "test-key")))
+        assertThatThrownBy(() -> adapter.createSession(minimalRequest("i-1", "T", "D")))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("empty or missing session_id");
     }
@@ -106,7 +108,7 @@ class BlocksAdapterTest {
     void createSession_throwsWhenResponseIsNull() {
         doReturn(null).when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
 
-        assertThatThrownBy(() -> adapter.createSession(new SessionRequest("i-1", "T", "D", "R", "test-key")))
+        assertThatThrownBy(() -> adapter.createSession(minimalRequest("i-1", "T", "D")))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("empty or missing session_id");
     }
@@ -116,7 +118,7 @@ class BlocksAdapterTest {
         doThrow(new RestClientException("network error"))
                 .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
 
-        assertThatThrownBy(() -> adapter.createSession(new SessionRequest("i-1", "T", "D", "R", "test-key")))
+        assertThatThrownBy(() -> adapter.createSession(minimalRequest("i-1", "T", "D")))
                 .isInstanceOf(RestClientException.class)
                 .hasMessage("network error");
     }
@@ -127,7 +129,7 @@ class BlocksAdapterTest {
                 .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
 
         try {
-            adapter.createSession(new SessionRequest("i-1", "T", "D", "R", "test-key"));
+            adapter.createSession(minimalRequest("i-1", "T", "D"));
         } catch (RestClientException ignored) {}
 
         assertThat(MDC.get("sessionId")).isNull();
@@ -216,5 +218,18 @@ class BlocksAdapterTest {
     @Test
     void mapStatus_treatsNullAsPending() {
         assertThat(adapter.mapStatus(null)).isEqualTo(PENDING);
+    }
+
+    // ---- helpers ----
+
+    private SessionRequest minimalRequest(String issueId, String title, String description) {
+        return new SessionRequest(
+                issueId, title, description,
+                null, null, null, List.of(),
+                null, null,
+                null, null, null, null, null,
+                List.of(),
+                "test-key"
+        );
     }
 }
