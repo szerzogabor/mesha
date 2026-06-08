@@ -149,10 +149,9 @@ public class BlocksAdapter implements ProviderAdapter {
     private String buildMessage(SessionRequest request) {
         var sb = new StringBuilder();
 
-        sb.append("You are working inside Mesha. Do not search Linear. Do not require Linear issue IDs. ")
-          .append("Use only the information contained in this session.\n\n");
+        sb.append("You have been delegated Mesh Issue\n\n");
 
-        sb.append("## Issue\n\n");
+        sb.append("Issue\n\n");
         appendField(sb, "ID", request.issueId());
         appendField(sb, "Title", request.issueTitle());
         appendField(sb, "Status", request.issueStatus());
@@ -162,20 +161,23 @@ public class BlocksAdapter implements ProviderAdapter {
         appendField(sb, "Updated", request.issueUpdatedAt());
 
         if (request.issueLabels() != null && !request.issueLabels().isEmpty()) {
-            sb.append("**Labels:** ").append(String.join(", ", request.issueLabels())).append("\n");
+            sb.append("Labels: ").append(String.join(", ", request.issueLabels())).append("\n");
         }
 
         if (request.issueDescription() != null && !request.issueDescription().isBlank()) {
-            sb.append("\n### Description\n\n").append(request.issueDescription()).append("\n");
+            sb.append("\nDescription\n\n").append(request.issueDescription()).append("\n");
         }
 
-        sb.append("\n## Project Context\n\n");
-        appendField(sb, "Workspace", request.workspaceName());
-        appendField(sb, "Project", request.projectName());
+        boolean hasProjectContext = request.workspaceName() != null || request.projectName() != null;
+        if (hasProjectContext) {
+            sb.append("\nProject Context\n\n");
+            appendField(sb, "Workspace", request.workspaceName());
+            appendField(sb, "Project", request.projectName());
+        }
 
         boolean hasRepo = request.repositoryName() != null || request.repositoryUrl() != null;
         if (hasRepo) {
-            sb.append("\n## Repository\n\n");
+            sb.append("\nRepository\n\n");
             appendField(sb, "Name", request.repositoryName());
             appendField(sb, "URL", request.repositoryUrl());
             appendField(sb, "Default Branch", request.repositoryDefaultBranch());
@@ -183,21 +185,18 @@ public class BlocksAdapter implements ProviderAdapter {
 
         List<String> comments = request.comments();
         if (comments != null && !comments.isEmpty()) {
-            sb.append("\n## Comments\n\n");
+            sb.append("\nComments\n\n");
             for (String comment : comments) {
                 sb.append(comment).append("\n\n");
             }
         }
-
-        sb.append("\n## Task\n\n");
-        sb.append("Implement the issue described above. Commit your changes and open a pull request.");
 
         return sb.toString();
     }
 
     private void appendField(StringBuilder sb, String label, String value) {
         if (value != null && !value.isBlank()) {
-            sb.append("**").append(label).append(":** ").append(value).append("\n");
+            sb.append(label).append(": ").append(value).append("\n");
         }
     }
 
