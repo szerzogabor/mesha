@@ -57,7 +57,7 @@ public class BlocksAdapter implements ProviderAdapter {
 
             var response = restClient.post()
                     .uri("/sessions")
-                    .headers(h -> h.set("Authorization", "Bearer " + request.apiKey()))
+                    .headers(h -> h.set("Authorization", "ApiKey " + request.apiKey()))
                     .body(body)
                     .retrieve()
                     .body(CreateSessionResponse.class);

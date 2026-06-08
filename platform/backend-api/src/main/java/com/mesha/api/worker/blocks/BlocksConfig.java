@@ -53,7 +53,7 @@ class BlocksConfig {
         return RestClient.builder()
                 .requestFactory(requestFactory)
                 .baseUrl(effectiveUrl)
-                .defaultHeader("Authorization", "Bearer " + apiKey)
+                .defaultHeader("Authorization", "ApiKey " + apiKey)
                 .defaultHeader("Content-Type", "application/json")
                 .build();
     }
