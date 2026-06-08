@@ -5,6 +5,7 @@ import com.mesha.api.model.*;
 import com.mesha.api.repository.BlocksMessageRepository;
 import com.mesha.api.repository.BlocksSessionRepository;
 import com.mesha.api.repository.IssueRepository;
+import com.mesha.api.worker.blocks.BlocksAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -25,17 +26,20 @@ public class BlocksSessionService {
     private final ActivityService activityService;
     private final BlocksConfigService blocksConfigService;
     private final BlocksMessageRepository blocksMessageRepository;
+    private final BlocksAdapter blocksAdapter;
 
     public BlocksSessionService(BlocksSessionRepository blocksSessionRepository,
                                 IssueRepository issueRepository,
                                 ActivityService activityService,
                                 BlocksConfigService blocksConfigService,
-                                BlocksMessageRepository blocksMessageRepository) {
+                                BlocksMessageRepository blocksMessageRepository,
+                                BlocksAdapter blocksAdapter) {
         this.blocksSessionRepository = blocksSessionRepository;
         this.issueRepository = issueRepository;
         this.activityService = activityService;
         this.blocksConfigService = blocksConfigService;
         this.blocksMessageRepository = blocksMessageRepository;
+        this.blocksAdapter = blocksAdapter;
     }
 
     @Transactional
@@ -135,6 +139,7 @@ public class BlocksSessionService {
         }
 
         String oldState = session.getExecutionState().name();
+        String providerSessionId = session.getProviderSessionId();
         session.setExecutionState(AIExecutionState.CANCELED);
         session = blocksSessionRepository.save(session);
 
@@ -143,7 +148,22 @@ public class BlocksSessionService {
         issueRepository.save(issue);
 
         activityService.record(issue, actor, ActivityEventType.AI_CANCELED, oldState, "CANCELED");
-        log.info("Blocks session canceled sessionId={}", sessionId);
+        log.info("blocks_session_canceled session_id={} provider_session_id={}", sessionId,
+                providerSessionId != null ? providerSessionId : "none");
+
+        if (providerSessionId != null) {
+            try {
+                blocksAdapter.cancelSession(providerSessionId);
+                log.info("blocks_remote_cancel_success session_id={} provider_session_id={}",
+                        sessionId, providerSessionId);
+            } catch (Exception e) {
+                log.warn("blocks_remote_cancel_failed session_id={} provider_session_id={} — local cancel stands",
+                        sessionId, providerSessionId, e);
+            }
+        } else {
+            log.info("blocks_remote_cancel_skipped session_id={} reason=no_provider_session_id", sessionId);
+        }
+
         return session;
     }
 
