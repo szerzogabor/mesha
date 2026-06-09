@@ -139,7 +139,12 @@ export interface LinkedPullRequest {
   title?: string;
   state?: string;
   sourceBranch?: string;
+  targetBranch?: string;
   htmlUrl: string;
+  draft?: boolean;
+  mergedAt?: string;
+  checksStatus?: string;
+  authorLogin?: string;
 }
 
 export interface BlocksSession {
