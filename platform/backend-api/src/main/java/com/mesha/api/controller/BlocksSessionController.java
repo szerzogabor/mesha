@@ -42,7 +42,13 @@ public class BlocksSessionController {
 
     private BlocksSessionDto toDto(BlocksSession session) {
         GitHubPullRequest linkedPr = gitHubPullRequestRepository
-                .findByBlocksSessionId(session.getId()).orElse(null);
+                .findByBlocksSessionId(session.getId())
+                .orElseGet(() -> {
+                    if (session.getBranchName() == null) return null;
+                    return gitHubPullRequestRepository
+                            .findBySourceBranchAndBlocksSessionIsNull(session.getBranchName())
+                            .stream().findFirst().orElse(null);
+                });
         return BlocksSessionDto.from(session, linkedPr);
     }
 
