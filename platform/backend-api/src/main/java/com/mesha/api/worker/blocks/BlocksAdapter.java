@@ -77,10 +77,11 @@ public class BlocksAdapter implements ProviderAdapter {
                 throw new IllegalStateException("Blocks API returned empty or missing session_id");
             }
 
-            log.info("session_create_success provider={} issue_id={} provider_session_id={}",
-                    providerName(), request.issueId(), response.id());
+            log.info("session_create_success provider={} issue_id={} provider_session_id={} workspace_id={}",
+                    providerName(), request.issueId(), response.id(),
+                    response.workspaceId() != null ? response.workspaceId() : "not returned");
 
-            return new SessionResult(response.id(), SessionResult.SessionStatus.PENDING, null);
+            return new SessionResult(response.id(), SessionResult.SessionStatus.PENDING, null, response.workspaceId());
 
         } catch (RestClientException e) {
             workflowTracer.captureAiProviderFailure(providerName(), "createSession", 0, e);
@@ -141,7 +142,7 @@ public class BlocksAdapter implements ProviderAdapter {
             log.debug("session_poll_result provider={} provider_session_id={} status={}",
                     providerName(), sessionId, status);
 
-            return new SessionResult(sessionId, status, response.finalMessage());
+            return new SessionResult(sessionId, status, response.finalMessage(), null);
 
         } catch (RestClientException e) {
             workflowTracer.capturePollingFailure(providerName(), sessionId, 1, e);
@@ -235,7 +236,8 @@ public class BlocksAdapter implements ProviderAdapter {
 
     record CreateSessionResponse(
             @JsonProperty("id") String id,
-            @JsonProperty("status") String status
+            @JsonProperty("status") String status,
+            @JsonProperty("workspace_id") String workspaceId
     ) {}
 
     record PollSessionResponse(

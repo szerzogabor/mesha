@@ -22,7 +22,7 @@ export default function BlocksPage({
 
   const handleConnect = async (e: React.FormEvent) => {
     e.preventDefault();
-    await saveConfig.mutateAsync(apiKey);
+    await saveConfig.mutateAsync({ apiKey });
     setApiKey("");
     setShowConnectForm(false);
   };
@@ -160,6 +160,15 @@ export default function BlocksPage({
                 .
               </p>
             </div>
+            {config?.blocksWorkspaceId && (
+              <div>
+                <p className="text-xs font-medium text-text-secondary mb-1">Blocks Workspace ID</p>
+                <p className="text-xs font-mono text-text-muted bg-bg-subtle rounded px-2 py-1 truncate">
+                  {config.blocksWorkspaceId}
+                </p>
+                <p className="text-xs text-text-muted mt-1">Auto-discovered from the Blocks API.</p>
+              </div>
+            )}
             <div className="flex gap-2">
               <button
                 type="submit"

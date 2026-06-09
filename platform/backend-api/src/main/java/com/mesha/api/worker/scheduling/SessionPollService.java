@@ -12,6 +12,7 @@ import com.mesha.api.repository.BlocksSessionRepository;
 import com.mesha.api.repository.CommentRepository;
 import com.mesha.api.repository.GitHubRepositoryRepository;
 import com.mesha.api.repository.IssueRepository;
+import com.mesha.api.repository.WorkspaceBlocksConfigRepository;
 import com.mesha.api.worker.blocks.BlocksAdapter;
 import com.mesha.api.worker.orchestration.SessionRequest;
 import com.mesha.api.worker.orchestration.SessionResult;
@@ -55,6 +56,7 @@ class SessionPollService {
     private final BlocksMessageRepository messageRepo;
     private final BlocksAdapter blocksAdapter;
     private final BlocksApiKeyService apiKeyService;
+    private final WorkspaceBlocksConfigRepository configRepo;
     private final RedisTemplate<String, String> redisTemplate;
     private final PollingProperties props;
     private final String blocksDashboardUrl;
@@ -66,9 +68,10 @@ class SessionPollService {
                        BlocksMessageRepository messageRepo,
                        BlocksAdapter blocksAdapter,
                        BlocksApiKeyService apiKeyService,
+                       WorkspaceBlocksConfigRepository configRepo,
                        RedisTemplate<String, String> redisTemplate,
                        PollingProperties props,
-                       @org.springframework.beans.factory.annotation.Value("${mesha.blocks.dashboard-url:https://app.blocks.team}") String blocksDashboardUrl) {
+                       @org.springframework.beans.factory.annotation.Value("${mesha.blocks.dashboard-url:https://www.blocks.team}") String blocksDashboardUrl) {
         this.sessionRepo = sessionRepo;
         this.issueRepo = issueRepo;
         this.commentRepo = commentRepo;
@@ -76,6 +79,7 @@ class SessionPollService {
         this.messageRepo = messageRepo;
         this.blocksAdapter = blocksAdapter;
         this.apiKeyService = apiKeyService;
+        this.configRepo = configRepo;
         this.redisTemplate = redisTemplate;
         this.props = props;
         this.blocksDashboardUrl = blocksDashboardUrl;
@@ -178,11 +182,12 @@ class SessionPollService {
             );
             SessionResult result = blocksAdapter.createSession(request);
             session.setProviderSessionId(result.providerSessionId());
-            String sessionUrl = blocksDashboardUrl.stripTrailing() + "/sessions/" + result.providerSessionId();
+            String resolvedWorkspaceId = resolveAndPersistWorkspaceId(issue, result.workspaceId());
+            String sessionUrl = buildSessionUrl(resolvedWorkspaceId, result.providerSessionId());
             session.setSessionUrl(sessionUrl);
             sessionRepo.save(session);
             log.info("session_dispatched session_id={} provider_session_id={} session_url={}",
-                    session.getId(), result.providerSessionId(), sessionUrl);
+                    session.getId(), result.providerSessionId(), sessionUrl != null ? sessionUrl : "none");
         } catch (HttpClientErrorException e) {
             log.error("session_dispatch_failure session_id={} issue_id={} error={}",
                     session.getId(), issueId, e.getMessage(), e);
@@ -305,6 +310,35 @@ class SessionPollService {
         session.setErrorMessage(reason);
         sessionRepo.save(session);
         recordStateTransitionMessage(session, AIExecutionState.FAILED, reason);
+    }
+
+    /**
+     * Determines the Blocks workspace ID to use for URL construction.
+     * Priority: (1) returned by the Blocks API in the create-session response,
+     * (2) already stored in workspace_blocks_config from a prior session.
+     * When newly discovered from the API, it is persisted so future sessions use it automatically.
+     */
+    private String resolveAndPersistWorkspaceId(Issue issue, String fromApi) {
+        if (fromApi != null && !fromApi.isBlank()) {
+            UUID workspaceId = issue.getProject().getWorkspace().getId();
+            int updated = configRepo.setBlocksWorkspaceIdIfAbsent(workspaceId, fromApi);
+            if (updated > 0) {
+                log.info("blocks_workspace_id_discovered workspace_id={} blocks_workspace_id={}", workspaceId, fromApi);
+            }
+            return fromApi;
+        }
+        // Fallback: use whatever was manually configured
+        return apiKeyService.resolveBlocksWorkspaceId(issue.getId()).orElse(null);
+    }
+
+    private String buildSessionUrl(String blocksWorkspaceId, String providerSessionId) {
+        if (blocksWorkspaceId == null) {
+            log.warn("blocks_workspace_id_unavailable — session URL will not be set; it will be populated once the Blocks API returns it");
+            return null;
+        }
+        String url = blocksDashboardUrl.stripTrailing() + "/app/" + blocksWorkspaceId + "/sessions/" + providerSessionId;
+        log.info("blocks_session_url_created session_url={}", url);
+        return url;
     }
 
     /**

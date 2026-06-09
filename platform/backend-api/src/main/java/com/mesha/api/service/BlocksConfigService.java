@@ -52,7 +52,7 @@ public class BlocksConfigService {
     }
 
     @Transactional
-    public BlocksConfigDto saveConfig(UUID workspaceId, String apiKey) {
+    public BlocksConfigDto saveConfig(UUID workspaceId, String apiKey, String blocksWorkspaceId) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "apiKey must not be blank");
         }
@@ -69,9 +69,13 @@ public class BlocksConfigService {
 
         config.setApiKeyEnc(encrypt(apiKey));
         config.setStatus("connected");
+        if (blocksWorkspaceId != null && !blocksWorkspaceId.isBlank()) {
+            config.setBlocksWorkspaceId(blocksWorkspaceId.trim());
+        }
         config = configRepository.save(config);
 
-        log.info("Blocks config saved workspaceId={}", workspaceId);
+        log.info("Blocks config saved workspaceId={} blocksWorkspaceId={}", workspaceId,
+                config.getBlocksWorkspaceId() != null ? config.getBlocksWorkspaceId() : "not provided");
         return BlocksConfigDto.from(config);
     }
 
