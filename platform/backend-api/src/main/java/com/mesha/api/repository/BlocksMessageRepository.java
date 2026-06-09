@@ -11,4 +11,6 @@ public interface BlocksMessageRepository extends JpaRepository<BlocksMessage, UU
 
     @Query("SELECT m FROM BlocksMessage m WHERE m.session.id = :sessionId ORDER BY m.createdAt ASC")
     List<BlocksMessage> findBySessionIdOrderByCreatedAtAsc(UUID sessionId);
+
+    long countBySessionId(UUID sessionId);
 }

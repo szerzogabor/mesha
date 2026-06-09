@@ -261,14 +261,33 @@ class SessionPollService {
             AIExecutionState prevState = session.getExecutionState();
             session.setRetryCount(session.getRetryCount() + 1);
 
+            // Backfill sessionUrl for sessions dispatched before workspace ID was available
+            if (session.getSessionUrl() == null) {
+                String resolvedWorkspaceId = resolveAndPersistWorkspaceId(session.getIssue(), null);
+                String sessionUrl = buildSessionUrl(resolvedWorkspaceId, session.getProviderSessionId());
+                if (sessionUrl != null) {
+                    session.setSessionUrl(sessionUrl);
+                    log.info("blocks_session_url_backfilled session_id={} session_url={}", session.getId(), sessionUrl);
+                }
+            }
+
+            List<String> apiMessages = result.messages();
+            boolean hasApiMessages = apiMessages != null && !apiMessages.isEmpty();
+
             if (newState != prevState) {
                 session.setExecutionState(newState);
                 log.info("session_state_changed session_id={} from={} to={} provider_session_id={}",
                         session.getId(), prevState, newState, session.getProviderSessionId());
-                recordStateTransitionMessage(session, newState, result.finalMessage());
+                if (!hasApiMessages) {
+                    recordStateTransitionMessage(session, newState, result.finalMessage());
+                }
             } else {
                 log.debug("session_state_unchanged session_id={} state={} poll_count={}",
                         session.getId(), newState, session.getRetryCount());
+            }
+
+            if (hasApiMessages) {
+                saveApiMessages(session, apiMessages);
             }
 
             sessionRepo.save(session);
@@ -277,6 +296,26 @@ class SessionPollService {
             log.error("session_poll_failure session_id={} provider_session_id={} error={}",
                     session.getId(), session.getProviderSessionId(), e.getMessage(), e);
             // Let the backoff lock expire; session will be retried on next eligible cycle.
+        }
+    }
+
+    private void saveApiMessages(BlocksSession session, List<String> apiMessages) {
+        try {
+            long existingCount = messageRepo.countBySessionId(session.getId());
+            int startIndex = (int) Math.min(existingCount, apiMessages.size());
+            List<String> newMessages = apiMessages.subList(startIndex, apiMessages.size());
+            for (String text : newMessages) {
+                BlocksMessage msg = new BlocksMessage();
+                msg.setSession(session);
+                msg.setMessage(text);
+                messageRepo.save(msg);
+            }
+            if (!newMessages.isEmpty()) {
+                log.debug("blocks_api_messages_saved session_id={} new_count={} total_api_count={}",
+                        session.getId(), newMessages.size(), apiMessages.size());
+            }
+        } catch (Exception e) {
+            log.warn("blocks_api_messages_save_failed session_id={} error={}", session.getId(), e.getMessage());
         }
     }
 
