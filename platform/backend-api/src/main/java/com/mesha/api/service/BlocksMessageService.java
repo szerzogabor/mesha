@@ -4,6 +4,7 @@ import com.mesha.api.model.BlocksMessage;
 import com.mesha.api.model.BlocksSession;
 import com.mesha.api.repository.BlocksMessageRepository;
 import com.mesha.api.repository.BlocksSessionRepository;
+import com.mesha.api.worker.blocks.BlocksAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -22,11 +23,14 @@ public class BlocksMessageService {
 
     private final BlocksMessageRepository messageRepository;
     private final BlocksSessionRepository sessionRepository;
+    private final BlocksAdapter blocksAdapter;
 
     public BlocksMessageService(BlocksMessageRepository messageRepository,
-                                BlocksSessionRepository sessionRepository) {
+                                BlocksSessionRepository sessionRepository,
+                                BlocksAdapter blocksAdapter) {
         this.messageRepository = messageRepository;
         this.sessionRepository = sessionRepository;
+        this.blocksAdapter = blocksAdapter;
     }
 
     @Transactional(propagation = Propagation.REQUIRED)
@@ -63,6 +67,19 @@ public class BlocksMessageService {
         msg.setRole("USER");
         BlocksMessage saved = messageRepository.save(msg);
         log.info("blocks_user_message_added sessionId={}", sessionId);
+
+        String providerSessionId = session.getProviderSessionId();
+        if (providerSessionId != null && !providerSessionId.isBlank()) {
+            try {
+                blocksAdapter.sendUserMessage(providerSessionId, content);
+            } catch (Exception e) {
+                log.warn("blocks_user_message_forward_failed sessionId={} providerSessionId={} error={}",
+                        sessionId, providerSessionId, e.getMessage());
+            }
+        } else {
+            log.warn("blocks_user_message_not_forwarded sessionId={} — session not yet dispatched to Blocks", sessionId);
+        }
+
         return saved;
     }
 

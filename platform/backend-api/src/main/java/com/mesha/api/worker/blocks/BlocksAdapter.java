@@ -160,6 +160,34 @@ public class BlocksAdapter implements ProviderAdapter {
     }
 
     /**
+     * Sends a user message to an existing Blocks session via POST /rest/v1/sessions/{id}/messages.
+     * Throws on HTTP or network errors so callers can decide whether to propagate or swallow.
+     */
+    public void sendUserMessage(String sessionId, String content) {
+        MDC.put("provider", providerName());
+        MDC.put("sessionId", sessionId);
+        log.info("session_send_message_start provider={} provider_session_id={}", providerName(), sessionId);
+        try {
+            var body = new UserMessageRequest(content);
+            restClient.post()
+                    .uri("/rest/v1/sessions/{id}/messages", sessionId)
+                    .body(body)
+                    .retrieve()
+                    .toBodilessEntity();
+            log.info("session_send_message_success provider={} provider_session_id={}", providerName(), sessionId);
+        } catch (RestClientException e) {
+            workflowTracer.captureAiProviderFailure(providerName(), "sendUserMessage", 0, e);
+            throw e;
+        } catch (Exception e) {
+            workflowTracer.captureAiProviderFailure(providerName(), "sendUserMessage", 0, e);
+            throw new RuntimeException("Failed to send message to Blocks session: " + e.getMessage(), e);
+        } finally {
+            MDC.remove("sessionId");
+            MDC.remove("provider");
+        }
+    }
+
+    /**
      * Fetches assistant messages for a session from the dedicated messages endpoint.
      * Returns only assistant text messages (type=message or final_message), newest-first
      * ordering is forced to asc so the caller's count-based deduplication stays correct.
@@ -306,5 +334,9 @@ public class BlocksAdapter implements ProviderAdapter {
             @JsonProperty("type") String type,
             @JsonProperty("message") @JsonAlias({"content", "text", "body"}) String message,
             @JsonProperty("created_at") String createdAt
+    ) {}
+
+    record UserMessageRequest(
+            @JsonProperty("message") String message
     ) {}
 }
