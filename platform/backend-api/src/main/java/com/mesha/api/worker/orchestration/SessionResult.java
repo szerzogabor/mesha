@@ -7,6 +7,7 @@ public record SessionResult(
         SessionStatus status,
         String finalMessage,
         String workspaceId,
+        String sessionHtmlUrl,
         List<String> messages
 ) {
     public enum SessionStatus {

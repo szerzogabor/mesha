@@ -1,8 +1,6 @@
 package com.mesha.api.worker.blocks;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.mesha.api.worker.observability.WorkflowTracer;
 import com.mesha.api.worker.orchestration.ProviderAdapter;
 import com.mesha.api.worker.orchestration.SessionRequest;
@@ -17,9 +15,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Blocks AI platform adapter. HTTP calls are auto-instrumented by the
@@ -84,7 +82,7 @@ public class BlocksAdapter implements ProviderAdapter {
                     providerName(), request.issueId(), response.id(),
                     response.workspaceId() != null ? response.workspaceId() : "not returned");
 
-            return new SessionResult(response.id(), SessionResult.SessionStatus.PENDING, null, response.workspaceId(), null);
+            return new SessionResult(response.id(), SessionResult.SessionStatus.PENDING, null, response.workspaceId(), null, null);
 
         } catch (RestClientException e) {
             workflowTracer.captureAiProviderFailure(providerName(), "createSession", 0, e);
@@ -142,11 +140,11 @@ public class BlocksAdapter implements ProviderAdapter {
             }
 
             SessionResult.SessionStatus status = mapStatus(response.status());
-            List<String> messages = extractMessages(response.rawMessages());
-            log.debug("session_poll_result provider={} provider_session_id={} status={} message_count={}",
-                    providerName(), sessionId, status, messages != null ? messages.size() : 0);
+            log.debug("session_poll_result provider={} provider_session_id={} status={} session_html_url={}",
+                    providerName(), sessionId, status,
+                    response.sessionHtmlUrl() != null ? response.sessionHtmlUrl() : "none");
 
-            return new SessionResult(sessionId, status, response.finalMessage(), response.workspaceId(), messages);
+            return new SessionResult(sessionId, status, response.finalMessage(), response.workspaceId(), response.sessionHtmlUrl(), null);
 
         } catch (RestClientException e) {
             workflowTracer.capturePollingFailure(providerName(), sessionId, 1, e);
@@ -154,6 +152,46 @@ public class BlocksAdapter implements ProviderAdapter {
         } catch (Exception e) {
             workflowTracer.capturePollingFailure(providerName(), sessionId, 1, e);
             throw new RuntimeException("Failed to poll Blocks session: " + e.getMessage(), e);
+        } finally {
+            MDC.remove("sessionId");
+            MDC.remove("provider");
+        }
+    }
+
+    /**
+     * Fetches assistant messages for a session from the dedicated messages endpoint.
+     * Returns only assistant text messages (type=message or final_message), newest-first
+     * ordering is forced to asc so the caller's count-based deduplication stays correct.
+     * Returns null on any error so the caller can fall back gracefully.
+     */
+    public List<String> fetchAssistantMessages(String sessionId) {
+        MDC.put("provider", providerName());
+        MDC.put("sessionId", sessionId);
+        try {
+            var response = restClient.get()
+                    .uri("/rest/v1/sessions/{id}/messages?direction=asc&limit=100&role=assistant", sessionId)
+                    .retrieve()
+                    .body(GetMessagesResponse.class);
+
+            if (response == null || response.items() == null || response.items().isEmpty()) {
+                return null;
+            }
+
+            List<String> messages = response.items().stream()
+                    .filter(m -> m.message() != null && !m.message().isBlank())
+                    .filter(m -> "message".equals(m.type()) || "final_message".equals(m.type()))
+                    .map(SessionMessage::message)
+                    .collect(Collectors.toList());
+
+            log.debug("session_messages_fetched provider={} provider_session_id={} count={}",
+                    providerName(), sessionId, messages.size());
+
+            return messages.isEmpty() ? null : messages;
+
+        } catch (Exception e) {
+            log.warn("session_messages_fetch_failed provider={} provider_session_id={} error={}",
+                    providerName(), sessionId, e.getMessage());
+            return null;
         } finally {
             MDC.remove("sessionId");
             MDC.remove("provider");
@@ -249,43 +287,18 @@ public class BlocksAdapter implements ProviderAdapter {
             @JsonProperty("status") String status,
             @JsonProperty("final_message") String finalMessage,
             @JsonProperty("workspace_id") String workspaceId,
-            // Accept messages as a generic JSON array to handle both string and object elements.
-            // The Blocks API may return plain strings or objects like {"role":"assistant","content":"..."}.
-            @JsonProperty("messages")
-            @JsonAlias({"activity", "history", "chat_messages", "outputs"})
-            List<JsonNode> rawMessages
+            @JsonProperty("session_html_url") String sessionHtmlUrl
     ) {}
 
-    /**
-     * Normalises the raw messages array into a flat list of strings.
-     * Handles both plain-string elements and JSON objects by extracting
-     * whichever of content/text/message fields is present.
-     */
-    List<String> extractMessages(List<JsonNode> rawMessages) {
-        if (rawMessages == null || rawMessages.isEmpty()) return null;
-        List<String> result = new ArrayList<>();
-        for (JsonNode node : rawMessages) {
-            if (node == null) continue;
-            if (node.isTextual()) {
-                String text = node.asText().strip();
-                if (!text.isEmpty()) result.add(text);
-            } else if (node.isObject()) {
-                String text = firstNonBlank(
-                        node.path("content").asText(null),
-                        node.path("text").asText(null),
-                        node.path("message").asText(null),
-                        node.path("body").asText(null)
-                );
-                if (text != null) result.add(text);
-            }
-        }
-        return result.isEmpty() ? null : result;
-    }
+    record GetMessagesResponse(
+            @JsonProperty("items") List<SessionMessage> items
+    ) {}
 
-    private String firstNonBlank(String... candidates) {
-        for (String s : candidates) {
-            if (s != null && !s.isBlank()) return s.strip();
-        }
-        return null;
-    }
+    record SessionMessage(
+            @JsonProperty("id") String id,
+            @JsonProperty("role") String role,
+            @JsonProperty("type") String type,
+            @JsonProperty("message") String message,
+            @JsonProperty("created_at") String createdAt
+    ) {}
 }

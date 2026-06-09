@@ -182,8 +182,12 @@ class SessionPollService {
             );
             SessionResult result = blocksAdapter.createSession(request);
             session.setProviderSessionId(result.providerSessionId());
-            String resolvedWorkspaceId = resolveAndPersistWorkspaceId(issue, result.workspaceId());
-            String sessionUrl = buildSessionUrl(resolvedWorkspaceId, result.providerSessionId());
+            // Use session_html_url from the API if present; fall back to workspace-ID construction.
+            String sessionUrl = result.sessionHtmlUrl();
+            if (sessionUrl == null || sessionUrl.isBlank()) {
+                String resolvedWorkspaceId = resolveAndPersistWorkspaceId(issue, result.workspaceId());
+                sessionUrl = buildSessionUrl(resolvedWorkspaceId, result.providerSessionId());
+            }
             session.setSessionUrl(sessionUrl);
             sessionRepo.save(session);
             log.info("session_dispatched session_id={} provider_session_id={} session_url={}",
@@ -261,18 +265,22 @@ class SessionPollService {
             AIExecutionState prevState = session.getExecutionState();
             session.setRetryCount(session.getRetryCount() + 1);
 
-            // Backfill sessionUrl for sessions dispatched before workspace ID was available.
-            // Use workspace_id from the poll response if present (takes precedence over cached config).
+            // Prefer session_html_url returned directly by the Blocks API.
+            // Fall back to workspace-ID-based construction for older sessions or when the API omits it.
             if (session.getSessionUrl() == null) {
-                String resolvedWorkspaceId = resolveAndPersistWorkspaceId(session.getIssue(), result.workspaceId());
-                String sessionUrl = buildSessionUrl(resolvedWorkspaceId, session.getProviderSessionId());
+                String sessionUrl = result.sessionHtmlUrl();
+                if (sessionUrl == null || sessionUrl.isBlank()) {
+                    String resolvedWorkspaceId = resolveAndPersistWorkspaceId(session.getIssue(), result.workspaceId());
+                    sessionUrl = buildSessionUrl(resolvedWorkspaceId, session.getProviderSessionId());
+                }
                 if (sessionUrl != null) {
                     session.setSessionUrl(sessionUrl);
-                    log.info("blocks_session_url_backfilled session_id={} session_url={}", session.getId(), sessionUrl);
+                    log.info("blocks_session_url_set session_id={} session_url={}", session.getId(), sessionUrl);
                 }
             }
 
-            List<String> apiMessages = result.messages();
+            // Fetch real agent messages from the dedicated messages endpoint.
+            List<String> apiMessages = blocksAdapter.fetchAssistantMessages(session.getProviderSessionId());
             boolean hasApiMessages = apiMessages != null && !apiMessages.isEmpty();
 
             if (newState != prevState) {
