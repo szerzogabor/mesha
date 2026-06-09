@@ -4,7 +4,9 @@ import com.mesha.api.dto.BlocksMessageDto;
 import com.mesha.api.dto.BlocksSessionDto;
 import com.mesha.api.dto.UpdateBlocksSessionRequest;
 import com.mesha.api.model.BlocksSession;
+import com.mesha.api.model.GitHubPullRequest;
 import com.mesha.api.model.User;
+import com.mesha.api.repository.GitHubPullRequestRepository;
 import com.mesha.api.security.CurrentUser;
 import com.mesha.api.service.BlocksMessageService;
 import com.mesha.api.service.BlocksSessionService;
@@ -26,11 +28,20 @@ public class BlocksSessionController {
 
     private final BlocksSessionService blocksSessionService;
     private final BlocksMessageService blocksMessageService;
+    private final GitHubPullRequestRepository gitHubPullRequestRepository;
 
     public BlocksSessionController(BlocksSessionService blocksSessionService,
-                                   BlocksMessageService blocksMessageService) {
+                                   BlocksMessageService blocksMessageService,
+                                   GitHubPullRequestRepository gitHubPullRequestRepository) {
         this.blocksSessionService = blocksSessionService;
         this.blocksMessageService = blocksMessageService;
+        this.gitHubPullRequestRepository = gitHubPullRequestRepository;
+    }
+
+    private BlocksSessionDto toDto(BlocksSession session) {
+        GitHubPullRequest linkedPr = gitHubPullRequestRepository
+                .findByBlocksSessionId(session.getId()).orElse(null);
+        return BlocksSessionDto.from(session, linkedPr);
     }
 
     @PostMapping
@@ -41,7 +52,7 @@ public class BlocksSessionController {
             @CurrentUser User user) {
         log.info("Assigning issue to Blocks issueId={} projectId={} userId={}", issueId, projectId, user.getId());
         BlocksSession session = blocksSessionService.assignToBlocks(issueId, user);
-        return ResponseEntity.status(HttpStatus.CREATED).body(BlocksSessionDto.from(session));
+        return ResponseEntity.status(HttpStatus.CREATED).body(toDto(session));
     }
 
     @GetMapping
@@ -50,7 +61,7 @@ public class BlocksSessionController {
             @PathVariable UUID projectId,
             @PathVariable UUID issueId) {
         List<BlocksSessionDto> sessions = blocksSessionService.getSessionsForIssue(issueId)
-            .stream().map(BlocksSessionDto::from).toList();
+            .stream().map(this::toDto).toList();
         return ResponseEntity.ok(sessions);
     }
 
@@ -59,7 +70,7 @@ public class BlocksSessionController {
     public ResponseEntity<BlocksSessionDto> getActive(
             @PathVariable UUID projectId,
             @PathVariable UUID issueId) {
-        return ResponseEntity.ok(BlocksSessionDto.from(blocksSessionService.getActiveSessionForIssue(issueId)));
+        return ResponseEntity.ok(toDto(blocksSessionService.getActiveSessionForIssue(issueId)));
     }
 
     @GetMapping("/{sessionId}")
@@ -68,7 +79,7 @@ public class BlocksSessionController {
             @PathVariable UUID projectId,
             @PathVariable UUID issueId,
             @PathVariable UUID sessionId) {
-        return ResponseEntity.ok(BlocksSessionDto.from(blocksSessionService.getById(sessionId)));
+        return ResponseEntity.ok(toDto(blocksSessionService.getById(sessionId)));
     }
 
     @PatchMapping("/{sessionId}")
@@ -80,7 +91,7 @@ public class BlocksSessionController {
             @CurrentUser User user,
             @RequestBody UpdateBlocksSessionRequest req) {
         BlocksSession session = blocksSessionService.updateSession(sessionId, req, user);
-        return ResponseEntity.ok(BlocksSessionDto.from(session));
+        return ResponseEntity.ok(toDto(session));
     }
 
     @GetMapping("/{sessionId}/messages")
@@ -103,6 +114,6 @@ public class BlocksSessionController {
             @CurrentUser User user) {
         log.info("Cancelling Blocks session sessionId={} issueId={} userId={}", sessionId, issueId, user.getId());
         BlocksSession session = blocksSessionService.cancelSession(sessionId, user);
-        return ResponseEntity.ok(BlocksSessionDto.from(session));
+        return ResponseEntity.ok(toDto(session));
     }
 }

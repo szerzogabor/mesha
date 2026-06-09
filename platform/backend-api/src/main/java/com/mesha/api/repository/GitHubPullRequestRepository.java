@@ -1,5 +1,6 @@
 package com.mesha.api.repository;
 
+import com.mesha.api.model.BlocksSession;
 import com.mesha.api.model.GitHubPullRequest;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -13,6 +14,10 @@ public interface GitHubPullRequestRepository extends JpaRepository<GitHubPullReq
     List<GitHubPullRequest> findAllByRepositoryId(UUID repositoryId);
     List<GitHubPullRequest> findAllByRepositoryIdAndState(UUID repositoryId, String state);
     Optional<GitHubPullRequest> findByRepositoryIdAndGithubPrNumber(UUID repositoryId, Integer githubPrNumber);
+    Optional<GitHubPullRequest> findByHtmlUrl(String htmlUrl);
+    Optional<GitHubPullRequest> findByBlocksSession(BlocksSession session);
+    Optional<GitHubPullRequest> findByBlocksSessionId(UUID blocksSessionId);
+    List<GitHubPullRequest> findBySourceBranchAndBlocksSessionIsNull(String sourceBranch);
 
     @Query("""
             SELECT pr FROM GitHubPullRequest pr

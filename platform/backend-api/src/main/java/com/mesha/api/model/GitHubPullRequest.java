@@ -61,6 +61,10 @@ public class GitHubPullRequest {
     @Column(name = "closed_at")
     private Instant closedAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "blocks_session_id")
+    private BlocksSession blocksSession;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -103,6 +107,8 @@ public class GitHubPullRequest {
     public void setMergedAt(Instant mergedAt) { this.mergedAt = mergedAt; }
     public Instant getClosedAt() { return closedAt; }
     public void setClosedAt(Instant closedAt) { this.closedAt = closedAt; }
+    public BlocksSession getBlocksSession() { return blocksSession; }
+    public void setBlocksSession(BlocksSession blocksSession) { this.blocksSession = blocksSession; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }
