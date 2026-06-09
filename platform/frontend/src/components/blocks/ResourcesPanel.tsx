@@ -11,8 +11,15 @@ export function ResourcesPanel({ projectId, issueId }: Props) {
   const { data: sessions = [], isLoading } = useBlocksSessions(projectId, issueId);
 
   const prLinks = sessions
-    .filter((s) => s.prUrl)
-    .map((s) => ({ url: s.prUrl!, prNumber: s.prNumber, branchName: s.branchName }));
+    .map((s) => {
+      const url = s.prUrl ?? s.linkedPullRequest?.htmlUrl;
+      if (!url) return null;
+      const prNumber = s.prNumber ?? s.linkedPullRequest?.githubPrNumber;
+      const branchName = s.branchName ?? s.linkedPullRequest?.sourceBranch;
+      return { url, prNumber, branchName };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .filter((x, i, arr) => arr.findIndex((y) => y.url === x.url) === i);
 
   if (isLoading || prLinks.length === 0) return null;
 
