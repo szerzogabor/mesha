@@ -2,6 +2,7 @@ package com.mesha.api.controller;
 
 import com.mesha.api.dto.BlocksMessageDto;
 import com.mesha.api.dto.BlocksSessionDto;
+import com.mesha.api.dto.SendMessageRequest;
 import com.mesha.api.dto.UpdateBlocksSessionRequest;
 import com.mesha.api.model.BlocksSession;
 import com.mesha.api.model.GitHubPullRequest;
@@ -103,6 +104,19 @@ public class BlocksSessionController {
         List<BlocksMessageDto> messages = blocksMessageService.getMessagesForSession(sessionId)
             .stream().map(BlocksMessageDto::from).toList();
         return ResponseEntity.ok(messages);
+    }
+
+    @PostMapping("/{sessionId}/messages")
+    @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    public ResponseEntity<BlocksMessageDto> sendMessage(
+            @PathVariable UUID projectId,
+            @PathVariable UUID issueId,
+            @PathVariable UUID sessionId,
+            @CurrentUser User user,
+            @RequestBody SendMessageRequest req) {
+        log.info("User sending message to session sessionId={} issueId={} userId={}", sessionId, issueId, user.getId());
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(BlocksMessageDto.from(blocksMessageService.addUserMessage(sessionId, req.content())));
     }
 
     @PostMapping("/{sessionId}/cancel")

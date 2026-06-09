@@ -9,6 +9,7 @@ public record BlocksMessageDto(
     UUID id,
     UUID sessionId,
     String message,
+    String role,
     Instant createdAt
 ) {
     public static BlocksMessageDto from(BlocksMessage m) {
@@ -16,6 +17,7 @@ public record BlocksMessageDto(
             m.getId(),
             m.getSession().getId(),
             m.getMessage(),
+            m.getRole(),
             m.getCreatedAt()
         );
     }
