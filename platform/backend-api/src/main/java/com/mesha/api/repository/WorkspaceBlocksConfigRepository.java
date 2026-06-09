@@ -35,4 +35,15 @@ public interface WorkspaceBlocksConfigRepository extends JpaRepository<Workspace
             WHERE i.id = :issueId
             """, nativeQuery = true)
     Optional<String> findBlocksWorkspaceIdByIssueId(@Param("issueId") UUID issueId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query(value = """
+            UPDATE workspace_blocks_config
+            SET blocks_workspace_id = :blocksWorkspaceId
+            WHERE workspace_id = :workspaceId
+              AND blocks_workspace_id IS NULL
+            """, nativeQuery = true)
+    int setBlocksWorkspaceIdIfAbsent(@Param("workspaceId") UUID workspaceId,
+                                     @Param("blocksWorkspaceId") String blocksWorkspaceId);
 }
