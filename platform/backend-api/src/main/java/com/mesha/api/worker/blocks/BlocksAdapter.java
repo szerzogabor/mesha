@@ -81,7 +81,7 @@ public class BlocksAdapter implements ProviderAdapter {
                     providerName(), request.issueId(), response.id(),
                     response.workspaceId() != null ? response.workspaceId() : "not returned");
 
-            return new SessionResult(response.id(), SessionResult.SessionStatus.PENDING, null, response.workspaceId());
+            return new SessionResult(response.id(), SessionResult.SessionStatus.PENDING, null, response.workspaceId(), null);
 
         } catch (RestClientException e) {
             workflowTracer.captureAiProviderFailure(providerName(), "createSession", 0, e);
@@ -142,7 +142,7 @@ public class BlocksAdapter implements ProviderAdapter {
             log.debug("session_poll_result provider={} provider_session_id={} status={}",
                     providerName(), sessionId, status);
 
-            return new SessionResult(sessionId, status, response.finalMessage(), null);
+            return new SessionResult(sessionId, status, response.finalMessage(), null, response.messages());
 
         } catch (RestClientException e) {
             workflowTracer.capturePollingFailure(providerName(), sessionId, 1, e);
@@ -243,6 +243,7 @@ public class BlocksAdapter implements ProviderAdapter {
     record PollSessionResponse(
             @JsonProperty("id") String id,
             @JsonProperty("status") String status,
-            @JsonProperty("final_message") String finalMessage
+            @JsonProperty("final_message") String finalMessage,
+            @JsonProperty("messages") List<String> messages
     ) {}
 }
