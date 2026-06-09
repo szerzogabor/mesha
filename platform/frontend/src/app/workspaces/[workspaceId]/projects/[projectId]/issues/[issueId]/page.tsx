@@ -9,7 +9,10 @@ import { CommentThread } from "@/components/comments/CommentThread";
 import { ActivityFeed } from "@/components/activity/ActivityFeed";
 import { Spinner } from "@/components/ui/Spinner";
 import { AISessionsPanel } from "@/components/blocks/AISessionsPanel";
-import { IssueStatus, IssuePriority } from "@/types";
+import { ResourcesPanel } from "@/components/blocks/ResourcesPanel";
+import { SessionsActivityList } from "@/components/blocks/SessionsActivityList";
+import { SessionChatDrawer } from "@/components/blocks/SessionChatDrawer";
+import { IssueStatus, IssuePriority, BlocksSession } from "@/types";
 import { formatRelativeTime } from "@/lib/utils";
 
 const STATUSES: IssueStatus[] = ["BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DONE"];
@@ -37,6 +40,7 @@ export default function IssueDetailPage({
   const [editingDesc, setEditingDesc] = useState(false);
   const [editDesc, setEditDesc] = useState("");
   const [activeTab, setActiveTab] = useState<"comments" | "activity">("comments");
+  const [selectedSession, setSelectedSession] = useState<{ session: BlocksSession; index: number } | null>(null);
 
   if (isLoading || !issue) {
     return (
@@ -197,7 +201,16 @@ export default function IssueDetailPage({
               />
             )}
 
-            {activeTab === "activity" && <ActivityFeed events={activity} />}
+            {activeTab === "activity" && (
+              <div className="space-y-6">
+                <SessionsActivityList
+                  projectId={projectId}
+                  issueId={issueId}
+                  onSelectSession={(session, index) => setSelectedSession({ session, index })}
+                />
+                <ActivityFeed events={activity} />
+              </div>
+            )}
           </div>
         </div>
 
@@ -294,12 +307,27 @@ export default function IssueDetailPage({
             issueId={issueId}
           />
 
+          <ResourcesPanel
+            projectId={projectId}
+            issueId={issueId}
+          />
+
           <div className="bg-bg-surface rounded-xl border border-border-default p-4 text-xs text-text-tertiary space-y-1">
             <p><span className="text-text-secondary font-medium">Created:</span> {new Date(issue.createdAt).toLocaleString()}</p>
             <p><span className="text-text-secondary font-medium">Updated:</span> {new Date(issue.updatedAt).toLocaleString()}</p>
           </div>
         </div>
       </div>
+
+      {selectedSession && (
+        <SessionChatDrawer
+          session={selectedSession.session}
+          sessionIndex={selectedSession.index}
+          projectId={projectId}
+          issueId={issueId}
+          onClose={() => setSelectedSession(null)}
+        />
+      )}
     </div>
   );
 }

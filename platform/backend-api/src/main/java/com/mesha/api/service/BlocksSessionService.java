@@ -125,7 +125,10 @@ public class BlocksSessionService {
         issueRepository.save(issue);
 
         ActivityEventType eventType = resolveActivityEventType(session.getExecutionState());
-        activityService.record(issue, actor, eventType, oldState, session.getExecutionState().name());
+        String newValue = session.getExecutionState() == AIExecutionState.PR_OPENED && session.getPrUrl() != null
+                ? session.getPrUrl()
+                : session.getExecutionState().name();
+        activityService.record(issue, actor, eventType, oldState, newValue);
 
         log.info("Blocks session state updated sessionId={} from={} to={}", sessionId, oldState, session.getExecutionState());
         return session;
@@ -227,7 +230,10 @@ public class BlocksSessionService {
         issueRepository.save(issue);
 
         ActivityEventType eventType = resolveActivityEventType(session.getExecutionState());
-        activityService.record(issue, null, eventType, oldState, session.getExecutionState().name());
+        String newValue = session.getExecutionState() == AIExecutionState.PR_OPENED && session.getPrUrl() != null
+                ? session.getPrUrl()
+                : session.getExecutionState().name();
+        activityService.record(issue, null, eventType, oldState, newValue);
 
         log.info("Blocks session state advanced via webhook sessionId={} from={} to={}",
                 session.getId(), oldState, session.getExecutionState());
