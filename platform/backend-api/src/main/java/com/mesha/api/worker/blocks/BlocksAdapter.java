@@ -1,5 +1,6 @@
 package com.mesha.api.worker.blocks;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mesha.api.worker.observability.WorkflowTracer;
 import com.mesha.api.worker.orchestration.ProviderAdapter;
@@ -169,7 +170,7 @@ public class BlocksAdapter implements ProviderAdapter {
         MDC.put("sessionId", sessionId);
         try {
             var response = restClient.get()
-                    .uri("/rest/v1/sessions/{id}/messages?direction=asc&limit=100&role=assistant", sessionId)
+                    .uri("/rest/v1/sessions/{id}/messages?direction=asc&limit=100", sessionId)
                     .retrieve()
                     .body(GetMessagesResponse.class);
 
@@ -178,8 +179,9 @@ public class BlocksAdapter implements ProviderAdapter {
             }
 
             List<String> messages = response.items().stream()
-                    .filter(m -> m.message() != null && !m.message().isBlank())
+                    .filter(m -> "assistant".equals(m.role()))
                     .filter(m -> "message".equals(m.type()) || "final_message".equals(m.type()))
+                    .filter(m -> m.message() != null && !m.message().isBlank())
                     .map(SessionMessage::message)
                     .collect(Collectors.toList());
 
@@ -298,7 +300,7 @@ public class BlocksAdapter implements ProviderAdapter {
             @JsonProperty("id") String id,
             @JsonProperty("role") String role,
             @JsonProperty("type") String type,
-            @JsonProperty("message") String message,
+            @JsonProperty("message") @JsonAlias({"content", "text", "body"}) String message,
             @JsonProperty("created_at") String createdAt
     ) {}
 }

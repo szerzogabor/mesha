@@ -48,6 +48,9 @@ public class BlocksSession {
     @Column(name = "session_url", columnDefinition = "TEXT")
     private String sessionUrl;
 
+    @Column(name = "api_message_offset", nullable = false)
+    private int apiMessageOffset = 0;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -80,6 +83,8 @@ public class BlocksSession {
     public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
     public String getSessionUrl() { return sessionUrl; }
     public void setSessionUrl(String sessionUrl) { this.sessionUrl = sessionUrl; }
+    public int getApiMessageOffset() { return apiMessageOffset; }
+    public void setApiMessageOffset(int apiMessageOffset) { this.apiMessageOffset = apiMessageOffset; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

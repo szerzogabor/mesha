@@ -2,6 +2,7 @@ package com.mesha.api.repository;
 
 import com.mesha.api.model.BlocksMessage;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
@@ -13,4 +14,8 @@ public interface BlocksMessageRepository extends JpaRepository<BlocksMessage, UU
     List<BlocksMessage> findBySessionIdOrderByCreatedAtAsc(UUID sessionId);
 
     long countBySessionId(UUID sessionId);
+
+    @Modifying
+    @Query("DELETE FROM BlocksMessage m WHERE m.session.id = :sessionId")
+    void deleteAllBySessionId(UUID sessionId);
 }

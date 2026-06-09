@@ -310,8 +310,15 @@ class SessionPollService {
 
     private void saveApiMessages(BlocksSession session, List<String> apiMessages) {
         try {
-            long existingCount = messageRepo.countBySessionId(session.getId());
-            int startIndex = (int) Math.min(existingCount, apiMessages.size());
+            int savedApiCount = session.getApiMessageOffset();
+
+            if (savedApiCount == 0 && messageRepo.countBySessionId(session.getId()) > 0) {
+                // Discard placeholder state-transition messages now that real API messages have arrived.
+                messageRepo.deleteAllBySessionId(session.getId());
+                log.info("blocks_placeholder_messages_cleared session_id={}", session.getId());
+            }
+
+            int startIndex = Math.min(savedApiCount, apiMessages.size());
             List<String> newMessages = apiMessages.subList(startIndex, apiMessages.size());
             for (String text : newMessages) {
                 BlocksMessage msg = new BlocksMessage();
@@ -320,6 +327,7 @@ class SessionPollService {
                 messageRepo.save(msg);
             }
             if (!newMessages.isEmpty()) {
+                session.setApiMessageOffset(savedApiCount + newMessages.size());
                 log.debug("blocks_api_messages_saved session_id={} new_count={} total_api_count={}",
                         session.getId(), newMessages.size(), apiMessages.size());
             }
