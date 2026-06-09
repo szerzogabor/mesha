@@ -20,6 +20,9 @@ public class BlocksMessage {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String message;
 
+    @Column(nullable = false, length = 20)
+    private String role = "AI";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -28,5 +31,7 @@ public class BlocksMessage {
     public void setSession(BlocksSession session) { this.session = session; }
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
     public Instant getCreatedAt() { return createdAt; }
 }

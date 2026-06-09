@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -57,11 +58,6 @@ public class BlocksSessionService {
                 "Blocks is not connected for this workspace. Configure it in Workspace Settings → Integrations → Blocks.");
         }
 
-        blocksSessionRepository.findActiveByIssueId(issueId).ifPresent(existing -> {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                "Issue already has an active Blocks session in state: " + existing.getExecutionState());
-        });
-
         BlocksSession session = new BlocksSession();
         session.setIssue(issue);
         session.setExecutionState(AIExecutionState.CREATED);
@@ -75,6 +71,7 @@ public class BlocksSessionService {
         BlocksMessage startMsg = new BlocksMessage();
         startMsg.setSession(session);
         startMsg.setMessage("Session started");
+        startMsg.setRole("SYSTEM");
         blocksMessageRepository.save(startMsg);
 
         log.info("Blocks session created issueId={} sessionId={}", issueId, session.getId());
@@ -96,6 +93,7 @@ public class BlocksSessionService {
 
         if (req.executionState() != null) {
             session.setExecutionState(req.executionState());
+            stampExecutionTimestamps(session, req.executionState());
         }
         if (req.providerSessionId() != null) {
             session.setProviderSessionId(req.providerSessionId());
@@ -205,6 +203,7 @@ public class BlocksSessionService {
 
         String oldState = session.getExecutionState().name();
         session.setExecutionState(newState);
+        stampExecutionTimestamps(session, newState);
         if (prUrl != null) session.setPrUrl(prUrl);
         if (prNumber != null) session.setPrNumber(prNumber);
         if (branchName != null) session.setBranchName(branchName);
@@ -229,6 +228,19 @@ public class BlocksSessionService {
 
         log.info("Blocks session state advanced via webhook sessionId={} from={} to={}",
                 session.getId(), oldState, session.getExecutionState());
+    }
+
+    private void stampExecutionTimestamps(BlocksSession session, AIExecutionState newState) {
+        Instant now = Instant.now();
+        if (session.getStartedAt() == null && newState == AIExecutionState.PLANNING) {
+            session.setStartedAt(now);
+        }
+        boolean isTerminal = newState == AIExecutionState.DONE
+                || newState == AIExecutionState.FAILED
+                || newState == AIExecutionState.CANCELED;
+        if (session.getCompletedAt() == null && isTerminal) {
+            session.setCompletedAt(now);
+        }
     }
 
     private void tryLinkPullRequestByUrl(BlocksSession session, String prUrl) {

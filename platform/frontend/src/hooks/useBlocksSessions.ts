@@ -97,3 +97,18 @@ export function useCancelBlocksSession(projectId: string, issueId: string) {
     },
   });
 }
+
+export function useSendBlocksMessage(projectId: string, issueId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ sessionId, content }: { sessionId: string; content: string }) => {
+      return apiClient.post(
+        `/api/projects/${projectId}/issues/${issueId}/blocks-sessions/${sessionId}/messages`,
+        { content }
+      );
+    },
+    onSuccess: (_data, { sessionId }) => {
+      qc.invalidateQueries({ queryKey: ["blocks-messages", sessionId] });
+    },
+  });
+}

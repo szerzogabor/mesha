@@ -19,6 +19,8 @@ public record BlocksSessionDto(
     String branchName,
     String errorMessage,
     String sessionUrl,
+    Instant startedAt,
+    Instant completedAt,
     Instant createdAt,
     Instant updatedAt,
     GitHubPullRequestDto linkedPullRequest
@@ -40,6 +42,8 @@ public record BlocksSessionDto(
             s.getBranchName(),
             s.getErrorMessage(),
             s.getSessionUrl(),
+            s.getStartedAt(),
+            s.getCompletedAt(),
             s.getCreatedAt(),
             s.getUpdatedAt(),
             linkedPr != null ? GitHubPullRequestDto.from(linkedPr) : null

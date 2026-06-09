@@ -51,6 +51,12 @@ public class BlocksSession {
     @Column(name = "api_message_offset", nullable = false)
     private int apiMessageOffset = 0;
 
+    @Column(name = "started_at")
+    private Instant startedAt;
+
+    @Column(name = "completed_at")
+    private Instant completedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -85,6 +91,10 @@ public class BlocksSession {
     public void setSessionUrl(String sessionUrl) { this.sessionUrl = sessionUrl; }
     public int getApiMessageOffset() { return apiMessageOffset; }
     public void setApiMessageOffset(int apiMessageOffset) { this.apiMessageOffset = apiMessageOffset; }
+    public Instant getStartedAt() { return startedAt; }
+    public void setStartedAt(Instant startedAt) { this.startedAt = startedAt; }
+    public Instant getCompletedAt() { return completedAt; }
+    public void setCompletedAt(Instant completedAt) { this.completedAt = completedAt; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

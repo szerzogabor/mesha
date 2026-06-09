@@ -131,6 +131,8 @@ export interface AISession {
   updatedAt: string;
 }
 
+export type MessageRole = "USER" | "AI" | "SYSTEM";
+
 export interface BlocksSession {
   id: string;
   issueId: string;
@@ -143,6 +145,8 @@ export interface BlocksSession {
   branchName?: string;
   errorMessage?: string;
   sessionUrl?: string;
+  startedAt?: string;
+  completedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -151,6 +155,7 @@ export interface BlocksMessage {
   id: string;
   sessionId: string;
   message: string;
+  role: MessageRole;
   createdAt: string;
 }
 
