@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { AIExecutionState, BlocksSession } from "@/types";
 import { useBlocksSessions } from "@/hooks/useBlocksSessions";
 import { formatRelativeTime } from "@/lib/utils";
@@ -25,8 +24,15 @@ function stateLabel(state: AIExecutionState): string {
   }
 }
 
-function SessionEntry({ session, index }: { session: BlocksSession; index: number }) {
-  const [expanded, setExpanded] = useState(false);
+function SessionEntry({
+  session,
+  index,
+  onSelect,
+}: {
+  session: BlocksSession;
+  index: number;
+  onSelect: () => void;
+}) {
   const isTerminal = ["DONE", "FAILED", "CANCELED"].includes(session.executionState);
 
   return (
@@ -36,8 +42,8 @@ function SessionEntry({ session, index }: { session: BlocksSession; index: numbe
       </div>
       <div className="flex-1 min-w-0">
         <button
-          className="w-full text-left flex items-center gap-2 group"
-          onClick={() => setExpanded((v) => !v)}
+          className="w-full text-left flex items-center gap-2 rounded-lg hover:bg-bg-surface-hover px-2 py-1 -mx-2 transition-colors group"
+          onClick={onSelect}
         >
           <span className="text-sm text-text-secondary font-medium">
             AI Session #{index}
@@ -46,60 +52,18 @@ function SessionEntry({ session, index }: { session: BlocksSession; index: numbe
             {!isTerminal && <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />}
             {stateLabel(session.executionState)}
           </span>
-          <svg
-            className={`h-3.5 w-3.5 text-text-tertiary transition-transform ml-auto flex-shrink-0 ${expanded ? "rotate-180" : ""}`}
-            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
+          {(session.sessionUrl || session.prUrl) && (
+            <span className="ml-auto text-xs text-text-tertiary group-hover:text-accent transition-colors flex-shrink-0">
+              Open chat →
+            </span>
+          )}
+          {!session.sessionUrl && !session.prUrl && (
+            <span className="ml-auto text-xs text-text-tertiary group-hover:text-accent transition-colors flex-shrink-0">
+              View →
+            </span>
+          )}
         </button>
-        <p className="text-xs text-text-tertiary mt-0.5">{formatRelativeTime(session.createdAt)}</p>
-
-        {expanded && (
-          <div className="mt-2 space-y-2 rounded-lg border border-border-default bg-bg-surface p-3">
-            {session.branchName && (
-              <p className="text-xs font-mono text-text-tertiary truncate">{session.branchName}</p>
-            )}
-            {session.sessionUrl && (
-              <a
-                href={session.sessionUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-xs text-accent hover:underline"
-              >
-                <svg className="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                View in Blocks Dashboard
-                <svg className="h-2.5 w-2.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </a>
-            )}
-            {session.prUrl && (
-              <a
-                href={session.prUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-xs text-accent hover:underline"
-              >
-                <svg className="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                </svg>
-                {session.branchName ?? "View Pull Request"}
-                {session.prNumber && ` #${session.prNumber}`}
-                <svg className="h-2.5 w-2.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </a>
-            )}
-            {session.errorMessage && (
-              <p className={`text-xs ${session.executionState === "FAILED" ? "text-red-600 dark:text-red-400" : "text-text-tertiary"}`}>
-                {session.errorMessage}
-              </p>
-            )}
-          </div>
-        )}
+        <p className="text-xs text-text-tertiary mt-0.5 pl-2">{formatRelativeTime(session.createdAt)}</p>
       </div>
     </li>
   );
@@ -108,9 +72,10 @@ function SessionEntry({ session, index }: { session: BlocksSession; index: numbe
 interface Props {
   projectId: string;
   issueId: string;
+  onSelectSession: (session: BlocksSession, index: number) => void;
 }
 
-export function SessionsActivityList({ projectId, issueId }: Props) {
+export function SessionsActivityList({ projectId, issueId, onSelectSession }: Props) {
   const { data: sessions = [], isLoading } = useBlocksSessions(projectId, issueId);
 
   if (isLoading || sessions.length === 0) return null;
@@ -126,7 +91,12 @@ export function SessionsActivityList({ projectId, issueId }: Props) {
         <div className="absolute left-3 top-0 bottom-0 w-px bg-border-default" />
         <ul className="space-y-4">
           {sorted.map((session, i) => (
-            <SessionEntry key={session.id} session={session} index={i + 1} />
+            <SessionEntry
+              key={session.id}
+              session={session}
+              index={i + 1}
+              onSelect={() => onSelectSession(session, i + 1)}
+            />
           ))}
         </ul>
       </div>

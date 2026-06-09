@@ -11,7 +11,8 @@ import { Spinner } from "@/components/ui/Spinner";
 import { AISessionsPanel } from "@/components/blocks/AISessionsPanel";
 import { ResourcesPanel } from "@/components/blocks/ResourcesPanel";
 import { SessionsActivityList } from "@/components/blocks/SessionsActivityList";
-import { IssueStatus, IssuePriority } from "@/types";
+import { SessionChatDrawer } from "@/components/blocks/SessionChatDrawer";
+import { IssueStatus, IssuePriority, BlocksSession } from "@/types";
 import { formatRelativeTime } from "@/lib/utils";
 
 const STATUSES: IssueStatus[] = ["BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DONE"];
@@ -39,6 +40,7 @@ export default function IssueDetailPage({
   const [editingDesc, setEditingDesc] = useState(false);
   const [editDesc, setEditDesc] = useState("");
   const [activeTab, setActiveTab] = useState<"comments" | "activity">("comments");
+  const [selectedSession, setSelectedSession] = useState<{ session: BlocksSession; index: number } | null>(null);
 
   if (isLoading || !issue) {
     return (
@@ -201,7 +203,11 @@ export default function IssueDetailPage({
 
             {activeTab === "activity" && (
               <div className="space-y-6">
-                <SessionsActivityList projectId={projectId} issueId={issueId} />
+                <SessionsActivityList
+                  projectId={projectId}
+                  issueId={issueId}
+                  onSelectSession={(session, index) => setSelectedSession({ session, index })}
+                />
                 <ActivityFeed events={activity} />
               </div>
             )}
@@ -312,6 +318,16 @@ export default function IssueDetailPage({
           </div>
         </div>
       </div>
+
+      {selectedSession && (
+        <SessionChatDrawer
+          session={selectedSession.session}
+          sessionIndex={selectedSession.index}
+          projectId={projectId}
+          issueId={issueId}
+          onClose={() => setSelectedSession(null)}
+        />
+      )}
     </div>
   );
 }
