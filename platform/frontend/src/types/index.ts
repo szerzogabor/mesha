@@ -209,6 +209,7 @@ export interface GitHubRepository {
 export interface BlocksConfig {
   id: string;
   workspaceId: string;
+  blocksWorkspaceId?: string;
   status: string;
   connectedAt: string;
   updatedAt: string;

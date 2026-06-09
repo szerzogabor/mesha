@@ -26,4 +26,13 @@ public interface WorkspaceBlocksConfigRepository extends JpaRepository<Workspace
             WHERE i.id = :issueId
             """, nativeQuery = true)
     Optional<String> findApiKeyEncByIssueId(@Param("issueId") UUID issueId);
+
+    @Query(value = """
+            SELECT wbc.blocks_workspace_id
+            FROM workspace_blocks_config wbc
+            JOIN projects p ON p.workspace_id = wbc.workspace_id
+            JOIN issues i ON i.project_id = p.id
+            WHERE i.id = :issueId
+            """, nativeQuery = true)
+    Optional<String> findBlocksWorkspaceIdByIssueId(@Param("issueId") UUID issueId);
 }

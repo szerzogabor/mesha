@@ -27,10 +27,10 @@ export function useBlocksConfig(workspaceId: string) {
 export function useSaveBlocksConfig(workspaceId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (apiKey: string) =>
+    mutationFn: ({ apiKey, blocksWorkspaceId }: { apiKey: string; blocksWorkspaceId?: string }) =>
       apiClient.put<BlocksConfig>(
         `/api/workspaces/${workspaceId}/blocks/config`,
-        { apiKey }
+        { apiKey, blocksWorkspaceId: blocksWorkspaceId || null }
       ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["blocks-config", workspaceId] });

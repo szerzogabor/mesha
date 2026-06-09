@@ -38,6 +38,11 @@ class BlocksApiKeyService {
                 .map(this::decrypt);
     }
 
+    Optional<String> resolveBlocksWorkspaceId(UUID issueId) {
+        return configRepo.findBlocksWorkspaceIdByIssueId(issueId)
+                .filter(id -> id != null && !id.isBlank());
+    }
+
     private String decrypt(String encoded) {
         try {
             byte[] combined = Base64.getDecoder().decode(encoded);

@@ -22,6 +22,9 @@ public class WorkspaceBlocksConfig {
     @Column(name = "api_key_enc", nullable = false, columnDefinition = "TEXT")
     private String apiKeyEnc;
 
+    @Column(name = "blocks_workspace_id")
+    private String blocksWorkspaceId;
+
     @Column(nullable = false, length = 20)
     private String status = "connected";
 
@@ -41,6 +44,8 @@ public class WorkspaceBlocksConfig {
     public void setWorkspace(Workspace workspace) { this.workspace = workspace; }
     public String getApiKeyEnc() { return apiKeyEnc; }
     public void setApiKeyEnc(String apiKeyEnc) { this.apiKeyEnc = apiKeyEnc; }
+    public String getBlocksWorkspaceId() { return blocksWorkspaceId; }
+    public void setBlocksWorkspaceId(String blocksWorkspaceId) { this.blocksWorkspaceId = blocksWorkspaceId; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public Instant getConnectedAt() { return connectedAt; }

@@ -178,11 +178,11 @@ class SessionPollService {
             );
             SessionResult result = blocksAdapter.createSession(request);
             session.setProviderSessionId(result.providerSessionId());
-            String sessionUrl = blocksDashboardUrl.stripTrailing() + "/sessions/" + result.providerSessionId();
+            String sessionUrl = buildSessionUrl(issueId, result.providerSessionId());
             session.setSessionUrl(sessionUrl);
             sessionRepo.save(session);
             log.info("session_dispatched session_id={} provider_session_id={} session_url={}",
-                    session.getId(), result.providerSessionId(), sessionUrl);
+                    session.getId(), result.providerSessionId(), sessionUrl != null ? sessionUrl : "none");
         } catch (HttpClientErrorException e) {
             log.error("session_dispatch_failure session_id={} issue_id={} error={}",
                     session.getId(), issueId, e.getMessage(), e);
@@ -305,6 +305,18 @@ class SessionPollService {
         session.setErrorMessage(reason);
         sessionRepo.save(session);
         recordStateTransitionMessage(session, AIExecutionState.FAILED, reason);
+    }
+
+    private String buildSessionUrl(UUID issueId, String providerSessionId) {
+        String base = blocksDashboardUrl.stripTrailing();
+        String workspaceId = apiKeyService.resolveBlocksWorkspaceId(issueId).orElse(null);
+        if (workspaceId != null) {
+            String url = base + "/app/" + workspaceId + "/sessions/" + providerSessionId;
+            log.info("blocks_session_url_created session_url={}", url);
+            return url;
+        }
+        log.warn("blocks_workspace_id_not_configured issue_id={} — session URL will not be set; configure Blocks Workspace ID in workspace settings", issueId);
+        return null;
     }
 
     /**
