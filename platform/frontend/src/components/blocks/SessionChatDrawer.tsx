@@ -28,6 +28,28 @@ function stateLabel(state: AIExecutionState): string {
   }
 }
 
+const URL_PATTERN = /(https?:\/\/[^\s<>"]+)/g;
+
+function renderWithLinks(text: string, linkClass: string) {
+  const parts = text.split(URL_PATTERN);
+  return parts.map((part, i) =>
+    /^https?:\/\//.test(part) ? (
+      <a
+        key={i}
+        href={part}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={linkClass}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {part}
+      </a>
+    ) : (
+      part
+    )
+  );
+}
+
 function MessageBubble({ msg }: { msg: BlocksMessage }) {
   const isUser = msg.role === "USER";
   const isSystem = msg.role === "SYSTEM";
@@ -35,7 +57,9 @@ function MessageBubble({ msg }: { msg: BlocksMessage }) {
   if (isSystem) {
     return (
       <div className="flex justify-center py-1">
-        <span className="text-xs text-text-tertiary italic">{msg.message}</span>
+        <span className="text-xs text-text-tertiary italic">
+          {renderWithLinks(msg.message, "underline opacity-80 hover:opacity-100 break-all")}
+        </span>
       </div>
     );
   }
@@ -47,7 +71,14 @@ function MessageBubble({ msg }: { msg: BlocksMessage }) {
           ? "bg-accent text-white rounded-tr-sm"
           : "bg-bg-surface-hover text-text-secondary rounded-tl-sm"
       }`}>
-        <p className="leading-relaxed whitespace-pre-wrap">{msg.message}</p>
+        <p className="leading-relaxed whitespace-pre-wrap">
+          {renderWithLinks(
+            msg.message,
+            isUser
+              ? "underline opacity-80 hover:opacity-100 break-all"
+              : "text-accent underline hover:opacity-80 break-all"
+          )}
+        </p>
         <p className={`mt-1 text-[10px] opacity-60 ${isUser ? "text-right" : ""}`}>
           {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}
         </p>

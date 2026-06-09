@@ -133,6 +133,15 @@ export interface AISession {
 
 export type MessageRole = "USER" | "AI" | "SYSTEM";
 
+export interface LinkedPullRequest {
+  id: string;
+  githubPrNumber?: number;
+  title?: string;
+  state?: string;
+  sourceBranch?: string;
+  htmlUrl: string;
+}
+
 export interface BlocksSession {
   id: string;
   issueId: string;
@@ -149,6 +158,7 @@ export interface BlocksSession {
   completedAt?: string;
   createdAt: string;
   updatedAt: string;
+  linkedPullRequest?: LinkedPullRequest;
 }
 
 export interface BlocksMessage {
