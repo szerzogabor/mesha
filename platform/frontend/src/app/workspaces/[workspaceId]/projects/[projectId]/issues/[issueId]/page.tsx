@@ -9,6 +9,7 @@ import { CommentThread } from "@/components/comments/CommentThread";
 import { ActivityFeed } from "@/components/activity/ActivityFeed";
 import { Spinner } from "@/components/ui/Spinner";
 import { AISessionsPanel } from "@/components/blocks/AISessionsPanel";
+import { ResourcesPanel } from "@/components/blocks/ResourcesPanel";
 import { IssueStatus, IssuePriority } from "@/types";
 import { formatRelativeTime } from "@/lib/utils";
 
@@ -290,6 +291,11 @@ export default function IssueDetailPage({
 
           <AISessionsPanel
             workspaceId={workspaceId}
+            projectId={projectId}
+            issueId={issueId}
+          />
+
+          <ResourcesPanel
             projectId={projectId}
             issueId={issueId}
           />

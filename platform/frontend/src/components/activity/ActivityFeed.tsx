@@ -1,6 +1,16 @@
 import { ActivityEvent, ActivityEventType } from "@/types";
 import { formatRelativeTime } from "@/lib/utils";
 
+function isUrl(value?: string): boolean {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function eventDescription(event: ActivityEvent): string {
   const actor = event.user?.name || event.user?.email || "Someone";
   switch (event.eventType) {
@@ -82,9 +92,25 @@ export function ActivityFeed({ events }: ActivityFeedProps) {
               <div className="absolute left-1 top-0.5 h-5 w-5 rounded-full bg-bg-surface-hover flex items-center justify-center text-xs text-text-tertiary">
                 {eventIcons[event.eventType] ?? "•"}
               </div>
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="text-sm text-text-secondary">{eventDescription(event)}</p>
-                <p className="text-xs text-text-tertiary">{formatRelativeTime(event.createdAt)}</p>
+                {event.eventType === "AI_PR_OPENED" && isUrl(event.newValue) && (
+                  <a
+                    href={event.newValue}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
+                  >
+                    <svg className="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                    View Pull Request
+                    <svg className="h-2.5 w-2.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                )}
+                <p className="text-xs text-text-tertiary mt-0.5">{formatRelativeTime(event.createdAt)}</p>
               </div>
             </li>
           ))}
