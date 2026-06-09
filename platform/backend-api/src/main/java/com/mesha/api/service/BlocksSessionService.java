@@ -48,7 +48,7 @@ public class BlocksSessionService {
     }
 
     @Transactional
-    public BlocksSession assignToBlocks(UUID issueId, User actor) {
+    public BlocksSession assignToBlocks(UUID issueId, User actor, String instructions) {
         Issue issue = issueRepository.findById(issueId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found"));
 
@@ -61,6 +61,9 @@ public class BlocksSessionService {
         BlocksSession session = new BlocksSession();
         session.setIssue(issue);
         session.setExecutionState(AIExecutionState.CREATED);
+        if (instructions != null && !instructions.isBlank()) {
+            session.setInstructions(instructions.trim());
+        }
         session = blocksSessionRepository.save(session);
 
         issue.setAiAssignmentState("CREATED");

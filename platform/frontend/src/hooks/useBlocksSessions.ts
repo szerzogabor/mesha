@@ -63,10 +63,10 @@ export function useActiveBlocksSession(projectId: string, issueId: string, enabl
 export function useAssignToBlocks(projectId: string, issueId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async (instructions?: string) => {
       const session = await apiClient.post<BlocksSession>(
         `/api/projects/${projectId}/issues/${issueId}/blocks-sessions`,
-        {}
+        { instructions: instructions?.trim() || undefined }
       );
       logger.ai.sessionStarted(issueId, session.id);
       return session;

@@ -3,6 +3,7 @@ package com.mesha.api.controller;
 import com.mesha.api.dto.BlocksMessageDto;
 import com.mesha.api.dto.BlocksSessionDto;
 import com.mesha.api.dto.SendMessageRequest;
+import com.mesha.api.dto.StartSessionRequest;
 import com.mesha.api.dto.UpdateBlocksSessionRequest;
 import com.mesha.api.model.BlocksSession;
 import com.mesha.api.model.GitHubPullRequest;
@@ -50,9 +51,12 @@ public class BlocksSessionController {
     public ResponseEntity<BlocksSessionDto> assign(
             @PathVariable UUID projectId,
             @PathVariable UUID issueId,
-            @CurrentUser User user) {
-        log.info("Assigning issue to Blocks issueId={} projectId={} userId={}", issueId, projectId, user.getId());
-        BlocksSession session = blocksSessionService.assignToBlocks(issueId, user);
+            @CurrentUser User user,
+            @RequestBody(required = false) StartSessionRequest req) {
+        String instructions = req != null ? req.instructions() : null;
+        log.info("Assigning issue to Blocks issueId={} projectId={} userId={} hasInstructions={}",
+                issueId, projectId, user.getId(), instructions != null && !instructions.isBlank());
+        BlocksSession session = blocksSessionService.assignToBlocks(issueId, user, instructions);
         return ResponseEntity.status(HttpStatus.CREATED).body(toDto(session));
     }
 
