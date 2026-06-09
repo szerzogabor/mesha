@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { BlocksSession, BlocksMessage, AIExecutionState, MessageRole } from "@/types";
-import { formatRelativeTime } from "@/lib/utils";
+import { BlocksSession, BlocksMessage, AIExecutionState } from "@/types";
 import { useBlocksSessions, useAssignToBlocks, useCancelBlocksSession, useSendBlocksMessage } from "@/hooks/useBlocksSessions";
 import { useBlocksMessages } from "@/hooks/useBlocksMessages";
 import { useBlocksConfig } from "@/hooks/useBlocksConfig";
@@ -326,7 +325,7 @@ export function AISessionsPanel({ workspaceId, projectId, issueId }: Props) {
       {/* Active sessions */}
       {!isLoading && activeSessions.length > 0 && (
         <div className="space-y-2">
-          {activeSessions.map((session, i) => (
+          {activeSessions.map((session) => (
             <SessionRow
               key={session.id}
               session={session}
