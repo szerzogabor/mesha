@@ -301,13 +301,13 @@ export default function IssueDetailPage({
             )}
           </div>
 
-          <AISessionsPanel
-            workspaceId={workspaceId}
+          <ResourcesPanel
             projectId={projectId}
             issueId={issueId}
           />
 
-          <ResourcesPanel
+          <AISessionsPanel
+            workspaceId={workspaceId}
             projectId={projectId}
             issueId={issueId}
           />

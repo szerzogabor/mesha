@@ -85,9 +85,20 @@ export function ResourcesPanel({ projectId, issueId }: Props) {
 
   return (
     <div className="bg-bg-surface rounded-xl border border-border-default p-4 space-y-3">
-      <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wide">
-        Resources
-      </p>
+      <div className="flex items-center gap-1.5">
+        <svg
+          className="h-3.5 w-3.5 text-text-tertiary"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+        </svg>
+        <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wide">
+          Attachments
+        </p>
+      </div>
       <ul className="space-y-2">
         {entries.map((entry) => {
           if (entry.url && entry.pr) {
