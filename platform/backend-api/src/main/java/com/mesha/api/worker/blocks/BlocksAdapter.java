@@ -262,6 +262,10 @@ public class BlocksAdapter implements ProviderAdapter {
             }
         }
 
+        if (request.instructions() != null && !request.instructions().isBlank()) {
+            sb.append("\nAdditional Instructions\n\n").append(request.instructions()).append("\n");
+        }
+
         return sb.toString();
     }
 

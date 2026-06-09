@@ -178,7 +178,8 @@ class SessionPollService {
                     repo != null ? repo.getHtmlUrl() : null,
                     repo != null ? repo.getDefaultBranch() : null,
                     comments,
-                    apiKey
+                    apiKey,
+                    session.getInstructions()
             );
             SessionResult result = blocksAdapter.createSession(request);
             session.setProviderSessionId(result.providerSessionId());

@@ -283,11 +283,22 @@ export function AISessionsPanel({ workspaceId, projectId, issueId }: Props) {
   const { data: sessions = [], isLoading } = useBlocksSessions(projectId, issueId);
   const { data: blocksConfig, isLoading: configLoading } = useBlocksConfig(workspaceId);
   const assignMutation = useAssignToBlocks(projectId, issueId);
+  const [showInstructions, setShowInstructions] = useState(false);
+  const [instructions, setInstructions] = useState("");
 
   const isConnected = !!blocksConfig;
 
   const activeSessions = sessions.filter((s) => !isTerminal(s.executionState));
   const pastSessions = sessions.filter((s) => isTerminal(s.executionState));
+
+  const handleStartSession = () => {
+    assignMutation.mutate(instructions || undefined, {
+      onSuccess: () => {
+        setShowInstructions(false);
+        setInstructions("");
+      },
+    });
+  };
 
   return (
     <div className="bg-bg-surface rounded-xl border border-border-default p-4 space-y-3">
@@ -362,30 +373,68 @@ export function AISessionsPanel({ workspaceId, projectId, issueId }: Props) {
         </p>
       )}
 
-      {/* Start new session button */}
+      {/* Start new session */}
       {isConnected && (
-        <button
-          onClick={() => assignMutation.mutate()}
-          disabled={assignMutation.isPending}
-          className="w-full flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white hover:bg-accent-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {assignMutation.isPending ? (
-            <>
-              <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              Starting…
-            </>
+        <div className="space-y-2">
+          {showInstructions ? (
+            <div className="space-y-2 rounded-lg border border-border-default bg-bg-surface p-3">
+              <label className="block text-xs font-medium text-text-secondary">
+                Additional instructions
+                <span className="ml-1 font-normal text-text-tertiary">(optional)</span>
+              </label>
+              <textarea
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                placeholder="e.g. Use TypeScript strict mode, avoid modifying auth files, name the branch feature/my-feature…"
+                rows={3}
+                autoFocus
+                className="w-full resize-none rounded-lg border border-input-border bg-input-bg px-3 py-2 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={handleStartSession}
+                  disabled={assignMutation.isPending}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-xs font-medium text-white hover:bg-accent-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {assignMutation.isPending ? (
+                    <>
+                      <svg className="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Starting…
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      Start Session
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => { setShowInstructions(false); setInstructions(""); }}
+                  disabled={assignMutation.isPending}
+                  className="rounded-lg border border-border-default px-3 py-2 text-xs text-text-secondary hover:bg-bg-surface-hover transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           ) : (
-            <>
+            <button
+              onClick={() => setShowInstructions(true)}
+              disabled={assignMutation.isPending}
+              className="w-full flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white hover:bg-accent-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
               {sessions.length === 0 ? "Start AI Session" : "Start New Session"}
-            </>
+            </button>
           )}
-        </button>
+        </div>
       )}
 
       {assignMutation.isError && (
