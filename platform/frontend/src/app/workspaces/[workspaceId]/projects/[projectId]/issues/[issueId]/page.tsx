@@ -10,6 +10,7 @@ import { ActivityFeed } from "@/components/activity/ActivityFeed";
 import { Spinner } from "@/components/ui/Spinner";
 import { AISessionsPanel } from "@/components/blocks/AISessionsPanel";
 import { ResourcesPanel } from "@/components/blocks/ResourcesPanel";
+import { SessionsActivityList } from "@/components/blocks/SessionsActivityList";
 import { IssueStatus, IssuePriority } from "@/types";
 import { formatRelativeTime } from "@/lib/utils";
 
@@ -198,7 +199,12 @@ export default function IssueDetailPage({
               />
             )}
 
-            {activeTab === "activity" && <ActivityFeed events={activity} />}
+            {activeTab === "activity" && (
+              <div className="space-y-6">
+                <SessionsActivityList projectId={projectId} issueId={issueId} />
+                <ActivityFeed events={activity} />
+              </div>
+            )}
           </div>
         </div>
 
