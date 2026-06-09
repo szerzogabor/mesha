@@ -202,8 +202,18 @@ public class BlocksSessionService {
 
         if (session.getExecutionState() == AIExecutionState.DONE
                 || session.getExecutionState() == AIExecutionState.CANCELED) {
-            log.warn("Ignoring webhook state update for terminal session sessionId={} currentState={}",
-                    session.getId(), session.getExecutionState());
+            // For terminal sessions, still persist PR link data if this is a late pr.created event
+            if (prUrl != null && session.getPrUrl() == null) {
+                session.setPrUrl(prUrl);
+                if (prNumber != null) session.setPrNumber(prNumber);
+                if (branchName != null) session.setBranchName(branchName);
+                session = blocksSessionRepository.save(session);
+                tryLinkPullRequestByUrl(session, prUrl);
+                log.info("Saved late pr.created data on terminal session sessionId={} prUrl={}", session.getId(), prUrl);
+            } else {
+                log.warn("Ignoring webhook state update for terminal session sessionId={} currentState={}",
+                        session.getId(), session.getExecutionState());
+            }
             return;
         }
 
