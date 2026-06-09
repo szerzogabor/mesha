@@ -23,7 +23,8 @@ public record GitHubPullRequestDto(
         Instant mergedAt,
         Instant closedAt,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        UUID linkedSessionId
 ) {
     public static GitHubPullRequestDto from(GitHubPullRequest pr) {
         return new GitHubPullRequestDto(
@@ -45,7 +46,8 @@ public record GitHubPullRequestDto(
                 pr.getMergedAt(),
                 pr.getClosedAt(),
                 pr.getCreatedAt(),
-                pr.getUpdatedAt()
+                pr.getUpdatedAt(),
+                pr.getBlocksSession() != null ? pr.getBlocksSession().getId() : null
         );
     }
 }

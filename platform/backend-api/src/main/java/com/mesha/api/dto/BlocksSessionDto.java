@@ -2,6 +2,7 @@ package com.mesha.api.dto;
 
 import com.mesha.api.model.AIExecutionState;
 import com.mesha.api.model.BlocksSession;
+import com.mesha.api.model.GitHubPullRequest;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -19,9 +20,14 @@ public record BlocksSessionDto(
     String errorMessage,
     String sessionUrl,
     Instant createdAt,
-    Instant updatedAt
+    Instant updatedAt,
+    GitHubPullRequestDto linkedPullRequest
 ) {
     public static BlocksSessionDto from(BlocksSession s) {
+        return from(s, null);
+    }
+
+    public static BlocksSessionDto from(BlocksSession s, GitHubPullRequest linkedPr) {
         return new BlocksSessionDto(
             s.getId(),
             s.getIssue().getId(),
@@ -35,7 +41,8 @@ public record BlocksSessionDto(
             s.getErrorMessage(),
             s.getSessionUrl(),
             s.getCreatedAt(),
-            s.getUpdatedAt()
+            s.getUpdatedAt(),
+            linkedPr != null ? GitHubPullRequestDto.from(linkedPr) : null
         );
     }
 }

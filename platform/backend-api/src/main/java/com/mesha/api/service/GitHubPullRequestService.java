@@ -3,9 +3,11 @@ package com.mesha.api.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mesha.api.dto.GitHubPullRequestDto;
+import com.mesha.api.model.BlocksSession;
 import com.mesha.api.model.GitHubInstallation;
 import com.mesha.api.model.GitHubPullRequest;
 import com.mesha.api.model.GitHubRepository;
+import com.mesha.api.repository.BlocksSessionRepository;
 import com.mesha.api.repository.GitHubInstallationRepository;
 import com.mesha.api.repository.GitHubPullRequestRepository;
 import com.mesha.api.repository.GitHubRepositoryRepository;
@@ -34,6 +36,7 @@ public class GitHubPullRequestService {
     private final GitHubPullRequestRepository prRepo;
     private final GitHubRepositoryRepository repositoryRepo;
     private final GitHubInstallationRepository installationRepo;
+    private final BlocksSessionRepository blocksSessionRepo;
     private final GitHubAppService appService;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -41,11 +44,13 @@ public class GitHubPullRequestService {
     public GitHubPullRequestService(GitHubPullRequestRepository prRepo,
                                     GitHubRepositoryRepository repositoryRepo,
                                     GitHubInstallationRepository installationRepo,
+                                    BlocksSessionRepository blocksSessionRepo,
                                     GitHubAppService appService,
                                     ObjectMapper objectMapper) {
         this.prRepo = prRepo;
         this.repositoryRepo = repositoryRepo;
         this.installationRepo = installationRepo;
+        this.blocksSessionRepo = blocksSessionRepo;
         this.appService = appService;
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newHttpClient();
@@ -176,8 +181,23 @@ public class GitHubPullRequestService {
             pr.setClosedAt(Instant.parse(prNode.get("closed_at").asText()));
         }
 
+        if (pr.getBlocksSession() == null) {
+            tryAutoLinkByBranch(pr);
+        }
+
         prRepo.save(pr);
-        log.debug("Pull request upserted repositoryId={} prNumber={} state={} action={}",
-                repo.getId(), prNumber, pr.getState(), isNew ? "created" : "updated");
+        log.debug("Pull request upserted repositoryId={} prNumber={} state={} action={} linkedSession={}",
+                repo.getId(), prNumber, pr.getState(), isNew ? "created" : "updated",
+                pr.getBlocksSession() != null ? pr.getBlocksSession().getId() : "none");
+    }
+
+    private void tryAutoLinkByBranch(GitHubPullRequest pr) {
+        String branch = pr.getSourceBranch();
+        if (branch == null || branch.isBlank()) return;
+        blocksSessionRepo.findFirstByBranchName(branch).ifPresent(session -> {
+            pr.setBlocksSession(session);
+            log.info("Auto-linked pull request prNumber={} to blocks session sessionId={} via branch={}",
+                    pr.getGithubPrNumber(), session.getId(), branch);
+        });
     }
 }

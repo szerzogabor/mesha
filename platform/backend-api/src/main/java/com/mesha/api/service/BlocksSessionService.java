@@ -4,6 +4,7 @@ import com.mesha.api.dto.UpdateBlocksSessionRequest;
 import com.mesha.api.model.*;
 import com.mesha.api.repository.BlocksMessageRepository;
 import com.mesha.api.repository.BlocksSessionRepository;
+import com.mesha.api.repository.GitHubPullRequestRepository;
 import com.mesha.api.repository.IssueRepository;
 import com.mesha.api.worker.blocks.BlocksAdapter;
 import org.slf4j.Logger;
@@ -27,19 +28,22 @@ public class BlocksSessionService {
     private final BlocksConfigService blocksConfigService;
     private final BlocksMessageRepository blocksMessageRepository;
     private final BlocksAdapter blocksAdapter;
+    private final GitHubPullRequestRepository gitHubPullRequestRepository;
 
     public BlocksSessionService(BlocksSessionRepository blocksSessionRepository,
                                 IssueRepository issueRepository,
                                 ActivityService activityService,
                                 BlocksConfigService blocksConfigService,
                                 BlocksMessageRepository blocksMessageRepository,
-                                BlocksAdapter blocksAdapter) {
+                                BlocksAdapter blocksAdapter,
+                                GitHubPullRequestRepository gitHubPullRequestRepository) {
         this.blocksSessionRepository = blocksSessionRepository;
         this.issueRepository = issueRepository;
         this.activityService = activityService;
         this.blocksConfigService = blocksConfigService;
         this.blocksMessageRepository = blocksMessageRepository;
         this.blocksAdapter = blocksAdapter;
+        this.gitHubPullRequestRepository = gitHubPullRequestRepository;
     }
 
     @Transactional
@@ -212,6 +216,10 @@ public class BlocksSessionService {
         }
         session = blocksSessionRepository.save(session);
 
+        if (prUrl != null) {
+            tryLinkPullRequestByUrl(session, prUrl);
+        }
+
         Issue issue = session.getIssue();
         issue.setAiAssignmentState(session.getExecutionState().name());
         issueRepository.save(issue);
@@ -221,6 +229,17 @@ public class BlocksSessionService {
 
         log.info("Blocks session state advanced via webhook sessionId={} from={} to={}",
                 session.getId(), oldState, session.getExecutionState());
+    }
+
+    private void tryLinkPullRequestByUrl(BlocksSession session, String prUrl) {
+        gitHubPullRequestRepository.findByHtmlUrl(prUrl).ifPresent(pr -> {
+            if (pr.getBlocksSession() == null) {
+                pr.setBlocksSession(session);
+                gitHubPullRequestRepository.save(pr);
+                log.info("Linked pull request prId={} to blocks session sessionId={} via pr_url",
+                        pr.getId(), session.getId());
+            }
+        });
     }
 
     private ActivityEventType resolveActivityEventType(AIExecutionState state) {

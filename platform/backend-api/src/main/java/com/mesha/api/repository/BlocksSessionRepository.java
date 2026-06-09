@@ -23,6 +23,8 @@ public interface BlocksSessionRepository extends JpaRepository<BlocksSession, UU
 
     Optional<BlocksSession> findByProviderSessionId(String providerSessionId);
 
+    Optional<BlocksSession> findFirstByBranchName(String branchName);
+
     @Query("SELECT s FROM BlocksSession s WHERE s.executionState NOT IN :states")
     List<BlocksSession> findAllByExecutionStateNotIn(@Param("states") Collection<AIExecutionState> states);
 }
