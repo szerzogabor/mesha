@@ -37,7 +37,7 @@ public class BlocksConfigController {
             @PathVariable UUID workspaceId,
             @RequestBody SaveBlocksConfigRequest request) {
         log.info("Saving Blocks config workspaceId={}", workspaceId);
-        BlocksConfigDto dto = blocksConfigService.saveConfig(workspaceId, request.apiKey());
+        BlocksConfigDto dto = blocksConfigService.saveConfig(workspaceId, request.apiKey(), request.blocksWorkspaceId());
         return ResponseEntity.ok(dto);
     }
 

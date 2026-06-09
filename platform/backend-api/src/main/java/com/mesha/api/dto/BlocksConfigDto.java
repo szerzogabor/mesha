@@ -8,6 +8,7 @@ import java.util.UUID;
 public record BlocksConfigDto(
     UUID id,
     UUID workspaceId,
+    String blocksWorkspaceId,
     String status,
     Instant connectedAt,
     Instant updatedAt
@@ -16,6 +17,7 @@ public record BlocksConfigDto(
         return new BlocksConfigDto(
             c.getId(),
             c.getWorkspace().getId(),
+            c.getBlocksWorkspaceId(),
             c.getStatus(),
             c.getConnectedAt(),
             c.getUpdatedAt()
