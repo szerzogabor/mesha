@@ -18,6 +18,7 @@ public interface GitHubPullRequestRepository extends JpaRepository<GitHubPullReq
     Optional<GitHubPullRequest> findByBlocksSession(BlocksSession session);
     Optional<GitHubPullRequest> findByBlocksSessionId(UUID blocksSessionId);
     List<GitHubPullRequest> findBySourceBranchAndBlocksSessionIsNull(String sourceBranch);
+    List<GitHubPullRequest> findBySourceBranch(String sourceBranch);
 
     @Query("""
             SELECT pr FROM GitHubPullRequest pr

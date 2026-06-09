@@ -45,8 +45,9 @@ public class BlocksSessionController {
                 .findByBlocksSessionId(session.getId())
                 .orElseGet(() -> {
                     if (session.getBranchName() == null) return null;
+                    // Search by branch regardless of whether the PR is already linked to another session
                     return gitHubPullRequestRepository
-                            .findBySourceBranchAndBlocksSessionIsNull(session.getBranchName())
+                            .findBySourceBranch(session.getBranchName())
                             .stream().findFirst().orElse(null);
                 });
         return BlocksSessionDto.from(session, linkedPr);
