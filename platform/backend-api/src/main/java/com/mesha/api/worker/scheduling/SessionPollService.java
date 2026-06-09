@@ -261,9 +261,10 @@ class SessionPollService {
             AIExecutionState prevState = session.getExecutionState();
             session.setRetryCount(session.getRetryCount() + 1);
 
-            // Backfill sessionUrl for sessions dispatched before workspace ID was available
+            // Backfill sessionUrl for sessions dispatched before workspace ID was available.
+            // Use workspace_id from the poll response if present (takes precedence over cached config).
             if (session.getSessionUrl() == null) {
-                String resolvedWorkspaceId = resolveAndPersistWorkspaceId(session.getIssue(), null);
+                String resolvedWorkspaceId = resolveAndPersistWorkspaceId(session.getIssue(), result.workspaceId());
                 String sessionUrl = buildSessionUrl(resolvedWorkspaceId, session.getProviderSessionId());
                 if (sessionUrl != null) {
                     session.setSessionUrl(sessionUrl);

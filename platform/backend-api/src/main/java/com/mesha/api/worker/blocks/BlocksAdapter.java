@@ -1,6 +1,8 @@
 package com.mesha.api.worker.blocks;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.mesha.api.worker.observability.WorkflowTracer;
 import com.mesha.api.worker.orchestration.ProviderAdapter;
 import com.mesha.api.worker.orchestration.SessionRequest;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -139,10 +142,11 @@ public class BlocksAdapter implements ProviderAdapter {
             }
 
             SessionResult.SessionStatus status = mapStatus(response.status());
-            log.debug("session_poll_result provider={} provider_session_id={} status={}",
-                    providerName(), sessionId, status);
+            List<String> messages = extractMessages(response.rawMessages());
+            log.debug("session_poll_result provider={} provider_session_id={} status={} message_count={}",
+                    providerName(), sessionId, status, messages != null ? messages.size() : 0);
 
-            return new SessionResult(sessionId, status, response.finalMessage(), null, response.messages());
+            return new SessionResult(sessionId, status, response.finalMessage(), response.workspaceId(), messages);
 
         } catch (RestClientException e) {
             workflowTracer.capturePollingFailure(providerName(), sessionId, 1, e);
@@ -244,6 +248,44 @@ public class BlocksAdapter implements ProviderAdapter {
             @JsonProperty("id") String id,
             @JsonProperty("status") String status,
             @JsonProperty("final_message") String finalMessage,
-            @JsonProperty("messages") List<String> messages
+            @JsonProperty("workspace_id") String workspaceId,
+            // Accept messages as a generic JSON array to handle both string and object elements.
+            // The Blocks API may return plain strings or objects like {"role":"assistant","content":"..."}.
+            @JsonProperty("messages")
+            @JsonAlias({"activity", "history", "chat_messages", "outputs"})
+            List<JsonNode> rawMessages
     ) {}
+
+    /**
+     * Normalises the raw messages array into a flat list of strings.
+     * Handles both plain-string elements and JSON objects by extracting
+     * whichever of content/text/message fields is present.
+     */
+    List<String> extractMessages(List<JsonNode> rawMessages) {
+        if (rawMessages == null || rawMessages.isEmpty()) return null;
+        List<String> result = new ArrayList<>();
+        for (JsonNode node : rawMessages) {
+            if (node == null) continue;
+            if (node.isTextual()) {
+                String text = node.asText().strip();
+                if (!text.isEmpty()) result.add(text);
+            } else if (node.isObject()) {
+                String text = firstNonBlank(
+                        node.path("content").asText(null),
+                        node.path("text").asText(null),
+                        node.path("message").asText(null),
+                        node.path("body").asText(null)
+                );
+                if (text != null) result.add(text);
+            }
+        }
+        return result.isEmpty() ? null : result;
+    }
+
+    private String firstNonBlank(String... candidates) {
+        for (String s : candidates) {
+            if (s != null && !s.isBlank()) return s.strip();
+        }
+        return null;
+    }
 }

@@ -16,14 +16,16 @@ export default function BlocksPage({
   const disconnectBlocks = useDisconnectBlocks(workspaceId);
 
   const [apiKey, setApiKey] = useState("");
+  const [blocksWorkspaceId, setBlocksWorkspaceId] = useState("");
   const [showConnectForm, setShowConnectForm] = useState(false);
 
   const isConnected = !!config;
 
   const handleConnect = async (e: React.FormEvent) => {
     e.preventDefault();
-    await saveConfig.mutateAsync({ apiKey });
+    await saveConfig.mutateAsync({ apiKey, blocksWorkspaceId: blocksWorkspaceId || undefined });
     setApiKey("");
+    setBlocksWorkspaceId("");
     setShowConnectForm(false);
   };
 
@@ -95,7 +97,10 @@ export default function BlocksPage({
               {isConnected ? (
                 <>
                   <button
-                    onClick={() => setShowConnectForm((v) => !v)}
+                    onClick={() => {
+                      setBlocksWorkspaceId(config?.blocksWorkspaceId ?? "");
+                      setShowConnectForm((v) => !v);
+                    }}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-border-subtle text-text-secondary rounded-lg hover:bg-bg-subtle transition-colors"
                   >
                     Update API Key
@@ -160,15 +165,22 @@ export default function BlocksPage({
                 .
               </p>
             </div>
-            {config?.blocksWorkspaceId && (
-              <div>
-                <p className="text-xs font-medium text-text-secondary mb-1">Blocks Workspace ID</p>
-                <p className="text-xs font-mono text-text-muted bg-bg-subtle rounded px-2 py-1 truncate">
-                  {config.blocksWorkspaceId}
-                </p>
-                <p className="text-xs text-text-muted mt-1">Auto-discovered from the Blocks API.</p>
-              </div>
-            )}
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">
+                Blocks Workspace ID
+              </label>
+              <input
+                type="text"
+                value={blocksWorkspaceId}
+                onChange={(e) => setBlocksWorkspaceId(e.target.value)}
+                placeholder="e.g. 4ac00b3c-ce6d-4160-9817-4e8ceb8ba8a6"
+                className="w-full text-sm font-mono border border-border-input rounded-lg px-3 py-2 bg-bg-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+              <p className="text-xs text-text-muted mt-1">
+                Found in your Blocks dashboard URL:{" "}
+                <span className="font-mono">blocks.team/app/<strong>{"<workspace-id>"}</strong>/…</span>
+              </p>
+            </div>
             <div className="flex gap-2">
               <button
                 type="submit"
@@ -182,6 +194,7 @@ export default function BlocksPage({
                 onClick={() => {
                   setShowConnectForm(false);
                   setApiKey("");
+                  setBlocksWorkspaceId("");
                 }}
                 className="px-4 py-2 text-sm text-text-secondary rounded-lg hover:bg-bg-subtle transition-colors"
               >
