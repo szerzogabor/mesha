@@ -73,7 +73,16 @@ public class BlocksAIDraftGenerator {
                 }
                 case FAILED -> throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                         "Blocks AI session failed to generate draft");
-                default -> { /* PENDING or RUNNING — keep polling */ }
+                default -> {
+                    // While still RUNNING, check whether the agent has already produced a
+                    // final_message — this lets us return early without waiting for the terminal
+                    // status transition (which can lag the actual completion by several seconds).
+                    if (result.finalMessage() != null && !result.finalMessage().isBlank()) {
+                        log.info("blocks_ai_draft_early_result workspace_id={} session_id={} attempts={} status={}",
+                                workspaceId, sessionId, attempt, result.status());
+                        return parseResponse(result.finalMessage(), sessionId);
+                    }
+                }
             }
         }
 
