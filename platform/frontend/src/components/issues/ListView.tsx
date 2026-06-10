@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Issue, IssueStatus, IssuePriority } from "@/types";
+import { Issue, IssuePriority } from "@/types";
 import { StatusBadge } from "./StatusBadge";
 import { PriorityBadge } from "./PriorityBadge";
 import { Pagination } from "@/components/ui/Pagination";
