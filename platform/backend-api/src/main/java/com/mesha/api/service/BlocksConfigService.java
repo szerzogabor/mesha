@@ -121,6 +121,11 @@ public class BlocksConfigService {
         }
     }
 
+    public Optional<String> getApiKey(UUID workspaceId) {
+        return configRepository.findByWorkspaceId(workspaceId)
+                .map(config -> decrypt(config.getApiKeyEnc()));
+    }
+
     public String decrypt(String encoded) {
         try {
             byte[] combined = Base64.getDecoder().decode(encoded);
