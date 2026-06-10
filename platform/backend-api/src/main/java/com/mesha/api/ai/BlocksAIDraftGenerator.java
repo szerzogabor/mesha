@@ -120,9 +120,16 @@ public class BlocksAIDraftGenerator {
 
     private String buildDraftMessage(String userPrompt) {
         return """
-                You are a senior technical product manager. Generate a detailed software issue ticket from the user's request.
-                Respond with ONLY a single valid JSON object. Do not include any text outside the JSON.
-                The JSON must have exactly these fields:
+                IMPORTANT: This is a TEXT GENERATION task. Do NOT use any tools. Do NOT call any APIs. \
+                Do NOT create tickets in Linear, Jira, GitHub, or any other system. \
+                Do NOT take any action in any external service. \
+                Your ONLY job is to write a JSON object to your final message and stop.
+
+                You are a senior technical product manager. Read the user's request below and produce a \
+                structured issue ticket in JSON format.
+
+                Output ONLY the raw JSON object — no markdown fences, no explanation, no preamble, no tool calls.
+                The JSON must contain exactly these fields:
                 - title: concise issue title (max 150 characters)
                 - description: 2-4 sentence technical summary of the issue/feature
                 - acceptanceCriteria: acceptance criteria in markdown bullet format (each criterion on its own line starting with "- ")
@@ -132,7 +139,7 @@ public class BlocksAIDraftGenerator {
                 - scopeNotes: what is explicitly in scope (markdown bullet list)
                 - outOfScopeNotes: what is explicitly out of scope (markdown bullet list)
 
-                Generate an issue ticket for the following request:
+                User request:
 
                 """ + userPrompt;
     }
