@@ -2,6 +2,7 @@ package com.mesha.api.service;
 
 import com.mesha.api.dto.CreateWorkspaceRequest;
 import com.mesha.api.model.*;
+import com.mesha.api.repository.LabelRepository;
 import com.mesha.api.repository.WorkspaceMemberRepository;
 import com.mesha.api.repository.WorkspaceRepository;
 import org.slf4j.Logger;
@@ -19,13 +20,22 @@ public class WorkspaceService {
 
     private static final Logger log = LoggerFactory.getLogger(WorkspaceService.class);
 
+    private static final List<String[]> DEFAULT_LABELS = List.of(
+        new String[]{"Bug", "#EB5757"},
+        new String[]{"Feature", "#BB87FC"},
+        new String[]{"Improvement", "#4EA7FC"}
+    );
+
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository memberRepository;
+    private final LabelRepository labelRepository;
 
     public WorkspaceService(WorkspaceRepository workspaceRepository,
-                            WorkspaceMemberRepository memberRepository) {
+                            WorkspaceMemberRepository memberRepository,
+                            LabelRepository labelRepository) {
         this.workspaceRepository = workspaceRepository;
         this.memberRepository = memberRepository;
+        this.labelRepository = labelRepository;
     }
 
     @Transactional
@@ -47,8 +57,20 @@ public class WorkspaceService {
         membership.setRole(WorkspaceRole.OWNER);
         memberRepository.save(membership);
 
+        createDefaultLabels(ws);
         log.info("Workspace created workspaceId={} slug={} ownerId={}", ws.getId(), req.slug(), owner.getId());
         return ws;
+    }
+
+    private void createDefaultLabels(Workspace workspace) {
+        for (String[] labelDef : DEFAULT_LABELS) {
+            Label label = new Label();
+            label.setWorkspace(workspace);
+            label.setName(labelDef[0]);
+            label.setColor(labelDef[1]);
+            labelRepository.save(label);
+            log.debug("Default label created workspaceId={} name={}", workspace.getId(), labelDef[0]);
+        }
     }
 
     public List<Workspace> listForUser(UUID userId) {

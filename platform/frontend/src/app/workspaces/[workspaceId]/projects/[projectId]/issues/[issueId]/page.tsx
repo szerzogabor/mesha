@@ -13,6 +13,7 @@ import { ResourcesPanel } from "@/components/blocks/ResourcesPanel";
 import { SessionsActivityList } from "@/components/blocks/SessionsActivityList";
 import { SessionChatDrawer } from "@/components/blocks/SessionChatDrawer";
 import { IssueStatus, IssuePriority, BlocksSession } from "@/types";
+import { useLabels } from "@/hooks/useLabels";
 import { formatRelativeTime } from "@/lib/utils";
 
 const STATUSES: IssueStatus[] = ["BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DONE"];
@@ -35,10 +36,13 @@ export default function IssueDetailPage({
   const updateIssue = useUpdateIssue(projectId, issueId);
   const createComment = useCreateComment(issueId);
 
+  const { data: availableLabels = [] } = useLabels(workspaceId);
+
   const [editingTitle, setEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editingDesc, setEditingDesc] = useState(false);
   const [editDesc, setEditDesc] = useState("");
+  const [showLabelPicker, setShowLabelPicker] = useState(false);
   const [activeTab, setActiveTab] = useState<"comments" | "activity">("comments");
   const [selectedSession, setSelectedSession] = useState<{ session: BlocksSession; index: number } | null>(null);
 
@@ -288,11 +292,45 @@ export default function IssueDetailPage({
               )}
             </div>
 
-            {issue.labels.length > 0 && (
-              <div>
-                <label className="block text-xs font-semibold text-text-tertiary uppercase tracking-wide mb-1">
+            <div className="relative">
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-text-tertiary uppercase tracking-wide">
                   Labels
                 </label>
+                <button
+                  onClick={() => setShowLabelPicker((v) => !v)}
+                  className="text-xs text-text-tertiary hover:text-text-primary transition-colors"
+                >
+                  {showLabelPicker ? "Done" : "Edit"}
+                </button>
+              </div>
+              {showLabelPicker && availableLabels.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {availableLabels.map((label) => {
+                    const active = issue.labels.some((l) => l.id === label.id);
+                    const newLabelIds = active
+                      ? issue.labels.filter((l) => l.id !== label.id).map((l) => l.id)
+                      : [...issue.labels.map((l) => l.id), label.id];
+                    return (
+                      <button
+                        key={label.id}
+                        type="button"
+                        onClick={() => updateIssue.mutate({ labelIds: newLabelIds })}
+                        className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium transition-all border"
+                        style={{
+                          backgroundColor: active ? label.color + "33" : "transparent",
+                          color: label.color,
+                          borderColor: active ? label.color : label.color + "55",
+                        }}
+                      >
+                        {active && <span className="mr-1">✓</span>}
+                        {label.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {issue.labels.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
                   {issue.labels.map((label) => (
                     <span
@@ -304,8 +342,10 @@ export default function IssueDetailPage({
                     </span>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-sm text-text-tertiary">No labels</p>
+              )}
+            </div>
           </div>
 
           <AISessionsPanel
