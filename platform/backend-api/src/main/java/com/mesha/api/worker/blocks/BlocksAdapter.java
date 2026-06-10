@@ -160,6 +160,36 @@ public class BlocksAdapter implements ProviderAdapter {
     }
 
     /**
+     * Creates a lightweight Blocks session for AI draft generation, using only a message and API key.
+     * Returns the provider session ID on success.
+     */
+    public String createDraftSession(String message, String apiKey) {
+        log.info("draft_session_create_start provider={} message_length={}", providerName(), message.length());
+        try {
+            var body = new CreateSessionRequest(agentName, message);
+            var response = restClient.post()
+                    .uri("/rest/v1/sessions")
+                    .headers(h -> h.set("Authorization", "ApiKey " + apiKey))
+                    .body(body)
+                    .retrieve()
+                    .body(CreateSessionResponse.class);
+
+            if (response == null || response.id() == null || response.id().isBlank()) {
+                throw new IllegalStateException("Blocks API returned empty or missing session_id for draft session");
+            }
+
+            log.info("draft_session_create_success provider={} provider_session_id={}", providerName(), response.id());
+            return response.id();
+        } catch (RestClientException e) {
+            workflowTracer.captureAiProviderFailure(providerName(), "createDraftSession", 0, e);
+            throw e;
+        } catch (Exception e) {
+            workflowTracer.captureAiProviderFailure(providerName(), "createDraftSession", 0, e);
+            throw new RuntimeException("Failed to create Blocks draft session: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Sends a user message to an existing Blocks session via POST /rest/v1/sessions/{id}/messages.
      * Throws on HTTP or network errors so callers can decide whether to propagate or swallow.
      */

@@ -2,6 +2,7 @@ package com.mesha.api.service;
 
 import com.mesha.api.ai.AIDraftContent;
 import com.mesha.api.ai.AIOrchestrationService;
+import com.mesha.api.ai.BlocksAIDraftGenerator;
 import com.mesha.api.dto.ApproveDraftRequest;
 import com.mesha.api.dto.CreateIssueRequest;
 import com.mesha.api.model.*;
@@ -24,17 +25,23 @@ public class AIDraftService {
     private final AIDraftRepository draftRepository;
     private final ProjectRepository projectRepository;
     private final AIOrchestrationService orchestration;
+    private final BlocksAIDraftGenerator blocksGenerator;
+    private final BlocksConfigService blocksConfigService;
     private final IssueService issueService;
     private final ActivityService activityService;
 
     public AIDraftService(AIDraftRepository draftRepository,
                           ProjectRepository projectRepository,
                           AIOrchestrationService orchestration,
+                          BlocksAIDraftGenerator blocksGenerator,
+                          BlocksConfigService blocksConfigService,
                           IssueService issueService,
                           ActivityService activityService) {
         this.draftRepository = draftRepository;
         this.projectRepository = projectRepository;
         this.orchestration = orchestration;
+        this.blocksGenerator = blocksGenerator;
+        this.blocksConfigService = blocksConfigService;
         this.issueService = issueService;
         this.activityService = activityService;
     }
@@ -55,7 +62,10 @@ public class AIDraftService {
         log.info("AI draft generation started draftId={} projectId={}", draft.getId(), projectId);
         long aiStartMs = System.currentTimeMillis();
         try {
-            AIDraftContent content = orchestration.generateDraft(prompt);
+            UUID workspaceId = project.getWorkspace().getId();
+            AIDraftContent content = blocksConfigService.isConnected(workspaceId)
+                    ? blocksGenerator.generate(prompt, workspaceId)
+                    : orchestration.generateDraft(prompt);
             log.info("AI draft generation completed draftId={} durationMs={}", draft.getId(), System.currentTimeMillis() - aiStartMs);
             draft.setStatus(AIDraftStatus.COMPLETED);
             draft.setGeneratedTitle(content.title());
