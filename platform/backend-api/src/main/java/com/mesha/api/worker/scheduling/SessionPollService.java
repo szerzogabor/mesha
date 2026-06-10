@@ -171,7 +171,7 @@ class SessionPollService {
                     issueIdentifier,
                     issue.getTitle(),
                     issue.getDescription(),
-                    issue.getStatus() != null ? issue.getStatus().name() : null,
+                    issue.getStatus(),
                     issue.getPriority() != null ? issue.getPriority().name() : null,
                     assigneeName,
                     labelNames,
