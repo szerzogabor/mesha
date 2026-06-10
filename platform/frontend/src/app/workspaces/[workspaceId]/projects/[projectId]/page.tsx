@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useCallback, useEffect } from "react";
+import { use, useState, useCallback, useEffect, useRef } from "react";
 import {
   useIssues,
   useCreateIssue,
@@ -31,6 +31,18 @@ export default function ProjectPage({
   const [page, setPage] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
   const [showAIDraft, setShowAIDraft] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    if (showDropdown) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showDropdown]);
 
   useEffect(() => {
     const saved = localStorage.getItem(VIEW_STORAGE_KEY);
@@ -89,18 +101,46 @@ export default function ProjectPage({
           </div>
           <div className="flex items-center gap-3">
             <ViewSwitcher view={view} onViewChange={handleViewChange} />
-            <button
-              onClick={() => setShowAIDraft(true)}
-              className="px-4 py-2 bg-bg-surface border border-border-default text-text-primary rounded-lg text-sm hover:bg-bg-surface-hover transition-colors flex items-center gap-1.5"
-            >
-              ✦ Generate with AI
-            </button>
-            <button
-              onClick={() => setShowCreate(true)}
-              className="px-4 py-2 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover transition-colors"
-            >
-              + New Issue
-            </button>
+            <div ref={dropdownRef} className="relative flex items-center">
+              <button
+                onClick={() => setShowCreate(true)}
+                className="px-4 py-2 bg-accent text-white rounded-l-lg text-sm hover:bg-accent-hover transition-colors"
+              >
+                + New Issue
+              </button>
+              <button
+                onClick={() => setShowDropdown((v) => !v)}
+                className="px-2 py-2 bg-accent text-white rounded-r-lg text-sm hover:bg-accent-hover transition-colors border-l border-white/20"
+                aria-label="More issue creation options"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+              {showDropdown && (
+                <div className="absolute right-0 top-full mt-1 bg-bg-surface border border-border-default rounded-lg shadow-lg z-10 w-48 py-1">
+                  <button
+                    onClick={() => {
+                      setShowDropdown(false);
+                      setShowAIDraft(true);
+                    }}
+                    className="w-full px-4 py-2 text-sm text-left text-text-primary hover:bg-bg-surface-hover transition-colors flex items-center gap-2"
+                  >
+                    <span>✦</span> Generate with AI
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
