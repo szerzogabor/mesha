@@ -24,7 +24,7 @@ public class BlocksAIDraftGenerator {
 
     private static final Logger log = LoggerFactory.getLogger(BlocksAIDraftGenerator.class);
     private static final int POLL_INTERVAL_MS = 3000;
-    private static final int MAX_POLL_ATTEMPTS = 100; // ~5 minutes total
+    private static final int MAX_POLL_ATTEMPTS = 40; // ~2 minutes total
 
     private final BlocksAdapter blocksAdapter;
     private final BlocksConfigService blocksConfigService;
