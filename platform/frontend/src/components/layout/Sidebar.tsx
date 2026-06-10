@@ -105,21 +105,54 @@ export function Sidebar({ workspace, projects, onCreateProject, isCollapsed, onT
 
             <ul className="space-y-0.5 px-2">
               {projects.map((project) => {
-                const href = `/workspaces/${workspace.id}/projects/${project.id}`;
-                const active = pathname.startsWith(href);
+                const projectHref = `/workspaces/${workspace.id}/projects/${project.id}`;
+                const settingsHref = `${projectHref}/settings`;
+                const isProjectActive = pathname.startsWith(projectHref);
+                const isSettingsActive = pathname.startsWith(settingsHref);
+                const isIssuesActive = isProjectActive && !isSettingsActive;
                 return (
                   <li key={project.id}>
                     <Link
-                      href={href}
+                      href={projectHref}
                       className={cn(
                         "block px-3 py-2 rounded-lg text-sm truncate transition-colors",
-                        active
+                        isProjectActive
                           ? "bg-sidebar-item-active text-white"
                           : "text-sidebar-text hover:bg-sidebar-item-hover hover:text-sidebar-text-active"
                       )}
                     >
                       {project.name}
                     </Link>
+                    {isProjectActive && (
+                      <ul className="mt-0.5 ml-3 space-y-0.5">
+                        <li>
+                          <Link
+                            href={projectHref}
+                            className={cn(
+                              "block px-3 py-1.5 rounded-lg text-xs transition-colors",
+                              isIssuesActive
+                                ? "text-white font-medium"
+                                : "text-white/60 hover:text-white hover:bg-white/10"
+                            )}
+                          >
+                            Issues
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            href={settingsHref}
+                            className={cn(
+                              "block px-3 py-1.5 rounded-lg text-xs transition-colors",
+                              isSettingsActive
+                                ? "text-white font-medium"
+                                : "text-white/60 hover:text-white hover:bg-white/10"
+                            )}
+                          >
+                            Statuses
+                          </Link>
+                        </li>
+                      </ul>
+                    )}
                   </li>
                 );
               })}
