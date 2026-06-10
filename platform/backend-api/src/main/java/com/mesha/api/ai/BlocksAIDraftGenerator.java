@@ -24,7 +24,7 @@ public class BlocksAIDraftGenerator {
 
     private static final Logger log = LoggerFactory.getLogger(BlocksAIDraftGenerator.class);
     private static final int POLL_INTERVAL_MS = 3000;
-    private static final int MAX_POLL_ATTEMPTS = 40; // ~2 minutes total
+    private static final int MAX_POLL_ATTEMPTS = 50; // ~2.5 minutes (sessions observed at ~128s)
 
     private final BlocksAdapter blocksAdapter;
     private final BlocksConfigService blocksConfigService;
@@ -74,42 +74,75 @@ public class BlocksAIDraftGenerator {
                 case FAILED -> throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                         "Blocks AI session failed to generate draft");
                 default -> {
-                    // While still RUNNING, check whether the agent has already produced a
-                    // final_message — this lets us return early without waiting for the terminal
-                    // status transition (which can lag the actual completion by several seconds).
+                    // Check finalMessage in the session poll response first (fast path).
                     if (result.finalMessage() != null && !result.finalMessage().isBlank()) {
                         log.info("blocks_ai_draft_early_result workspace_id={} session_id={} attempts={} status={}",
                                 workspaceId, sessionId, attempt, result.status());
                         return parseResponse(result.finalMessage(), sessionId);
                     }
+                    // Also check the messages endpoint — agent output may appear here
+                    // slightly before the session status transitions to COMPLETED.
+                    AIDraftContent fromMessages = tryFetchFromMessages(sessionId);
+                    if (fromMessages != null) {
+                        log.info("blocks_ai_draft_early_result_messages workspace_id={} session_id={} attempts={}",
+                                workspaceId, sessionId, attempt);
+                        return fromMessages;
+                    }
                 }
             }
+        }
+
+        // Last-resort check: session may have completed moments after the loop ceiling.
+        AIDraftContent lastChance = tryFetchFromMessages(sessionId);
+        if (lastChance != null) {
+            log.info("blocks_ai_draft_result_after_timeout workspace_id={} session_id={}", workspaceId, sessionId);
+            return lastChance;
         }
 
         throw new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT,
                 "Blocks AI session timed out while generating draft");
     }
 
+    private AIDraftContent tryFetchFromMessages(String sessionId) {
+        try {
+            List<String> messages = blocksAdapter.fetchAssistantMessages(sessionId);
+            if (messages == null || messages.isEmpty()) return null;
+            for (int i = messages.size() - 1; i >= 0; i--) {
+                String msg = messages.get(i);
+                if (msg != null && msg.contains("{") && msg.contains("}")) {
+                    try {
+                        return parseJsonContent(msg);
+                    } catch (Exception ignored) {}
+                }
+            }
+        } catch (Exception e) {
+            log.debug("blocks_ai_draft_messages_check_failed session_id={} error={}", sessionId, e.getMessage());
+        }
+        return null;
+    }
+
     private AIDraftContent parseResponse(String responseText, String sessionId) {
         if (responseText == null || responseText.isBlank()) {
-            List<String> messages = blocksAdapter.fetchAssistantMessages(sessionId);
-            if (messages != null && !messages.isEmpty()) {
-                responseText = messages.get(messages.size() - 1);
-            }
-        }
-
-        if (responseText == null || responseText.isBlank()) {
+            AIDraftContent fromMessages = tryFetchFromMessages(sessionId);
+            if (fromMessages != null) return fromMessages;
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Blocks AI returned empty draft response");
         }
-
         try {
-            String json = responseText.trim();
-            int start = json.indexOf('{');
-            int end = json.lastIndexOf('}');
-            if (start != -1 && end != -1 && end > start) {
-                json = json.substring(start, end + 1);
-            }
+            return parseJsonContent(responseText);
+        } catch (Exception e) {
+            log.error("blocks_ai_draft_parse_failed session_id={} error={}", sessionId, e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to parse Blocks AI draft response");
+        }
+    }
 
+    private AIDraftContent parseJsonContent(String text) {
+        String json = text.trim();
+        int start = json.indexOf('{');
+        int end = json.lastIndexOf('}');
+        if (start != -1 && end != -1 && end > start) {
+            json = json.substring(start, end + 1);
+        }
+        try {
             JsonNode parsed = objectMapper.readTree(json);
             return new AIDraftContent(
                     parsed.path("title").asText(""),
@@ -122,8 +155,7 @@ public class BlocksAIDraftGenerator {
                     parsed.path("outOfScopeNotes").asText("")
             );
         } catch (Exception e) {
-            log.error("blocks_ai_draft_parse_failed session_id={} error={}", sessionId, e.getMessage());
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to parse Blocks AI draft response");
+            throw new RuntimeException("JSON parse failed: " + e.getMessage(), e);
         }
     }
 
