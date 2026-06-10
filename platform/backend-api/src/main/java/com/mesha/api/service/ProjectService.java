@@ -89,7 +89,8 @@ public class ProjectService {
     }
 
     private String deriveKey(String name) {
-        String[] words = name.trim().split("\\s+");
+        String cleaned = name.replaceAll("[^A-Za-z0-9\\s]", "");
+        String[] words = cleaned.trim().split("\\s+");
         StringBuilder sb = new StringBuilder();
         for (String word : words) {
             if (!word.isEmpty()) {

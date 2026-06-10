@@ -47,7 +47,7 @@ public class IssueService {
     @Transactional
     public Issue create(UUID projectId, CreateIssueRequest req, User actor) {
         log.debug("Creating issue projectId={} actorId={}", projectId, actor.getId());
-        Project project = projectRepository.findById(projectId)
+        Project project = projectRepository.findByIdForUpdate(projectId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
 
         UUID workspaceId = project.getWorkspace().getId();

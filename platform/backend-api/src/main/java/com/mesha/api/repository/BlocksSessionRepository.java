@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public interface BlocksSessionRepository extends JpaRepository<BlocksSession, UUID> {
@@ -27,4 +28,17 @@ public interface BlocksSessionRepository extends JpaRepository<BlocksSession, UU
 
     @Query("SELECT s FROM BlocksSession s WHERE s.executionState NOT IN :states")
     List<BlocksSession> findAllByExecutionStateNotIn(@Param("states") Collection<AIExecutionState> states);
+
+    @Query("""
+           SELECT s FROM BlocksSession s
+           WHERE s.executionState NOT IN :terminalStates
+             AND s.issue.project.workspace.id = :workspaceId
+             AND UPPER(s.issue.project.key) = :projectKey
+             AND s.issue.number = :issueNumber
+           """)
+    Optional<BlocksSession> findActiveSessionByProjectKeyAndIssueNumber(
+            @Param("workspaceId") UUID workspaceId,
+            @Param("projectKey") String projectKey,
+            @Param("issueNumber") Integer issueNumber,
+            @Param("terminalStates") Set<AIExecutionState> terminalStates);
 }

@@ -14,7 +14,8 @@ interface CreateProjectModalProps {
 }
 
 function deriveKey(name: string): string {
-  const words = name.trim().split(/\s+/);
+  const cleaned = name.replace(/[^A-Za-z0-9\s]/g, "");
+  const words = cleaned.trim().split(/\s+/);
   const key = words.map((w) => w[0]?.toUpperCase() ?? "").join("").slice(0, 5);
   return key || "PROJ";
 }
