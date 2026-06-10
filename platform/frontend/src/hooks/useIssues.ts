@@ -55,7 +55,10 @@ export function useCreateIssue(projectId: string) {
       assigneeId?: string;
       labelIds?: string[];
     }) => apiClient.post<Issue>(`/api/projects/${projectId}/issues`, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["issues", projectId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["issues", projectId] });
+      qc.invalidateQueries({ queryKey: ["issues-all", projectId] });
+    },
   });
 }
 
@@ -74,6 +77,7 @@ export function useUpdateIssue(projectId: string, issueId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["issue", issueId] });
       qc.invalidateQueries({ queryKey: ["issues", projectId] });
+      qc.invalidateQueries({ queryKey: ["issues-all", projectId] });
     },
   });
 }
@@ -83,7 +87,10 @@ export function useDeleteIssue(projectId: string) {
   return useMutation({
     mutationFn: (issueId: string) =>
       apiClient.delete(`/api/projects/${projectId}/issues/${issueId}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["issues", projectId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["issues", projectId] });
+      qc.invalidateQueries({ queryKey: ["issues-all", projectId] });
+    },
   });
 }
 
