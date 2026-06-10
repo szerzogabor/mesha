@@ -2,7 +2,8 @@
 
 import { use, useState } from "react";
 import Link from "next/link";
-import { useIssue, useUpdateIssue } from "@/hooks/useIssues";
+import { useRouter } from "next/navigation";
+import { useIssue, useUpdateIssue, useDeleteIssue } from "@/hooks/useIssues";
 import { useProjectStatuses } from "@/hooks/useProjectStatuses";
 import { useComments, useCreateComment } from "@/hooks/useComments";
 import { useActivity } from "@/hooks/useActivity";
@@ -27,6 +28,7 @@ export default function IssueDetailPage({
   params: Promise<{ workspaceId: string; projectId: string; issueId: string }>;
 }) {
   const { workspaceId, projectId, issueId } = use(params);
+  const router = useRouter();
 
   const { data: issue, isLoading } = useIssue(projectId, issueId);
   const { data: comments = [] } = useComments(issueId);
@@ -34,6 +36,7 @@ export default function IssueDetailPage({
   const { data: projectStatuses = [] } = useProjectStatuses(projectId);
 
   const updateIssue = useUpdateIssue(projectId, issueId);
+  const deleteIssue = useDeleteIssue(projectId);
   const createComment = useCreateComment(issueId);
 
   const { data: availableLabels = [] } = useLabels(workspaceId);
@@ -45,6 +48,7 @@ export default function IssueDetailPage({
   const [showLabelPicker, setShowLabelPicker] = useState(false);
   const [activeTab, setActiveTab] = useState<"comments" | "activity">("comments");
   const [selectedSession, setSelectedSession] = useState<{ session: BlocksSession; index: number } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (isLoading || !issue) {
     return (
@@ -370,6 +374,40 @@ export default function IssueDetailPage({
           <div className="bg-bg-surface rounded-xl border border-border-default p-4 text-xs text-text-tertiary space-y-1">
             <p><span className="text-text-secondary font-medium">Created:</span> {new Date(issue.createdAt).toLocaleString()}</p>
             <p><span className="text-text-secondary font-medium">Updated:</span> {new Date(issue.updatedAt).toLocaleString()}</p>
+          </div>
+
+          <div className="bg-bg-surface rounded-xl border border-destructive/30 p-4">
+            <h3 className="text-xs font-semibold text-text-tertiary uppercase tracking-wide mb-3">Danger Zone</h3>
+            {confirmDelete ? (
+              <div className="space-y-2">
+                <p className="text-xs text-text-secondary">Are you sure? This cannot be undone.</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      await deleteIssue.mutateAsync(issueId);
+                      router.push(`/workspaces/${workspaceId}/projects/${projectId}`);
+                    }}
+                    disabled={deleteIssue.isPending}
+                    className="flex-1 px-3 py-1.5 text-xs bg-destructive text-white rounded-lg hover:bg-destructive/90 transition-colors disabled:opacity-50"
+                  >
+                    {deleteIssue.isPending ? "Deleting…" : "Delete"}
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="flex-1 px-3 py-1.5 text-xs border border-border-default rounded-lg text-text-secondary hover:bg-bg-surface-hover transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="w-full px-3 py-1.5 text-xs border border-destructive/50 text-destructive rounded-lg hover:bg-destructive/10 transition-colors"
+              >
+                Delete ticket
+              </button>
+            )}
           </div>
         </div>
       </div>
