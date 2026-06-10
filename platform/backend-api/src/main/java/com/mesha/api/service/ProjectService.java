@@ -39,8 +39,15 @@ public class ProjectService {
         project.setWorkspace(workspace);
         project.setName(req.name());
         project.setDescription(req.description());
+
+        String key = req.key() != null && !req.key().isBlank()
+                ? req.key().toUpperCase()
+                : deriveKey(req.name());
+        key = ensureUniqueKey(workspaceId, key);
+        project.setKey(key);
+
         project = projectRepository.save(project);
-        log.info("Project created projectId={} workspaceId={} name={}", project.getId(), workspaceId, req.name());
+        log.info("Project created projectId={} workspaceId={} name={} key={}", project.getId(), workspaceId, req.name(), key);
         return project;
     }
 
@@ -68,10 +75,42 @@ public class ProjectService {
         if (req.description() != null) {
             project.setDescription(req.description());
         }
+        if (req.key() != null && !req.key().isBlank()) {
+            String newKey = req.key().toUpperCase();
+            if (!newKey.equals(project.getKey())) {
+                newKey = ensureUniqueKey(project.getWorkspace().getId(), newKey);
+                project.setKey(newKey);
+            }
+        }
         long startMs = System.currentTimeMillis();
         Project saved = projectRepository.save(project);
         log.info("Project updated projectId={} durationMs={}", projectId, System.currentTimeMillis() - startMs);
         return saved;
+    }
+
+    private String deriveKey(String name) {
+        String[] words = name.trim().split("\\s+");
+        StringBuilder sb = new StringBuilder();
+        for (String word : words) {
+            if (!word.isEmpty()) {
+                sb.append(Character.toUpperCase(word.charAt(0)));
+            }
+            if (sb.length() >= 5) break;
+        }
+        return sb.length() > 0 ? sb.toString() : "PROJ";
+    }
+
+    private String ensureUniqueKey(UUID workspaceId, String base) {
+        if (!projectRepository.existsByWorkspaceIdAndKey(workspaceId, base)) {
+            return base;
+        }
+        for (int i = 2; i <= 99; i++) {
+            String candidate = base + i;
+            if (!projectRepository.existsByWorkspaceIdAndKey(workspaceId, candidate)) {
+                return candidate;
+            }
+        }
+        return base + System.currentTimeMillis();
     }
 
     @Transactional

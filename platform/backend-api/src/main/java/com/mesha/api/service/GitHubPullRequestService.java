@@ -3,14 +3,18 @@ package com.mesha.api.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mesha.api.dto.GitHubPullRequestDto;
+import com.mesha.api.model.AIExecutionState;
 import com.mesha.api.model.BlocksSession;
 import com.mesha.api.model.GitHubInstallation;
 import com.mesha.api.model.GitHubPullRequest;
 import com.mesha.api.model.GitHubRepository;
+import com.mesha.api.model.Issue;
 import com.mesha.api.repository.BlocksSessionRepository;
 import com.mesha.api.repository.GitHubInstallationRepository;
 import com.mesha.api.repository.GitHubPullRequestRepository;
 import com.mesha.api.repository.GitHubRepositoryRepository;
+import java.util.EnumSet;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -184,6 +188,9 @@ public class GitHubPullRequestService {
         if (pr.getBlocksSession() == null) {
             tryAutoLinkByBranch(pr);
         }
+        if (pr.getBlocksSession() == null) {
+            tryAutoLinkByIdentifier(pr);
+        }
 
         prRepo.save(pr);
         log.debug("Pull request upserted repositoryId={} prNumber={} state={} action={} linkedSession={}",
@@ -191,13 +198,47 @@ public class GitHubPullRequestService {
                 pr.getBlocksSession() != null ? pr.getBlocksSession().getId() : "none");
     }
 
+    private static final Set<AIExecutionState> TERMINAL_STATES = EnumSet.of(
+            AIExecutionState.DONE, AIExecutionState.FAILED, AIExecutionState.CANCELED);
+
     private void tryAutoLinkByBranch(GitHubPullRequest pr) {
         String branch = pr.getSourceBranch();
         if (branch == null || branch.isBlank()) return;
         blocksSessionRepo.findFirstByBranchName(branch).ifPresent(session -> {
             pr.setBlocksSession(session);
-            log.info("Auto-linked pull request prNumber={} to blocks session sessionId={} via branch={}",
+            advanceSessionToPrOpened(session, pr);
+            log.info("auto_linked_pr_by_branch prNumber={} sessionId={} branch={}",
                     pr.getGithubPrNumber(), session.getId(), branch);
         });
+    }
+
+    private void tryAutoLinkByIdentifier(GitHubPullRequest pr) {
+        if (pr.getTitle() == null) return;
+        String titleUpper = pr.getTitle().toUpperCase();
+        List<BlocksSession> active = blocksSessionRepo.findAllByExecutionStateNotIn(TERMINAL_STATES);
+        for (BlocksSession session : active) {
+            Issue issue = session.getIssue();
+            if (issue == null) continue;
+            String projectKey = issue.getProject() != null ? issue.getProject().getKey() : null;
+            Integer issueNumber = issue.getNumber();
+            if (projectKey == null || issueNumber == null) continue;
+            String identifier = projectKey + "-" + issueNumber;
+            if (titleUpper.contains(identifier.toUpperCase())) {
+                pr.setBlocksSession(session);
+                advanceSessionToPrOpened(session, pr);
+                log.info("auto_linked_pr_by_identifier identifier={} prNumber={} sessionId={}",
+                        identifier, pr.getGithubPrNumber(), session.getId());
+                break;
+            }
+        }
+    }
+
+    private void advanceSessionToPrOpened(BlocksSession session, GitHubPullRequest pr) {
+        if (session.getPrUrl() == null) {
+            session.setPrUrl(pr.getHtmlUrl());
+            session.setPrNumber(pr.getGithubPrNumber());
+            session.setExecutionState(AIExecutionState.PR_OPENED);
+            blocksSessionRepo.save(session);
+        }
     }
 }

@@ -77,6 +77,7 @@ public class IssueService {
             issue.setLabels(new ArrayList<>(labels));
         }
 
+        issue.setNumber(issueRepository.nextNumberForProject(projectId));
         issue = issueRepository.save(issue);
         activityService.record(issue, actor, ActivityEventType.ISSUE_CREATED, null, issue.getTitle());
         log.info("Issue created issueId={} projectId={} actorId={}", issue.getId(), projectId, actor.getId());

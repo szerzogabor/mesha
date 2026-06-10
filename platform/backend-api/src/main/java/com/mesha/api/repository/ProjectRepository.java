@@ -8,4 +8,5 @@ import java.util.UUID;
 public interface ProjectRepository extends JpaRepository<Project, UUID> {
     List<Project> findAllByWorkspaceIdOrderByCreatedAtAsc(UUID workspaceId);
     boolean existsByWorkspaceIdAndName(UUID workspaceId, String name);
+    boolean existsByWorkspaceIdAndKey(UUID workspaceId, String key);
 }

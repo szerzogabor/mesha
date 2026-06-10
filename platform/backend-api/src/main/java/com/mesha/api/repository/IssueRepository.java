@@ -42,4 +42,7 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
     );
 
     long countByProjectId(UUID projectId);
+
+    @Query("SELECT COALESCE(MAX(i.number), 0) + 1 FROM Issue i WHERE i.project.id = :projectId")
+    Integer nextNumberForProject(@Param("projectId") UUID projectId);
 }

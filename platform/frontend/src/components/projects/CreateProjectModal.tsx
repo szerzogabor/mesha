@@ -10,14 +10,36 @@ const inputClass =
 interface CreateProjectModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: { name: string; description?: string }) => Promise<void>;
+  onSubmit: (data: { name: string; description?: string; key?: string }) => Promise<void>;
+}
+
+function deriveKey(name: string): string {
+  const words = name.trim().split(/\s+/);
+  const key = words.map((w) => w[0]?.toUpperCase() ?? "").join("").slice(0, 5);
+  return key || "PROJ";
 }
 
 export function CreateProjectModal({ open, onClose, onSubmit }: CreateProjectModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [key, setKey] = useState("");
+  const [keyTouched, setKeyTouched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const derivedKey = keyTouched ? key : deriveKey(name);
+
+  const handleNameChange = (value: string) => {
+    setName(value);
+    if (!keyTouched) {
+      setKey(deriveKey(value));
+    }
+  };
+
+  const handleKeyChange = (value: string) => {
+    setKey(value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10));
+    setKeyTouched(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,9 +47,15 @@ export function CreateProjectModal({ open, onClose, onSubmit }: CreateProjectMod
     setLoading(true);
     setError(null);
     try {
-      await onSubmit({ name: name.trim(), description: description || undefined });
+      await onSubmit({
+        name: name.trim(),
+        description: description || undefined,
+        key: derivedKey || undefined,
+      });
       setName("");
       setDescription("");
+      setKey("");
+      setKeyTouched(false);
       onClose();
     } catch (err) {
       logger.error("Failed to create project", err instanceof Error ? err : undefined);
@@ -47,12 +75,28 @@ export function CreateProjectModal({ open, onClose, onSubmit }: CreateProjectMod
           <input
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => handleNameChange(e.target.value)}
             placeholder="Project name"
             className={inputClass}
             required
             autoFocus
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-1">
+            Key
+            <span className="ml-1 text-xs text-text-tertiary font-normal">(auto-generated from name)</span>
+          </label>
+          <input
+            type="text"
+            value={derivedKey}
+            onChange={(e) => handleKeyChange(e.target.value)}
+            placeholder="e.g. MESH"
+            maxLength={10}
+            className={`${inputClass} font-mono uppercase`}
+          />
+          <p className="text-xs text-text-tertiary mt-1">2–10 uppercase letters/digits. Used as issue prefix (e.g. {derivedKey || "PROJ"}-1)</p>
         </div>
 
         <div>

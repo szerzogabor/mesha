@@ -4,6 +4,7 @@ import java.util.List;
 
 public record SessionRequest(
         String issueId,
+        String issueIdentifier,
         String issueTitle,
         String issueDescription,
         String issueStatus,

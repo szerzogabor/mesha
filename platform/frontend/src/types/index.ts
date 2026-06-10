@@ -10,6 +10,7 @@ export interface Project {
   workspaceId: string;
   name: string;
   description?: string;
+  key?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -81,6 +82,7 @@ export interface Label {
 export interface Issue {
   id: string;
   projectId: string;
+  identifier?: string;
   title: string;
   description?: string;
   status: IssueStatus;

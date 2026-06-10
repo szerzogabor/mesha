@@ -10,6 +10,7 @@ import java.util.UUID;
 public record IssueDto(
     UUID id,
     UUID projectId,
+    String identifier,
     String title,
     String description,
     IssueStatus status,
@@ -21,9 +22,13 @@ public record IssueDto(
     Instant updatedAt
 ) {
     public static IssueDto from(Issue i) {
+        String projectKey = i.getProject() != null ? i.getProject().getKey() : null;
+        Integer number = i.getNumber();
+        String identifier = (projectKey != null && number != null) ? projectKey + "-" + number : null;
         return new IssueDto(
             i.getId(),
             i.getProject().getId(),
+            identifier,
             i.getTitle(),
             i.getDescription(),
             i.getStatus(),
