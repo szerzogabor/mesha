@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { logger } from "@/lib/logger";
-import { IssueStatus, IssuePriority } from "@/types";
+import { IssueStatus, IssuePriority, ProjectStatus } from "@/types";
 import { useLabels } from "@/hooks/useLabels";
+import { statusLabel } from "@/lib/utils";
 
 const inputClass =
   "w-full border border-input-border rounded-lg px-3 py-2 text-sm bg-input-bg text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-2 focus:ring-accent";
@@ -13,6 +14,7 @@ interface CreateIssueModalProps {
   open: boolean;
   onClose: () => void;
   workspaceId: string;
+  projectStatuses?: ProjectStatus[];
   onSubmit: (data: {
     title: string;
     description?: string;
@@ -22,7 +24,7 @@ interface CreateIssueModalProps {
   }) => Promise<void>;
 }
 
-export function CreateIssueModal({ open, onClose, workspaceId, onSubmit }: CreateIssueModalProps) {
+export function CreateIssueModal({ open, onClose, workspaceId, projectStatuses, onSubmit }: CreateIssueModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<IssueStatus>("BACKLOG");
@@ -101,14 +103,22 @@ export function CreateIssueModal({ open, onClose, workspaceId, onSubmit }: Creat
             <label className="block text-sm font-medium text-text-secondary mb-1">Status</label>
             <select
               value={status}
-              onChange={(e) => setStatus(e.target.value as IssueStatus)}
+              onChange={(e) => setStatus(e.target.value)}
               className={inputClass}
             >
-              <option value="BACKLOG">Backlog</option>
-              <option value="TODO">Todo</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="REVIEW">Review</option>
-              <option value="DONE">Done</option>
+              {projectStatuses && projectStatuses.length > 0 ? (
+                projectStatuses.map((s) => (
+                  <option key={s.id} value={s.name}>{statusLabel(s.name)}</option>
+                ))
+              ) : (
+                <>
+                  <option value="BACKLOG">Backlog</option>
+                  <option value="TODO">Todo</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="REVIEW">Review</option>
+                  <option value="DONE">Done</option>
+                </>
+              )}
             </select>
           </div>
           <div>

@@ -6,6 +6,7 @@ import com.mesha.api.model.Project;
 import com.mesha.api.model.Workspace;
 import com.mesha.api.repository.ProjectRepository;
 import com.mesha.api.repository.WorkspaceRepository;
+import com.mesha.api.service.ProjectStatusService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -23,10 +24,14 @@ public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final WorkspaceRepository workspaceRepository;
+    private final ProjectStatusService projectStatusService;
 
-    public ProjectService(ProjectRepository projectRepository, WorkspaceRepository workspaceRepository) {
+    public ProjectService(ProjectRepository projectRepository,
+                          WorkspaceRepository workspaceRepository,
+                          ProjectStatusService projectStatusService) {
         this.projectRepository = projectRepository;
         this.workspaceRepository = workspaceRepository;
+        this.projectStatusService = projectStatusService;
     }
 
     @Transactional
@@ -47,6 +52,7 @@ public class ProjectService {
         project.setKey(key);
 
         project = projectRepository.save(project);
+        projectStatusService.seedDefaultStatuses(project);
         log.info("Project created projectId={} workspaceId={} name={} key={}", project.getId(), workspaceId, req.name(), key);
         return project;
     }

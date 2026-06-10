@@ -4,6 +4,7 @@ import com.mesha.api.dto.CreateIssueRequest;
 import com.mesha.api.dto.UpdateIssueRequest;
 import com.mesha.api.model.*;
 import com.mesha.api.repository.*;
+import com.mesha.api.repository.ProjectStatusRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -29,19 +30,22 @@ public class IssueService {
     private final LabelRepository labelRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final ActivityService activityService;
+    private final ProjectStatusRepository projectStatusRepository;
 
     public IssueService(IssueRepository issueRepository,
                         ProjectRepository projectRepository,
                         UserRepository userRepository,
                         LabelRepository labelRepository,
                         WorkspaceMemberRepository workspaceMemberRepository,
-                        ActivityService activityService) {
+                        ActivityService activityService,
+                        ProjectStatusRepository projectStatusRepository) {
         this.issueRepository = issueRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.labelRepository = labelRepository;
         this.workspaceMemberRepository = workspaceMemberRepository;
         this.activityService = activityService;
+        this.projectStatusRepository = projectStatusRepository;
     }
 
     @Transactional
@@ -57,7 +61,10 @@ public class IssueService {
         issue.setTitle(req.title());
         issue.setDescription(req.description());
 
-        if (req.status() != null) issue.setStatus(req.status());
+        if (req.status() != null) {
+            validateStatus(projectId, req.status());
+            issue.setStatus(req.status().toUpperCase());
+        }
         if (req.priority() != null) issue.setPriority(req.priority());
 
         if (req.assigneeId() != null) {
@@ -84,7 +91,7 @@ public class IssueService {
         return issue;
     }
 
-    public Page<Issue> list(UUID projectId, IssueStatus status, IssuePriority priority,
+    public Page<Issue> list(UUID projectId, String status, IssuePriority priority,
                              UUID assigneeId, String search, int page, int size) {
         long startMs = System.currentTimeMillis();
         Pageable pageable = PageRequest.of(page, size);
@@ -121,11 +128,14 @@ public class IssueService {
             activityService.record(issue, actor, ActivityEventType.DESCRIPTION_CHANGED, old, req.description());
         }
 
-        if (req.status() != null && req.status() != issue.getStatus()) {
-            String old = issue.getStatus().name();
-            issue.setStatus(req.status());
-            activityService.record(issue, actor, ActivityEventType.STATUS_CHANGED, old, req.status().name());
-            log.debug("Issue status changed issueId={} from={} to={}", issueId, old, req.status().name());
+        if (req.status() != null && !req.status().equalsIgnoreCase(issue.getStatus())) {
+            UUID projectId = issue.getProject().getId();
+            validateStatus(projectId, req.status());
+            String old = issue.getStatus();
+            String newStatus = req.status().toUpperCase();
+            issue.setStatus(newStatus);
+            activityService.record(issue, actor, ActivityEventType.STATUS_CHANGED, old, newStatus);
+            log.debug("Issue status changed issueId={} from={} to={}", issueId, old, newStatus);
         }
 
         if (req.priority() != null && req.priority() != issue.getPriority()) {
@@ -168,5 +178,12 @@ public class IssueService {
         Issue issue = getById(issueId);
         issueRepository.delete(issue);
         log.info("Issue deleted issueId={}", issueId);
+    }
+
+    private void validateStatus(UUID projectId, String status) {
+        String normalized = status.toUpperCase();
+        if (!projectStatusRepository.existsByProjectIdAndName(projectId, normalized)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid status: " + status);
+        }
     }
 }

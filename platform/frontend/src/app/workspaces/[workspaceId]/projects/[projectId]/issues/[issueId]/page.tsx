@@ -3,6 +3,7 @@
 import { use, useState } from "react";
 import Link from "next/link";
 import { useIssue, useUpdateIssue } from "@/hooks/useIssues";
+import { useProjectStatuses } from "@/hooks/useProjectStatuses";
 import { useComments, useCreateComment } from "@/hooks/useComments";
 import { useActivity } from "@/hooks/useActivity";
 import { CommentThread } from "@/components/comments/CommentThread";
@@ -14,9 +15,7 @@ import { SessionsActivityList } from "@/components/blocks/SessionsActivityList";
 import { SessionChatDrawer } from "@/components/blocks/SessionChatDrawer";
 import { IssueStatus, IssuePriority, BlocksSession } from "@/types";
 import { useLabels } from "@/hooks/useLabels";
-import { formatRelativeTime } from "@/lib/utils";
-
-const STATUSES: IssueStatus[] = ["BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DONE"];
+import { formatRelativeTime, statusLabel } from "@/lib/utils";
 const PRIORITIES: IssuePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
 const selectClass =
@@ -32,6 +31,7 @@ export default function IssueDetailPage({
   const { data: issue, isLoading } = useIssue(projectId, issueId);
   const { data: comments = [] } = useComments(issueId);
   const { data: activity = [] } = useActivity(projectId, issueId);
+  const { data: projectStatuses = [] } = useProjectStatuses(projectId);
 
   const updateIssue = useUpdateIssue(projectId, issueId);
   const createComment = useCreateComment(issueId);
@@ -239,11 +239,19 @@ export default function IssueDetailPage({
                 }}
                 className={selectClass}
               >
-                {STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s.replace("_", " ")}
-                  </option>
-                ))}
+                {projectStatuses.length > 0 ? (
+                  projectStatuses.map((s) => (
+                    <option key={s.id} value={s.name}>{statusLabel(s.name)}</option>
+                  ))
+                ) : (
+                  <>
+                    <option value="BACKLOG">Backlog</option>
+                    <option value="TODO">Todo</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="REVIEW">Review</option>
+                    <option value="DONE">Done</option>
+                  </>
+                )}
               </select>
             </div>
 

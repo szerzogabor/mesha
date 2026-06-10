@@ -15,7 +15,16 @@ export interface Project {
   updatedAt: string;
 }
 
-export type IssueStatus = "BACKLOG" | "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
+export type IssueStatus = string;
+
+export interface ProjectStatus {
+  id: string;
+  projectId: string;
+  name: string;
+  color: string;
+  position: number;
+  createdAt: string;
+}
 export type IssuePriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 export type AIAssignmentState = "pending" | "running" | "completed" | "failed";
 export type AIExecutionState =
