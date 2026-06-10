@@ -127,7 +127,8 @@ export function ListView({
 
   return (
     <div>
-      <div className="hidden md:grid grid-cols-[1fr_130px_110px_90px] gap-4 px-4 py-2 mx-6 mt-4 border-b border-border-default">
+      <div className="hidden md:grid grid-cols-[80px_1fr_130px_110px_90px] gap-4 px-4 py-2 mx-6 mt-4 border-b border-border-default">
+        <span className="text-xs font-medium text-text-tertiary">ID</span>
         <SortButton field="title" label="Title" />
         <SortButton field="status" label="Status" />
         <SortButton field="priority" label="Priority" />
@@ -147,9 +148,12 @@ export function ListView({
             href={`/workspaces/${workspaceId}/projects/${projectId}/issues/${issue.id}`}
             className={cn(
               "flex flex-col gap-2 px-4 py-3 hover:bg-bg-surface-hover transition-colors",
-              "md:grid md:grid-cols-[1fr_130px_110px_90px] md:items-center md:gap-4"
+              "md:grid md:grid-cols-[80px_1fr_130px_110px_90px] md:items-center md:gap-4"
             )}
           >
+            <span className="text-xs font-mono text-text-tertiary whitespace-nowrap">
+              {issue.identifier ?? ""}
+            </span>
             <p className="text-sm font-medium text-text-primary truncate">{issue.title}</p>
             <StatusBadge status={issue.status} />
             <PriorityBadge priority={issue.priority} />

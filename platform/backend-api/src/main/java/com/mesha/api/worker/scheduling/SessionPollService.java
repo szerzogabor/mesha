@@ -161,9 +161,14 @@ class SessionPollService {
                 comments.size(),
                 labelNames.size());
 
+        String projectKey = issue.getProject() != null ? issue.getProject().getKey() : null;
+        Integer issueNumber = issue.getNumber();
+        String issueIdentifier = (projectKey != null && issueNumber != null) ? projectKey + "-" + issueNumber : null;
+
         try {
             SessionRequest request = new SessionRequest(
                     issue.getId().toString(),
+                    issueIdentifier,
                     issue.getTitle(),
                     issue.getDescription(),
                     issue.getStatus() != null ? issue.getStatus().name() : null,

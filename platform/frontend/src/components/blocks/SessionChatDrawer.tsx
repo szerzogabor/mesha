@@ -1,12 +1,29 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AIExecutionState, BlocksMessage, BlocksSession } from "@/types";
+import { AIExecutionState, BlocksMessage, BlocksSession, LinkedPullRequest } from "@/types";
 import { useBlocksMessages } from "@/hooks/useBlocksMessages";
 import { useSendBlocksMessage } from "@/hooks/useBlocksSessions";
 import { formatRelativeTime } from "@/lib/utils";
 
 const TERMINAL_STATES: AIExecutionState[] = ["DONE", "FAILED", "CANCELED"];
+
+function prStateLabel(pr: LinkedPullRequest): string {
+  if (pr.state === "open") return pr.draft ? "Draft" : "Open";
+  if (pr.mergedAt) return "Merged";
+  if (pr.state === "closed") return "Closed";
+  return "PR";
+}
+
+function prStateBadgeClass(pr: LinkedPullRequest): string {
+  if (pr.state === "open") {
+    if (pr.draft) return "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300";
+    return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+  }
+  if (pr.mergedAt) return "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400";
+  if (pr.state === "closed") return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+  return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
+}
 
 function stateBadgeClass(state: AIExecutionState): string {
   if (state === "DONE") return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
@@ -166,14 +183,14 @@ export function SessionChatDrawer({ session, sessionIndex, projectId, issueId, o
         </div>
 
         {/* Links bar */}
-        {(session.sessionUrl || session.prUrl) && (
-          <div className="flex items-center gap-2 px-4 py-2 border-b border-border-default flex-shrink-0 flex-wrap">
+        {(session.sessionUrl || session.linkedPullRequest?.htmlUrl || session.prUrl) && (
+          <div className="flex flex-col gap-2 px-4 py-2 border-b border-border-default flex-shrink-0">
             {session.sessionUrl && (
               <a
                 href={session.sessionUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border-default px-2.5 py-1 text-xs text-text-secondary hover:bg-bg-surface-hover transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border-default px-2.5 py-1 text-xs text-text-secondary hover:bg-bg-surface-hover transition-colors self-start"
               >
                 <svg className="h-3 w-3 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -184,22 +201,52 @@ export function SessionChatDrawer({ session, sessionIndex, projectId, issueId, o
                 </svg>
               </a>
             )}
-            {session.prUrl && (
-              <a
-                href={session.prUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border-default px-2.5 py-1 text-xs text-text-secondary hover:bg-bg-surface-hover transition-colors"
-              >
-                <svg className="h-3 w-3 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                </svg>
-                {session.prNumber ? `PR #${session.prNumber}` : "Pull Request"}
-                <svg className="h-2.5 w-2.5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </a>
-            )}
+            {(session.linkedPullRequest?.htmlUrl ?? session.prUrl) && (() => {
+              const prUrl = session.linkedPullRequest?.htmlUrl ?? session.prUrl!;
+              const pr = session.linkedPullRequest;
+              return (
+                <a
+                  href={prUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-2.5 rounded-lg border border-border-default bg-bg-surface px-3 py-2.5 text-xs hover:bg-bg-surface-hover transition-colors group"
+                >
+                  {pr ? (
+                    <>
+                      <span className={`mt-0.5 shrink-0 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${prStateBadgeClass(pr)}`}>
+                        {prStateLabel(pr)}
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block font-medium text-text-primary truncate">
+                          {pr.title ?? pr.sourceBranch ?? `Pull Request${pr.githubPrNumber ? ` #${pr.githubPrNumber}` : ""}`}
+                        </span>
+                        <span className="flex items-center gap-2 mt-0.5 text-text-tertiary">
+                          {pr.githubPrNumber && <span>#{pr.githubPrNumber}</span>}
+                          {pr.sourceBranch && (
+                            <span className="truncate max-w-[150px]">{pr.sourceBranch}</span>
+                          )}
+                        </span>
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-3.5 w-3.5 text-accent flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                      <span className="flex-1 text-text-primary truncate">
+                        {session.prNumber ? `PR #${session.prNumber}` : "Pull Request"}
+                      </span>
+                    </>
+                  )}
+                  <svg
+                    className="h-3 w-3 text-text-tertiary shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              );
+            })()}
           </div>
         )}
 

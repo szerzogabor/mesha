@@ -15,7 +15,7 @@ export function useProjects(workspaceId: string) {
 export function useCreateProject(workspaceId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { name: string; description?: string }) =>
+    mutationFn: (data: { name: string; description?: string; key?: string }) =>
       apiClient.post<Project>(`/api/workspaces/${workspaceId}/projects`, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["projects", workspaceId] }),
   });

@@ -47,7 +47,7 @@ public class IssueService {
     @Transactional
     public Issue create(UUID projectId, CreateIssueRequest req, User actor) {
         log.debug("Creating issue projectId={} actorId={}", projectId, actor.getId());
-        Project project = projectRepository.findById(projectId)
+        Project project = projectRepository.findByIdForUpdate(projectId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
 
         UUID workspaceId = project.getWorkspace().getId();
@@ -77,6 +77,7 @@ public class IssueService {
             issue.setLabels(new ArrayList<>(labels));
         }
 
+        issue.setNumber(issueRepository.nextNumberForProject(projectId));
         issue = issueRepository.save(issue);
         activityService.record(issue, actor, ActivityEventType.ISSUE_CREATED, null, issue.getTitle());
         log.info("Issue created issueId={} projectId={} actorId={}", issue.getId(), projectId, actor.getId());

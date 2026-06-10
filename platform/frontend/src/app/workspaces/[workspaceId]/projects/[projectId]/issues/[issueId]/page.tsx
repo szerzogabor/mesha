@@ -98,16 +98,23 @@ export default function IssueDetailPage({
                 </button>
               </div>
             ) : (
-              <h1
-                className="text-2xl font-bold text-text-primary cursor-pointer hover:opacity-70 transition-opacity"
-                onClick={() => {
-                  setEditTitle(issue.title);
-                  setEditingTitle(true);
-                }}
-                title="Click to edit"
-              >
-                {issue.title}
-              </h1>
+              <div className="flex items-center gap-3">
+                {issue.identifier && (
+                  <span className="shrink-0 text-sm font-mono text-text-tertiary bg-bg-surface-hover border border-border-default px-2 py-1 rounded">
+                    {issue.identifier}
+                  </span>
+                )}
+                <h1
+                  className="text-2xl font-bold text-text-primary cursor-pointer hover:opacity-70 transition-opacity"
+                  onClick={() => {
+                    setEditTitle(issue.title);
+                    setEditingTitle(true);
+                  }}
+                  title="Click to edit"
+                >
+                  {issue.title}
+                </h1>
+              </div>
             )}
             <p className="text-xs text-text-tertiary mt-1">
               Created {formatRelativeTime(issue.createdAt)} · Updated {formatRelativeTime(issue.updatedAt)}

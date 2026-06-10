@@ -50,6 +50,9 @@ public class Issue {
     )
     private List<Label> labels = new ArrayList<>();
 
+    @Column(name = "number")
+    private Integer number;
+
     @Column(name = "ai_assignment_state", length = 30)
     private String aiAssignmentState;
 
@@ -79,6 +82,8 @@ public class Issue {
     public void setAssignee(User assignee) { this.assignee = assignee; }
     public List<Label> getLabels() { return labels; }
     public void setLabels(List<Label> labels) { this.labels = labels; }
+    public Integer getNumber() { return number; }
+    public void setNumber(Integer number) { this.number = number; }
     public String getAiAssignmentState() { return aiAssignmentState; }
     public void setAiAssignmentState(String aiAssignmentState) { this.aiAssignmentState = aiAssignmentState; }
     public Instant getCreatedAt() { return createdAt; }

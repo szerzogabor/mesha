@@ -19,7 +19,14 @@ export function IssueCard({ issue, workspaceId, projectId }: IssueCardProps) {
     >
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-text-primary truncate">{issue.title}</p>
+          <div className="flex items-center gap-2 min-w-0">
+            {issue.identifier && (
+              <span className="shrink-0 text-xs font-mono text-text-tertiary bg-bg-surface-hover px-1.5 py-0.5 rounded">
+                {issue.identifier}
+              </span>
+            )}
+            <p className="text-sm font-medium text-text-primary truncate">{issue.title}</p>
+          </div>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <StatusBadge status={issue.status} />
             <PriorityBadge priority={issue.priority} />
