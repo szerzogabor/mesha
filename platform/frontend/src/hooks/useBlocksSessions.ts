@@ -6,6 +6,8 @@ import { apiClient } from "@/lib/api-client";
 import { logger } from "@/lib/logger";
 import { BlocksSession, AIExecutionState } from "@/types";
 
+const TERMINAL_STATES: AIExecutionState[] = ["DONE", "FAILED", "CANCELED"];
+
 export function useBlocksSessions(projectId: string, issueId: string) {
   return useQuery({
     queryKey: ["blocks-sessions", issueId],
@@ -14,11 +16,18 @@ export function useBlocksSessions(projectId: string, issueId: string) {
         `/api/projects/${projectId}/issues/${issueId}/blocks-sessions`
       ),
     enabled: !!projectId && !!issueId,
+    refetchInterval: (query) => {
+      const sessions = query.state.data;
+      if (!sessions?.length) return false;
+      const hasActive = sessions.some((s) => !TERMINAL_STATES.includes(s.executionState));
+      return hasActive ? 5000 : false;
+    },
   });
 }
 
 export function useActiveBlocksSession(projectId: string, issueId: string, enabled = true) {
   const prevStateRef = useRef<AIExecutionState | undefined>(undefined);
+  const qc = useQueryClient();
 
   return useQuery({
     queryKey: ["blocks-session-active", issueId],
@@ -39,9 +48,16 @@ export function useActiveBlocksSession(projectId: string, issueId: string, enabl
         prevStateRef.current = nextState;
       }
 
-      const terminalStates: AIExecutionState[] = ["DONE", "FAILED", "CANCELED"];
-      if (nextState && terminalStates.includes(nextState)) {
+      if (nextState && TERMINAL_STATES.includes(nextState)) {
         logger.ai.pollingActive(issueId, session.id, nextState);
+      }
+
+      // Propagate the latest session data (including sessionUrl) into the sessions list cache
+      if (session) {
+        qc.setQueryData<BlocksSession[]>(["blocks-sessions", issueId], (old) => {
+          if (!old) return old;
+          return old.map((s) => (s.id === session.id ? session : s));
+        });
       }
 
       return session;
@@ -51,11 +67,10 @@ export function useActiveBlocksSession(projectId: string, issueId: string, enabl
     refetchInterval: (query) => {
       const state = query.state.data?.executionState;
       if (!state) return false;
-      const terminalStates: AIExecutionState[] = ["DONE", "FAILED", "CANCELED"];
-      if (!terminalStates.includes(state)) {
+      if (!TERMINAL_STATES.includes(state)) {
         logger.ai.pollingActive(issueId, query.state.data?.id ?? "", state);
       }
-      return terminalStates.includes(state) ? false : 5000;
+      return TERMINAL_STATES.includes(state) ? false : 5000;
     },
   });
 }
