@@ -102,7 +102,7 @@ public class AIDraftService {
 
         IssuePriority priority = req.priority() != null ? req.priority()
             : parsePriority(draft.getPrioritySuggestion());
-        IssueStatus status = req.status() != null ? req.status() : IssueStatus.BACKLOG;
+        String status = req.status() != null ? req.status() : "BACKLOG";
 
         CreateIssueRequest createReq = new CreateIssueRequest(
             req.title(),

@@ -1,7 +1,6 @@
 package com.mesha.api.dto;
 
 import com.mesha.api.model.Issue;
-import com.mesha.api.model.IssueStatus;
 import com.mesha.api.model.IssuePriority;
 import java.time.Instant;
 import java.util.List;
@@ -13,7 +12,7 @@ public record IssueDto(
     String identifier,
     String title,
     String description,
-    IssueStatus status,
+    String status,
     IssuePriority priority,
     UserDto assignee,
     List<LabelDto> labels,

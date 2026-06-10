@@ -1,7 +1,6 @@
 package com.mesha.api.repository;
 
 import com.mesha.api.model.Issue;
-import com.mesha.api.model.IssueStatus;
 import com.mesha.api.model.IssuePriority;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,7 +33,7 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
     )
     Page<Issue> findByProjectFiltered(
         @Param("projectId") UUID projectId,
-        @Param("status") IssueStatus status,
+        @Param("status") String status,
         @Param("priority") IssuePriority priority,
         @Param("assigneeId") UUID assigneeId,
         @Param("search") String search,

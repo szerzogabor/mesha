@@ -19,7 +19,7 @@ const PRIORITY_ORDER: Record<IssuePriority, number> = {
   LOW: 3,
 };
 
-const STATUS_ORDER: Record<IssueStatus, number> = {
+const STATUS_ORDER: Record<string, number> = {
   BACKLOG: 0,
   TODO: 1,
   IN_PROGRESS: 2,
@@ -59,7 +59,7 @@ export function ListView({
           cmp = a.title.localeCompare(b.title);
           break;
         case "status":
-          cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+          cmp = (STATUS_ORDER[a.status] ?? 999) - (STATUS_ORDER[b.status] ?? 999);
           break;
         case "priority":
           cmp = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];

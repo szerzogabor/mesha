@@ -1,8 +1,8 @@
 "use client";
 
-import { IssueStatus, IssuePriority } from "@/types";
+import { IssueStatus, IssuePriority, ProjectStatus } from "@/types";
+import { statusLabel } from "@/lib/utils";
 
-const STATUSES: IssueStatus[] = ["BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DONE"];
 const PRIORITIES: IssuePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
 const inputClass =
@@ -12,6 +12,7 @@ interface IssueFiltersProps {
   status?: IssueStatus;
   priority?: IssuePriority;
   search: string;
+  projectStatuses?: ProjectStatus[];
   onStatusChange: (s: IssueStatus | undefined) => void;
   onPriorityChange: (p: IssuePriority | undefined) => void;
   onSearchChange: (s: string) => void;
@@ -22,6 +23,7 @@ export function IssueFilters({
   status,
   priority,
   search,
+  projectStatuses,
   onStatusChange,
   onPriorityChange,
   onSearchChange,
@@ -40,13 +42,13 @@ export function IssueFilters({
       {!hideStatusFilter && (
         <select
           value={status ?? ""}
-          onChange={(e) => onStatusChange((e.target.value as IssueStatus) || undefined)}
+          onChange={(e) => onStatusChange(e.target.value || undefined)}
           className={inputClass}
         >
           <option value="">All statuses</option>
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s.replace("_", " ")}
+          {(projectStatuses ?? []).map((s) => (
+            <option key={s.id} value={s.name}>
+              {statusLabel(s.name)}
             </option>
           ))}
         </select>
