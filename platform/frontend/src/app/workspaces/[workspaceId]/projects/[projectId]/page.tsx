@@ -7,6 +7,7 @@ import {
   useAllIssues,
   useUpdateIssueInProject,
 } from "@/hooks/useIssues";
+import { useProjectStatuses, useReorderProjectStatuses } from "@/hooks/useProjectStatuses";
 import { IssueFilters } from "@/components/issues/IssueFilters";
 import { CreateIssueModal } from "@/components/issues/CreateIssueModal";
 import { AIDraftModal } from "@/components/issues/AIDraftModal";
@@ -14,6 +15,7 @@ import { ViewSwitcher, ViewMode } from "@/components/issues/ViewSwitcher";
 import { ListView } from "@/components/issues/ListView";
 import { KanbanView } from "@/components/issues/KanbanView";
 import { IssueStatus, IssuePriority } from "@/types";
+import Link from "next/link";
 
 const VIEW_STORAGE_KEY = "mesha-view-mode";
 
@@ -85,6 +87,8 @@ export default function ProjectPage({
 
   const createIssue = useCreateIssue(projectId);
   const updateIssue = useUpdateIssueInProject(projectId);
+  const statusesQuery = useProjectStatuses(projectId);
+  const reorderStatuses = useReorderProjectStatuses(projectId);
 
   const totalElements =
     view === "list"
@@ -100,6 +104,16 @@ export default function ProjectPage({
             <p className="text-sm text-text-tertiary">{totalElements} total</p>
           </div>
           <div className="flex items-center gap-3">
+            <Link
+              href={`/workspaces/${workspaceId}/projects/${projectId}/settings`}
+              className="p-2 text-text-tertiary hover:text-text-primary hover:bg-bg-surface-hover rounded-lg transition-colors"
+              title="Project settings"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </Link>
             <ViewSwitcher view={view} onViewChange={handleViewChange} />
             <div ref={dropdownRef} className="relative flex items-center">
               <button
@@ -148,6 +162,7 @@ export default function ProjectPage({
           status={status}
           priority={priority}
           search={search}
+          projectStatuses={statusesQuery.data}
           onStatusChange={handleStatusChange}
           onPriorityChange={handlePriorityChange}
           onSearchChange={handleSearchChange}
@@ -176,13 +191,15 @@ export default function ProjectPage({
         ) : (
           <KanbanView
             issues={kanbanQuery.data?.content ?? []}
-            isLoading={kanbanQuery.isLoading}
+            statuses={statusesQuery.data ?? []}
+            isLoading={kanbanQuery.isLoading || statusesQuery.isLoading}
             error={kanbanQuery.error}
             workspaceId={workspaceId}
             projectId={projectId}
             onUpdateStatus={(issueId, newStatus) =>
               updateIssue.mutate({ issueId, data: { status: newStatus } })
             }
+            onReorderStatuses={(statusIds) => reorderStatuses.mutate(statusIds)}
           />
         )}
       </div>
@@ -191,6 +208,7 @@ export default function ProjectPage({
         open={showCreate}
         onClose={() => setShowCreate(false)}
         workspaceId={workspaceId}
+        projectStatuses={statusesQuery.data}
         onSubmit={async (formData) => {
           await createIssue.mutateAsync(formData);
         }}

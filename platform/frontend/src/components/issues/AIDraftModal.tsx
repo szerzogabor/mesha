@@ -10,6 +10,8 @@ import {
   useRejectDraft,
   useRegenerateDraft,
 } from "@/hooks/useAIDraft";
+import { useProjectStatuses } from "@/hooks/useProjectStatuses";
+import { statusLabel } from "@/lib/utils";
 
 const inputClass =
   "w-full border border-input-border rounded-lg px-3 py-2 text-sm bg-input-bg text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-2 focus:ring-accent";
@@ -58,6 +60,7 @@ export function AIDraftModal({ open, projectId, onClose }: AIDraftModalProps) {
   const generate = useGenerateDraft(projectId);
   const approve = useApproveDraft(projectId);
   const reject = useRejectDraft(projectId);
+  const { data: projectStatuses = [] } = useProjectStatuses(projectId);
   const regenerate = useRegenerateDraft(projectId);
 
   const loading = generate.isPending || approve.isPending || reject.isPending || regenerate.isPending;
@@ -240,11 +243,19 @@ export function AIDraftModal({ open, projectId, onClose }: AIDraftModalProps) {
                 onChange={(e) => setEditStatus(e.target.value as IssueStatus)}
                 className={inputClass}
               >
-                <option value="BACKLOG">Backlog</option>
-                <option value="TODO">Todo</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="REVIEW">Review</option>
-                <option value="DONE">Done</option>
+                {projectStatuses.length > 0 ? (
+                  projectStatuses.map((s) => (
+                    <option key={s.id} value={s.name}>{statusLabel(s.name)}</option>
+                  ))
+                ) : (
+                  <>
+                    <option value="BACKLOG">Backlog</option>
+                    <option value="TODO">Todo</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="REVIEW">Review</option>
+                    <option value="DONE">Done</option>
+                  </>
+                )}
               </select>
             </div>
             <div>

@@ -1,20 +1,13 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { IssueStatus, IssuePriority } from "@/types";
+import { IssuePriority } from "@/types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function statusLabel(status: IssueStatus): string {
-  const map: Record<IssueStatus, string> = {
-    BACKLOG: "Backlog",
-    TODO: "Todo",
-    IN_PROGRESS: "In Progress",
-    REVIEW: "Review",
-    DONE: "Done",
-  };
-  return map[status] ?? status;
+export function statusLabel(status: string): string {
+  return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export function priorityLabel(priority: IssuePriority): string {

@@ -29,9 +29,8 @@ public class Issue {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
-    private IssueStatus status = IssueStatus.BACKLOG;
+    @Column(nullable = false, length = 50)
+    private String status = "BACKLOG";
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -74,8 +73,8 @@ public class Issue {
     public void setTitle(String title) { this.title = title; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
-    public IssueStatus getStatus() { return status; }
-    public void setStatus(IssueStatus status) { this.status = status; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
     public IssuePriority getPriority() { return priority; }
     public void setPriority(IssuePriority priority) { this.priority = priority; }
     public User getAssignee() { return assignee; }

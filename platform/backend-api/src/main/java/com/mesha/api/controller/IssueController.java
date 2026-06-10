@@ -31,7 +31,7 @@ public class IssueController {
     @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
     public ResponseEntity<PagedResponse<IssueDto>> list(
             @PathVariable UUID projectId,
-            @RequestParam(required = false) IssueStatus status,
+            @RequestParam(required = false) String status,
             @RequestParam(required = false) IssuePriority priority,
             @RequestParam(required = false) UUID assigneeId,
             @RequestParam(required = false) String search,
