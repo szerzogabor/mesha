@@ -49,8 +49,9 @@ These rules ensure proper ticket lifecycle management and prevent conflicts with
 All AI agents (Claude Code, Codex, Gemini, etc.) working on this repository MUST follow these rules when creating pull requests:
 
 1. Make sure ONLY "szerzogabor@gmail.com" is in the contributor list for every commit
+2. **PR Title Format**: When a Linear ticket ID is provided in the session context (e.g., `BLO-123`), prefix the PR title with that identifier. Format: `BLO-123: <description>`. Example: `BLO-123: Add feature X`. If no ticket ID is available, use a descriptive title without a prefix.
 
-This ensures additional code review coverage and maintains code quality standards.
+This ensures additional code review coverage, maintains code quality standards, and enables traceability between Linear tickets and pull requests.
 
 ## Worker Code Location
 

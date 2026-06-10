@@ -150,6 +150,7 @@ export default function ProjectPage({
       <CreateIssueModal
         open={showCreate}
         onClose={() => setShowCreate(false)}
+        workspaceId={workspaceId}
         onSubmit={async (formData) => {
           await createIssue.mutateAsync(formData);
         }}

@@ -282,6 +282,7 @@ public class BlocksAdapter implements ProviderAdapter {
 
         sb.append("Issue\n\n");
         appendField(sb, "ID", request.issueId());
+        appendField(sb, "Identifier", request.issueIdentifier());
         appendField(sb, "Title", request.issueTitle());
         appendField(sb, "Status", request.issueStatus());
         appendField(sb, "Priority", request.issuePriority());
@@ -322,6 +323,14 @@ public class BlocksAdapter implements ProviderAdapter {
 
         if (request.instructions() != null && !request.instructions().isBlank()) {
             sb.append("\nAdditional Instructions\n\n").append(request.instructions()).append("\n");
+        }
+
+        if (request.issueIdentifier() != null && !request.issueIdentifier().isBlank()) {
+            sb.append("\nPR Title Convention\n\n");
+            sb.append("When opening a pull request for this issue, prefix the title with the issue identifier. ");
+            sb.append("Format: '").append(request.issueIdentifier()).append(": <description>'\n");
+            sb.append("Example: '").append(request.issueIdentifier()).append(": Add feature X'\n");
+            sb.append("If no ticket ID is available, use a descriptive title without a prefix.\n");
         }
 
         return sb.toString();
