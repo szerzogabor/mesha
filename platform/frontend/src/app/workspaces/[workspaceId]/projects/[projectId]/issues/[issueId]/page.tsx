@@ -259,19 +259,9 @@ export default function IssueDetailPage({
                 }}
                 className={selectClass}
               >
-                {projectStatuses.length > 0 ? (
-                  projectStatuses.map((s) => (
-                    <option key={s.id} value={s.name}>{statusLabel(s.name)}</option>
-                  ))
-                ) : (
-                  <>
-                    <option value="BACKLOG">Backlog</option>
-                    <option value="TODO">Todo</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="REVIEW">Review</option>
-                    <option value="DONE">Done</option>
-                  </>
-                )}
+                {projectStatuses.map((s) => (
+                  <option key={s.id} value={s.name}>{statusLabel(s.name)}</option>
+                ))}
               </select>
             </div>
 
