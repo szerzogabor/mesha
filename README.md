@@ -86,3 +86,5 @@ The frontend runs on `http://localhost:3000`, API on `http://localhost:8080`.
 - **AI provider abstraction** — Blocks is a provider, not the core architecture
 - **Event-driven** — all AI tasks are asynchronous
 - **Mobile-first** — the same Next.js app works on desktop, tablet, and mobile
+
+this is a test task
