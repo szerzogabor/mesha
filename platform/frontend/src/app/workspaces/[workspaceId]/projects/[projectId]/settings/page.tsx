@@ -4,6 +4,7 @@ import { use, useState } from "react";
 import { useProjectStatuses, useCreateProjectStatus, useUpdateProjectStatus, useDeleteProjectStatus, useReorderProjectStatuses } from "@/hooks/useProjectStatuses";
 import { ProjectStatus } from "@/types";
 import { statusLabel } from "@/lib/utils";
+import AutomationRulesSection from "@/components/automation/AutomationRulesSection";
 import Link from "next/link";
 import {
   DndContext,
@@ -274,7 +275,7 @@ export default function ProjectSettingsPage({
           </Link>
           <div>
             <h2 className="text-lg font-semibold text-text-primary">Project Settings</h2>
-            <p className="text-sm text-text-tertiary">Manage statuses and workflow</p>
+            <p className="text-sm text-text-tertiary">Manage statuses, workflow and automations</p>
           </div>
         </div>
       </div>
@@ -314,6 +315,8 @@ export default function ProjectSettingsPage({
             onCreated={() => statusesQuery.refetch()}
           />
         </div>
+
+        <AutomationRulesSection workspaceId={workspaceId} projectId={projectId} />
       </div>
     </div>
   );
