@@ -38,7 +38,21 @@ const PRESET_COLORS = [
   "#ef4444", "#f97316", "#06b6d4", "#ec4899", "#84cc16",
 ];
 
-const EMPTY_ACTION: AutomationAction = { actionType: "SET_STATUS", actionValue: "" };
+// Editor rows carry a client-side key so React state (e.g. the inline label
+// mini-form) stays attached to the right row when rows are removed.
+type EditableAction = AutomationAction & { key: string };
+
+function newAction(): EditableAction {
+  return { key: crypto.randomUUID(), actionType: "SET_STATUS", actionValue: "" };
+}
+
+function toEditable(actions: AutomationAction[]): EditableAction[] {
+  return actions.map((a) => ({ ...a, key: crypto.randomUUID() }));
+}
+
+function toRequest(actions: EditableAction[]): AutomationAction[] {
+  return actions.map(({ actionType, actionValue }) => ({ actionType, actionValue }));
+}
 
 const selectClass =
   "border border-input-border rounded-lg px-3 py-1.5 text-sm bg-input-bg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent";
@@ -193,8 +207,8 @@ function ActionValueSelector({
 
 interface ActionsEditorProps {
   workspaceId: string;
-  actions: AutomationAction[];
-  onChange: (actions: AutomationAction[]) => void;
+  actions: EditableAction[];
+  onChange: (actions: EditableAction[]) => void;
   statuses: ProjectStatus[];
   labels: Label[];
 }
@@ -207,7 +221,7 @@ function ActionsEditor({ workspaceId, actions, onChange, statuses, labels }: Act
   return (
     <div className="flex flex-col gap-2">
       {actions.map((action, index) => (
-        <div key={index} className="flex gap-2 items-start flex-wrap">
+        <div key={action.key} className="flex gap-2 items-start flex-wrap">
           <span className="text-sm text-text-secondary py-1.5 w-9">
             {index === 0 ? "then" : "and"}
           </span>
@@ -253,7 +267,7 @@ function ActionsEditor({ workspaceId, actions, onChange, statuses, labels }: Act
       ))}
       <button
         type="button"
-        onClick={() => onChange([...actions, { ...EMPTY_ACTION }])}
+        onClick={() => onChange([...actions, newAction()])}
         className="self-start ml-11 text-sm text-accent hover:text-accent-hover transition-colors"
       >
         + Add action
@@ -289,7 +303,7 @@ interface RuleRowProps {
 function RuleRow({ rule, workspaceId, projectId, statuses, labels }: RuleRowProps) {
   const [editing, setEditing] = useState(false);
   const [triggerType, setTriggerType] = useState<AutomationTriggerType>(rule.triggerType);
-  const [actions, setActions] = useState<AutomationAction[]>(rule.actions);
+  const [actions, setActions] = useState<EditableAction[]>(() => toEditable(rule.actions));
   const [error, setError] = useState<string | null>(null);
   const updateRule = useUpdateAutomation(projectId);
   const deleteRule = useDeleteAutomation(projectId);
@@ -310,12 +324,12 @@ function RuleRow({ rule, workspaceId, projectId, statuses, labels }: RuleRowProp
   };
 
   const handleSave = async () => {
-    if (!allActionsComplete) return;
+    if (!allActionsComplete || updateRule.isPending) return;
     setError(null);
     try {
       await updateRule.mutateAsync({
         ruleId: rule.id,
-        data: { triggerType, actions },
+        data: { triggerType, actions: toRequest(actions) },
       });
       setEditing(false);
     } catch (err) {
@@ -325,7 +339,7 @@ function RuleRow({ rule, workspaceId, projectId, statuses, labels }: RuleRowProp
 
   const handleCancel = () => {
     setTriggerType(rule.triggerType);
-    setActions(rule.actions);
+    setActions(toEditable(rule.actions));
     setError(null);
     setEditing(false);
   };
@@ -396,7 +410,7 @@ function RuleRow({ rule, workspaceId, projectId, statuses, labels }: RuleRowProp
         <button
           onClick={() => {
             setTriggerType(rule.triggerType);
-            setActions(rule.actions);
+            setActions(toEditable(rule.actions));
             setError(null);
             setEditing(true);
           }}
@@ -435,7 +449,7 @@ interface CreateRuleFormProps {
 
 function CreateRuleForm({ workspaceId, projectId, statuses, labels }: CreateRuleFormProps) {
   const [triggerType, setTriggerType] = useState<AutomationTriggerType>("PR_OPENED");
-  const [actions, setActions] = useState<AutomationAction[]>([{ ...EMPTY_ACTION }]);
+  const [actions, setActions] = useState<EditableAction[]>(() => [newAction()]);
   const [error, setError] = useState<string | null>(null);
   const createRule = useCreateAutomation(projectId);
 
@@ -443,11 +457,11 @@ function CreateRuleForm({ workspaceId, projectId, statuses, labels }: CreateRule
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!allActionsComplete) return;
+    if (!allActionsComplete || createRule.isPending) return;
     setError(null);
     try {
-      await createRule.mutateAsync({ triggerType, actions });
-      setActions([{ ...EMPTY_ACTION }]);
+      await createRule.mutateAsync({ triggerType, actions: toRequest(actions) });
+      setActions([newAction()]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create rule");
     }
