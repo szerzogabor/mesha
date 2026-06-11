@@ -5,6 +5,7 @@ import com.mesha.api.model.BlocksSession;
 import com.mesha.api.model.GitHubPullRequest;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public record BlocksSessionDto(
@@ -23,13 +24,13 @@ public record BlocksSessionDto(
     Instant completedAt,
     Instant createdAt,
     Instant updatedAt,
-    GitHubPullRequestDto linkedPullRequest
+    List<GitHubPullRequestDto> linkedPullRequests
 ) {
     public static BlocksSessionDto from(BlocksSession s) {
-        return from(s, null);
+        return from(s, List.of());
     }
 
-    public static BlocksSessionDto from(BlocksSession s, GitHubPullRequest linkedPr) {
+    public static BlocksSessionDto from(BlocksSession s, List<GitHubPullRequest> linkedPrs) {
         return new BlocksSessionDto(
             s.getId(),
             s.getIssue().getId(),
@@ -46,7 +47,7 @@ public record BlocksSessionDto(
             s.getCompletedAt(),
             s.getCreatedAt(),
             s.getUpdatedAt(),
-            linkedPr != null ? GitHubPullRequestDto.from(linkedPr) : null
+            linkedPrs.stream().map(GitHubPullRequestDto::from).toList()
         );
     }
 }

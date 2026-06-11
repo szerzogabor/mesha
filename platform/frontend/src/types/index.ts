@@ -179,7 +179,7 @@ export interface BlocksSession {
   completedAt?: string;
   createdAt: string;
   updatedAt: string;
-  linkedPullRequest?: LinkedPullRequest;
+  linkedPullRequests?: LinkedPullRequest[];
 }
 
 export interface BlocksMessage {
