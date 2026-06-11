@@ -1,6 +1,7 @@
 package com.mesha.api.worker.scheduling;
 
 import com.mesha.api.model.AIExecutionState;
+import com.mesha.api.model.AutomationTriggerType;
 import com.mesha.api.model.BlocksMessage;
 import com.mesha.api.model.BlocksSession;
 import com.mesha.api.model.Comment;
@@ -13,6 +14,7 @@ import com.mesha.api.repository.CommentRepository;
 import com.mesha.api.repository.GitHubRepositoryRepository;
 import com.mesha.api.repository.IssueRepository;
 import com.mesha.api.repository.WorkspaceBlocksConfigRepository;
+import com.mesha.api.service.AutomationService;
 import com.mesha.api.worker.blocks.BlocksAdapter;
 import com.mesha.api.worker.orchestration.SessionRequest;
 import com.mesha.api.worker.orchestration.SessionResult;
@@ -59,6 +61,7 @@ class SessionPollService {
     private final WorkspaceBlocksConfigRepository configRepo;
     private final RedisTemplate<String, String> redisTemplate;
     private final PollingProperties props;
+    private final AutomationService automationService;
     private final String blocksDashboardUrl;
 
     SessionPollService(BlocksSessionRepository sessionRepo,
@@ -71,6 +74,7 @@ class SessionPollService {
                        WorkspaceBlocksConfigRepository configRepo,
                        RedisTemplate<String, String> redisTemplate,
                        PollingProperties props,
+                       AutomationService automationService,
                        @org.springframework.beans.factory.annotation.Value("${mesha.blocks.dashboard-url:https://www.blocks.team}") String blocksDashboardUrl) {
         this.sessionRepo = sessionRepo;
         this.issueRepo = issueRepo;
@@ -82,6 +86,7 @@ class SessionPollService {
         this.configRepo = configRepo;
         this.redisTemplate = redisTemplate;
         this.props = props;
+        this.automationService = automationService;
         this.blocksDashboardUrl = blocksDashboardUrl;
     }
 
@@ -296,6 +301,7 @@ class SessionPollService {
                 if (!hasApiMessages) {
                     recordStateTransitionMessage(session, newState, result.finalMessage());
                 }
+                fireSessionStateAutomation(session, newState);
             } else {
                 log.debug("session_state_unchanged session_id={} state={} poll_count={}",
                         session.getId(), newState, session.getRetryCount());
@@ -372,6 +378,18 @@ class SessionPollService {
         session.setErrorMessage(reason);
         sessionRepo.save(session);
         recordStateTransitionMessage(session, AIExecutionState.FAILED, reason);
+        fireSessionStateAutomation(session, AIExecutionState.FAILED);
+    }
+
+    private void fireSessionStateAutomation(BlocksSession session, AIExecutionState newState) {
+        AutomationTriggerType trigger = switch (newState) {
+            case DONE -> AutomationTriggerType.BLOCKS_SESSION_COMPLETED;
+            case FAILED -> AutomationTriggerType.BLOCKS_SESSION_FAILED;
+            default -> null;
+        };
+        if (trigger != null) {
+            automationService.executeFor(trigger, session.getIssue());
+        }
     }
 
     /**

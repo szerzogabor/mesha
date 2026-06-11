@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mesha.api.dto.GitHubPullRequestDto;
 import com.mesha.api.model.AIExecutionState;
+import com.mesha.api.model.AutomationTriggerType;
 import com.mesha.api.model.BlocksSession;
 import com.mesha.api.model.GitHubInstallation;
 import com.mesha.api.model.GitHubPullRequest;
@@ -43,6 +44,7 @@ public class GitHubPullRequestService {
     private final GitHubInstallationRepository installationRepo;
     private final BlocksSessionRepository blocksSessionRepo;
     private final GitHubAppService appService;
+    private final AutomationService automationService;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
@@ -51,12 +53,14 @@ public class GitHubPullRequestService {
                                     GitHubInstallationRepository installationRepo,
                                     BlocksSessionRepository blocksSessionRepo,
                                     GitHubAppService appService,
+                                    AutomationService automationService,
                                     ObjectMapper objectMapper) {
         this.prRepo = prRepo;
         this.repositoryRepo = repositoryRepo;
         this.installationRepo = installationRepo;
         this.blocksSessionRepo = blocksSessionRepo;
         this.appService = appService;
+        this.automationService = automationService;
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newHttpClient();
     }
@@ -155,11 +159,27 @@ public class GitHubPullRequestService {
             return;
         }
 
-        upsertPullRequest(repoOpt.get(), prNode);
+        GitHubPullRequest pr = upsertPullRequest(repoOpt.get(), prNode);
+
+        AutomationTriggerType trigger = resolveAutomationTrigger(action, prNode);
+        if (trigger != null && pr.getBlocksSession() != null) {
+            automationService.executeFor(trigger, pr.getBlocksSession().getIssue());
+        }
+
         log.info("Pull request webhook processed action={} fullName={} prNumber={}", action, fullName, prNumber);
     }
 
-    private void upsertPullRequest(GitHubRepository repo, JsonNode prNode) {
+    private AutomationTriggerType resolveAutomationTrigger(String action, JsonNode prNode) {
+        return switch (action) {
+            case "opened" -> AutomationTriggerType.PR_OPENED;
+            case "closed" -> prNode.hasNonNull("merged_at")
+                    ? AutomationTriggerType.PR_MERGED
+                    : AutomationTriggerType.PR_CLOSED;
+            default -> null;
+        };
+    }
+
+    private GitHubPullRequest upsertPullRequest(GitHubRepository repo, JsonNode prNode) {
         int prNumber = prNode.path("number").asInt();
         Optional<GitHubPullRequest> existing =
                 prRepo.findByRepositoryIdAndGithubPrNumber(repo.getId(), prNumber);
@@ -193,10 +213,11 @@ public class GitHubPullRequestService {
             tryAutoLinkByIdentifier(pr);
         }
 
-        prRepo.save(pr);
+        pr = prRepo.save(pr);
         log.debug("Pull request upserted repositoryId={} prNumber={} state={} action={} linkedSession={}",
                 repo.getId(), prNumber, pr.getState(), isNew ? "created" : "updated",
                 pr.getBlocksSession() != null ? pr.getBlocksSession().getId() : "none");
+        return pr;
     }
 
     private static final Set<AIExecutionState> TERMINAL_STATES = EnumSet.of(

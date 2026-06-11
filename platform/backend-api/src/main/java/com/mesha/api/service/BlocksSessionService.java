@@ -30,6 +30,7 @@ public class BlocksSessionService {
     private final BlocksMessageRepository blocksMessageRepository;
     private final BlocksAdapter blocksAdapter;
     private final GitHubPullRequestRepository gitHubPullRequestRepository;
+    private final AutomationService automationService;
 
     public BlocksSessionService(BlocksSessionRepository blocksSessionRepository,
                                 IssueRepository issueRepository,
@@ -37,7 +38,8 @@ public class BlocksSessionService {
                                 BlocksConfigService blocksConfigService,
                                 BlocksMessageRepository blocksMessageRepository,
                                 BlocksAdapter blocksAdapter,
-                                GitHubPullRequestRepository gitHubPullRequestRepository) {
+                                GitHubPullRequestRepository gitHubPullRequestRepository,
+                                AutomationService automationService) {
         this.blocksSessionRepository = blocksSessionRepository;
         this.issueRepository = issueRepository;
         this.activityService = activityService;
@@ -45,6 +47,7 @@ public class BlocksSessionService {
         this.blocksMessageRepository = blocksMessageRepository;
         this.blocksAdapter = blocksAdapter;
         this.gitHubPullRequestRepository = gitHubPullRequestRepository;
+        this.automationService = automationService;
     }
 
     @Transactional
@@ -70,6 +73,7 @@ public class BlocksSessionService {
         issueRepository.save(issue);
 
         activityService.record(issue, actor, ActivityEventType.AI_ASSIGNED, null, session.getId().toString());
+        automationService.executeFor(AutomationTriggerType.BLOCKS_SESSION_STARTED, issue);
 
         BlocksMessage startMsg = new BlocksMessage();
         startMsg.setSession(session);
@@ -129,6 +133,7 @@ public class BlocksSessionService {
                 ? session.getPrUrl()
                 : session.getExecutionState().name();
         activityService.record(issue, actor, eventType, oldState, newValue);
+        fireSessionStateAutomation(issue, oldState, session.getExecutionState());
 
         log.info("Blocks session state updated sessionId={} from={} to={}", sessionId, oldState, session.getExecutionState());
         return session;
@@ -244,9 +249,24 @@ public class BlocksSessionService {
                 ? session.getPrUrl()
                 : session.getExecutionState().name();
         activityService.record(issue, null, eventType, oldState, newValue);
+        fireSessionStateAutomation(issue, oldState, session.getExecutionState());
 
         log.info("Blocks session state advanced via webhook sessionId={} from={} to={}",
                 session.getId(), oldState, session.getExecutionState());
+    }
+
+    private void fireSessionStateAutomation(Issue issue, String oldState, AIExecutionState newState) {
+        if (newState == null || newState.name().equals(oldState)) {
+            return;
+        }
+        AutomationTriggerType trigger = switch (newState) {
+            case DONE -> AutomationTriggerType.BLOCKS_SESSION_COMPLETED;
+            case FAILED -> AutomationTriggerType.BLOCKS_SESSION_FAILED;
+            default -> null;
+        };
+        if (trigger != null) {
+            automationService.executeFor(trigger, issue);
+        }
     }
 
     private void stampExecutionTimestamps(BlocksSession session, AIExecutionState newState) {

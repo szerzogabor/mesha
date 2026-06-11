@@ -267,3 +267,24 @@ export interface GitHubPullRequest {
   createdAt: string;
   updatedAt: string;
 }
+
+export type AutomationTriggerType =
+  | "PR_OPENED"
+  | "PR_MERGED"
+  | "PR_CLOSED"
+  | "BLOCKS_SESSION_STARTED"
+  | "BLOCKS_SESSION_COMPLETED"
+  | "BLOCKS_SESSION_FAILED";
+
+export type AutomationActionType = "SET_STATUS" | "ADD_LABEL";
+
+export interface AutomationRule {
+  id: string;
+  projectId: string;
+  triggerType: AutomationTriggerType;
+  actionType: AutomationActionType;
+  actionValue: string;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
