@@ -2,6 +2,7 @@ package com.mesha.api.controller;
 
 import com.mesha.api.dto.*;
 import com.mesha.api.model.*;
+import com.mesha.api.repository.GitHubPullRequestRepository;
 import com.mesha.api.security.CurrentUser;
 import com.mesha.api.service.ActivityService;
 import com.mesha.api.service.IssueSseService;
@@ -16,7 +17,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/projects/{projectId}/issues")
@@ -25,12 +28,15 @@ public class IssueController {
     private final IssueService issueService;
     private final ActivityService activityService;
     private final IssueSseService issueSseService;
+    private final GitHubPullRequestRepository gitHubPullRequestRepository;
 
     public IssueController(IssueService issueService, ActivityService activityService,
-                           IssueSseService issueSseService) {
+                           IssueSseService issueSseService,
+                           GitHubPullRequestRepository gitHubPullRequestRepository) {
         this.issueService = issueService;
         this.activityService = activityService;
         this.issueSseService = issueSseService;
+        this.gitHubPullRequestRepository = gitHubPullRequestRepository;
     }
 
     @GetMapping
@@ -45,7 +51,16 @@ public class IssueController {
             @RequestParam(defaultValue = "25") int size) {
 
         Page<Issue> result = issueService.list(projectId, status, priority, assigneeId, search, page, size);
-        return ResponseEntity.ok(PagedResponse.from(result, IssueDto::from));
+        List<UUID> issueIds = result.getContent().stream().map(Issue::getId).toList();
+        Map<UUID, GitHubPullRequest> lastPrByIssueId = issueIds.isEmpty()
+                ? Map.of()
+                : gitHubPullRequestRepository.findLatestByIssueIds(issueIds).stream()
+                    .collect(Collectors.toMap(
+                        pr -> pr.getBlocksSession().getIssue().getId(),
+                        pr -> pr,
+                        (a, b) -> a.getUpdatedAt().isAfter(b.getUpdatedAt()) ? a : b
+                    ));
+        return ResponseEntity.ok(PagedResponse.from(result, i -> IssueDto.from(i, lastPrByIssueId.get(i.getId()))));
     }
 
     @PostMapping
@@ -61,7 +76,11 @@ public class IssueController {
     @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
     public ResponseEntity<IssueDto> get(@PathVariable UUID projectId,
                                          @PathVariable UUID issueId) {
-        return ResponseEntity.ok(IssueDto.from(issueService.getById(issueId)));
+        Issue issue = issueService.getById(issueId);
+        GitHubPullRequest lastPr = gitHubPullRequestRepository
+                .findFirstByBlocksSession_Issue_IdOrderByUpdatedAtDesc(issueId)
+                .orElse(null);
+        return ResponseEntity.ok(IssueDto.from(issue, lastPr));
     }
 
     @PatchMapping("/{issueId}")
