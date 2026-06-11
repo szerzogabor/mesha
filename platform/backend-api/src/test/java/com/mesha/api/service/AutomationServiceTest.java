@@ -20,6 +20,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -40,6 +43,7 @@ class AutomationServiceTest {
     @Mock private LabelRepository labelRepository;
     @Mock private IssueRepository issueRepository;
     @Mock private ActivityService activityService;
+    @Mock private PlatformTransactionManager transactionManager;
 
     private AutomationService service;
     private AutoCloseable mocks;
@@ -52,7 +56,7 @@ class AutomationServiceTest {
     void setUp() {
         mocks = MockitoAnnotations.openMocks(this);
         service = new AutomationService(ruleRepository, projectRepository, projectStatusRepository,
-                labelRepository, issueRepository, activityService);
+                labelRepository, issueRepository, activityService, transactionManager);
 
         projectId = UUID.randomUUID();
         Workspace workspace = new Workspace();
@@ -65,6 +69,8 @@ class AutomationServiceTest {
         ReflectionTestUtils.setField(issue, "id", UUID.randomUUID());
         issue.setProject(project);
         issue.setStatus("TODO");
+        // Rules reload the issue inside their own transaction
+        when(issueRepository.findById(issue.getId())).thenReturn(Optional.of(issue));
     }
 
     @AfterEach
@@ -132,6 +138,31 @@ class AutomationServiceTest {
 
         assertThat(issue.getLabels()).containsExactly(label);
         verify(issueRepository, times(1)).save(issue);
+    }
+
+    @Test
+    void executeForDefersExecutionUntilCallerTransactionCommits() {
+        AutomationRule rule = rule(AutomationActionType.SET_STATUS, "REVIEW");
+        when(ruleRepository.findAllByProjectIdAndTriggerTypeAndEnabledTrue(projectId, AutomationTriggerType.PR_OPENED))
+                .thenReturn(List.of(rule));
+        when(projectStatusRepository.existsByProjectIdAndName(projectId, "REVIEW")).thenReturn(true);
+
+        TransactionSynchronizationManager.initSynchronization();
+        TransactionSynchronizationManager.setActualTransactionActive(true);
+        try {
+            service.executeFor(AutomationTriggerType.PR_OPENED, issue);
+
+            // Nothing happens while the caller's transaction is still open
+            assertThat(issue.getStatus()).isEqualTo("TODO");
+            verify(issueRepository, never()).save(any());
+
+            TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+            assertThat(issue.getStatus()).isEqualTo("REVIEW");
+            verify(issueRepository).save(issue);
+        } finally {
+            TransactionSynchronizationManager.setActualTransactionActive(false);
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     @Test

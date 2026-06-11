@@ -59,7 +59,11 @@ function RuleRow({ rule, projectId, labels }: RuleRowProps) {
 
   const handleDelete = async () => {
     if (!confirm("Delete this automation rule?")) return;
-    await deleteRule.mutateAsync(rule.id);
+    try {
+      await deleteRule.mutateAsync(rule.id);
+    } catch (err) {
+      console.error("Failed to delete automation rule:", err);
+    }
   };
 
   return (

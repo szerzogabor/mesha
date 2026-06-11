@@ -19,7 +19,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -37,19 +42,23 @@ public class AutomationService {
     private final LabelRepository labelRepository;
     private final IssueRepository issueRepository;
     private final ActivityService activityService;
+    private final TransactionTemplate ruleTransactionTemplate;
 
     public AutomationService(AutomationRuleRepository ruleRepository,
                              ProjectRepository projectRepository,
                              ProjectStatusRepository projectStatusRepository,
                              LabelRepository labelRepository,
                              IssueRepository issueRepository,
-                             ActivityService activityService) {
+                             ActivityService activityService,
+                             PlatformTransactionManager transactionManager) {
         this.ruleRepository = ruleRepository;
         this.projectRepository = projectRepository;
         this.projectStatusRepository = projectStatusRepository;
         this.labelRepository = labelRepository;
         this.issueRepository = issueRepository;
         this.activityService = activityService;
+        this.ruleTransactionTemplate = new TransactionTemplate(transactionManager);
+        this.ruleTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     public List<AutomationRule> list(UUID projectId) {
@@ -108,13 +117,31 @@ public class AutomationService {
     /**
      * Executes all enabled rules matching the trigger for the issue's project.
      * Never throws: an automation failure must not break the webhook/polling flow that fired it.
+     *
+     * When called inside an active transaction, execution is deferred until that transaction
+     * commits — a rule failure could otherwise mark the shared transaction rollback-only, and
+     * updating the issue row before the caller releases its lock could self-deadlock. Each rule
+     * then runs in its own transaction so one failing rule cannot roll back the others.
      */
-    @Transactional
     public void executeFor(AutomationTriggerType trigger, Issue issue) {
         if (issue == null) {
             return;
         }
+        UUID issueId = issue.getId();
         UUID projectId = issue.getProject().getId();
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    runRules(trigger, projectId, issueId);
+                }
+            });
+        } else {
+            runRules(trigger, projectId, issueId);
+        }
+    }
+
+    private void runRules(AutomationTriggerType trigger, UUID projectId, UUID issueId) {
         List<AutomationRule> rules;
         try {
             rules = ruleRepository.findAllByProjectIdAndTriggerTypeAndEnabledTrue(projectId, trigger);
@@ -124,24 +151,28 @@ public class AutomationService {
         }
         for (AutomationRule rule : rules) {
             try {
-                apply(rule, issue);
+                ruleTransactionTemplate.executeWithoutResult(tx -> apply(rule, projectId, issueId));
             } catch (Exception e) {
                 log.warn("automation_rule_failed ruleId={} issueId={} trigger={} error={}",
-                        rule.getId(), issue.getId(), trigger, e.getMessage());
+                        rule.getId(), issueId, trigger, e.getMessage());
             }
         }
     }
 
-    private void apply(AutomationRule rule, Issue issue) {
+    private void apply(AutomationRule rule, UUID projectId, UUID issueId) {
+        Issue issue = issueRepository.findById(issueId).orElse(null);
+        if (issue == null) {
+            log.warn("automation_issue_missing ruleId={} issueId={}", rule.getId(), issueId);
+            return;
+        }
         switch (rule.getActionType()) {
-            case SET_STATUS -> applySetStatus(rule, issue);
+            case SET_STATUS -> applySetStatus(rule, projectId, issue);
             case ADD_LABEL -> applyAddLabel(rule, issue);
         }
     }
 
-    private void applySetStatus(AutomationRule rule, Issue issue) {
+    private void applySetStatus(AutomationRule rule, UUID projectId, Issue issue) {
         String newStatus = rule.getActionValue();
-        UUID projectId = issue.getProject().getId();
         if (!projectStatusRepository.existsByProjectIdAndName(projectId, newStatus)) {
             log.warn("automation_status_missing ruleId={} projectId={} status={}", rule.getId(), projectId, newStatus);
             return;
