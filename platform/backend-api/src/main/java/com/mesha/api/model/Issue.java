@@ -55,6 +55,12 @@ public class Issue {
     @Column(name = "ai_assignment_state", length = 30)
     private String aiAssignmentState;
 
+    @Column(name = "agent_type", length = 50)
+    private String agentType;
+
+    @Column(name = "agent_llm", length = 50)
+    private String agentLlm;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -85,6 +91,10 @@ public class Issue {
     public void setNumber(Integer number) { this.number = number; }
     public String getAiAssignmentState() { return aiAssignmentState; }
     public void setAiAssignmentState(String aiAssignmentState) { this.aiAssignmentState = aiAssignmentState; }
+    public String getAgentType() { return agentType; }
+    public void setAgentType(String agentType) { this.agentType = agentType; }
+    public String getAgentLlm() { return agentLlm; }
+    public void setAgentLlm(String agentLlm) { this.agentLlm = agentLlm; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

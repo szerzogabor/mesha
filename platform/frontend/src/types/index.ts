@@ -88,6 +88,9 @@ export interface Label {
   color: string;
 }
 
+export type AgentType = "BLOCKS";
+export type AgentLlm = "claude" | "codex";
+
 export interface Issue {
   id: string;
   projectId: string;
@@ -99,6 +102,8 @@ export interface Issue {
   assignee?: UserSummary;
   labels: Label[];
   aiAssignmentState?: AIAssignmentState;
+  agentType?: AgentType;
+  agentLlm?: AgentLlm;
   createdAt: string;
   updatedAt: string;
 }

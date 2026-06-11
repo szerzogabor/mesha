@@ -73,6 +73,9 @@ export function useUpdateIssue(projectId: string, issueId: string) {
       assigneeId?: string;
       clearAssignee?: boolean;
       labelIds?: string[];
+      agentType?: string;
+      agentLlm?: string;
+      clearAgentAssignee?: boolean;
     }) => apiClient.patch<Issue>(`/api/projects/${projectId}/issues/${issueId}`, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["issue", issueId] });

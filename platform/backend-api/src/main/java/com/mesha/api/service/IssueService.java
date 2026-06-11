@@ -84,6 +84,11 @@ public class IssueService {
             issue.setLabels(new ArrayList<>(labels));
         }
 
+        if (req.agentType() != null && !req.agentType().isBlank()) {
+            issue.setAgentType(req.agentType().toUpperCase());
+            issue.setAgentLlm(req.agentLlm() != null ? req.agentLlm().toLowerCase() : null);
+        }
+
         issue.setNumber(issueRepository.nextNumberForProject(projectId));
         issue = issueRepository.save(issue);
         activityService.record(issue, actor, ActivityEventType.ISSUE_CREATED, null, issue.getTitle());
@@ -165,6 +170,14 @@ public class IssueService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One or more labels do not belong to this workspace");
             }
             issue.setLabels(new ArrayList<>(labels));
+        }
+
+        if (Boolean.TRUE.equals(req.clearAgentAssignee())) {
+            issue.setAgentType(null);
+            issue.setAgentLlm(null);
+        } else if (req.agentType() != null && !req.agentType().isBlank()) {
+            issue.setAgentType(req.agentType().toUpperCase());
+            issue.setAgentLlm(req.agentLlm() != null ? req.agentLlm().toLowerCase() : null);
         }
 
         Issue saved = issueRepository.save(issue);

@@ -12,5 +12,7 @@ public record CreateIssueRequest(
     String status,
     IssuePriority priority,
     UUID assigneeId,
-    List<UUID> labelIds
+    List<UUID> labelIds,
+    String agentType,
+    String agentLlm
 ) {}

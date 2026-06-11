@@ -14,7 +14,7 @@ import { AISessionsPanel } from "@/components/blocks/AISessionsPanel";
 import { ResourcesPanel } from "@/components/blocks/ResourcesPanel";
 import { SessionsActivityList } from "@/components/blocks/SessionsActivityList";
 import { SessionChatDrawer } from "@/components/blocks/SessionChatDrawer";
-import { IssueStatus, IssuePriority, BlocksSession } from "@/types";
+import { IssueStatus, IssuePriority, BlocksSession, AgentLlm } from "@/types";
 import { useLabels } from "@/hooks/useLabels";
 import { formatRelativeTime, statusLabel } from "@/lib/utils";
 const PRIORITIES: IssuePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
@@ -49,6 +49,8 @@ export default function IssueDetailPage({
   const [activeTab, setActiveTab] = useState<"comments" | "activity">("comments");
   const [selectedSession, setSelectedSession] = useState<{ session: BlocksSession; index: number } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showAgentPicker, setShowAgentPicker] = useState(false);
+  const [pendingAgentLlm, setPendingAgentLlm] = useState<AgentLlm>("claude");
 
   if (isLoading || !issue) {
     return (
@@ -304,6 +306,68 @@ export default function IssueDetailPage({
               )}
             </div>
 
+            <div>
+              <label className="block text-xs font-semibold text-text-tertiary uppercase tracking-wide mb-1">
+                AI Agent
+              </label>
+              {issue.agentType === "BLOCKS" ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-6 w-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                      <svg className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <span className="text-sm text-text-primary">
+                      Blocks <span className="text-text-tertiary">/{issue.agentLlm ?? "claude"}</span>
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => updateIssue.mutate({ clearAgentAssignee: true })}
+                    className="text-xs text-text-tertiary hover:text-destructive transition-colors"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : showAgentPicker ? (
+                <div className="space-y-2">
+                  <select
+                    value={pendingAgentLlm}
+                    onChange={(e) => setPendingAgentLlm(e.target.value as AgentLlm)}
+                    className={selectClass}
+                  >
+                    <option value="claude">/claude</option>
+                    <option value="codex">/codex</option>
+                  </select>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={async () => {
+                        await updateIssue.mutateAsync({ agentType: "BLOCKS", agentLlm: pendingAgentLlm });
+                        setShowAgentPicker(false);
+                      }}
+                      disabled={updateIssue.isPending}
+                      className="flex-1 px-2 py-1 text-xs bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50"
+                    >
+                      Assign
+                    </button>
+                    <button
+                      onClick={() => setShowAgentPicker(false)}
+                      className="flex-1 px-2 py-1 text-xs border border-border-default rounded-lg text-text-secondary hover:bg-bg-surface-hover transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowAgentPicker(true)}
+                  className="text-sm text-text-tertiary hover:text-text-primary transition-colors"
+                >
+                  + Assign Blocks AI
+                </button>
+              )}
+            </div>
+
             <div className="relative">
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-semibold text-text-tertiary uppercase tracking-wide">
@@ -364,6 +428,7 @@ export default function IssueDetailPage({
             workspaceId={workspaceId}
             projectId={projectId}
             issueId={issueId}
+            agentLlm={issue.agentLlm}
           />
 
           <ResourcesPanel

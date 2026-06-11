@@ -1,0 +1,3 @@
+ALTER TABLE issues
+    ADD COLUMN IF NOT EXISTS agent_type  VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS agent_llm   VARCHAR(50);

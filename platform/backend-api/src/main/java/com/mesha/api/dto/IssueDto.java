@@ -17,6 +17,8 @@ public record IssueDto(
     UserDto assignee,
     List<LabelDto> labels,
     String aiAssignmentState,
+    String agentType,
+    String agentLlm,
     Instant createdAt,
     Instant updatedAt
 ) {
@@ -35,6 +37,8 @@ public record IssueDto(
             i.getAssignee() != null ? UserDto.from(i.getAssignee()) : null,
             i.getLabels().stream().map(LabelDto::from).toList(),
             i.getAiAssignmentState(),
+            i.getAgentType(),
+            i.getAgentLlm(),
             i.getCreatedAt(),
             i.getUpdatedAt()
         );

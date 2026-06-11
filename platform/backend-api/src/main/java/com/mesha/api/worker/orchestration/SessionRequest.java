@@ -20,5 +20,6 @@ public record SessionRequest(
         String repositoryDefaultBranch,
         List<String> comments,
         String apiKey,
-        String instructions
+        String instructions,
+        String agentLlm
 ) {}

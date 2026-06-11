@@ -189,7 +189,8 @@ class SessionPollService {
                     repo != null ? repo.getDefaultBranch() : null,
                     comments,
                     apiKey,
-                    session.getInstructions()
+                    session.getInstructions(),
+                    issue.getAgentLlm()
             );
             SessionResult result = blocksAdapter.createSession(request);
             session.setProviderSessionId(result.providerSessionId());
