@@ -12,5 +12,8 @@ public record UpdateIssueRequest(
     IssuePriority priority,
     UUID assigneeId,
     Boolean clearAssignee,
-    List<UUID> labelIds
+    List<UUID> labelIds,
+    String agentType,
+    String agentLlm,
+    Boolean clearAgentAssignee
 ) {}

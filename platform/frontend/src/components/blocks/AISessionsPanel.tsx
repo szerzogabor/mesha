@@ -366,9 +366,10 @@ interface Props {
   workspaceId: string;
   projectId: string;
   issueId: string;
+  agentLlm?: string;
 }
 
-export function AISessionsPanel({ workspaceId, projectId, issueId }: Props) {
+export function AISessionsPanel({ workspaceId, projectId, issueId, agentLlm }: Props) {
   const { data: sessions = [], isLoading } = useBlocksSessions(projectId, issueId);
   const { data: blocksConfig, isLoading: configLoading } = useBlocksConfig(workspaceId);
   const assignMutation = useAssignToBlocks(projectId, issueId);
@@ -465,6 +466,11 @@ export function AISessionsPanel({ workspaceId, projectId, issueId }: Props) {
       {/* Start new session */}
       {isConnected && (
         <div className="space-y-2">
+          {agentLlm && (
+            <p className="text-xs text-text-tertiary">
+              Agent: <span className="font-mono text-text-secondary">/{agentLlm}</span>
+            </p>
+          )}
           {showInstructions ? (
             <div className="space-y-2 rounded-lg border border-border-default bg-bg-surface p-3">
               <label className="block text-xs font-medium text-text-secondary">

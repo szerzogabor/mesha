@@ -110,6 +110,8 @@ public class AIDraftService {
             status,
             priority,
             null,
+            null,
+            null,
             null
         );
 
