@@ -39,8 +39,8 @@ export function KanbanColumn({ status, issues, workspaceId, projectId }: KanbanC
   };
 
   return (
-    <div ref={setSortRef} style={style} className="flex flex-col w-72 flex-shrink-0">
-      <div className="flex items-center gap-2 mb-3 px-1">
+    <div ref={setSortRef} style={style} className="flex flex-col w-72 flex-shrink-0 min-h-0">
+      <div className="flex items-center gap-2 mb-3 px-1 flex-shrink-0">
         <button
           {...attributes}
           {...listeners}
@@ -75,7 +75,7 @@ export function KanbanColumn({ status, issues, workspaceId, projectId }: KanbanC
       <div
         ref={setDropRef}
         className={cn(
-          "flex flex-col gap-2 flex-1 p-2 rounded-xl min-h-[120px] transition-colors",
+          "flex flex-col gap-2 flex-1 p-2 rounded-xl min-h-[120px] overflow-y-auto transition-colors",
           isOver ? "bg-accent/5 ring-1 ring-inset ring-accent/30" : "bg-bg-surface-hover"
         )}
       >
