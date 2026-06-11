@@ -31,6 +31,7 @@ public class IssueService {
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final ActivityService activityService;
     private final ProjectStatusRepository projectStatusRepository;
+    private final IssueSseService issueSseService;
 
     public IssueService(IssueRepository issueRepository,
                         ProjectRepository projectRepository,
@@ -38,7 +39,8 @@ public class IssueService {
                         LabelRepository labelRepository,
                         WorkspaceMemberRepository workspaceMemberRepository,
                         ActivityService activityService,
-                        ProjectStatusRepository projectStatusRepository) {
+                        ProjectStatusRepository projectStatusRepository,
+                        IssueSseService issueSseService) {
         this.issueRepository = issueRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
@@ -46,6 +48,7 @@ public class IssueService {
         this.workspaceMemberRepository = workspaceMemberRepository;
         this.activityService = activityService;
         this.projectStatusRepository = projectStatusRepository;
+        this.issueSseService = issueSseService;
     }
 
     @Transactional
@@ -181,6 +184,7 @@ public class IssueService {
         }
 
         Issue saved = issueRepository.save(issue);
+        issueSseService.broadcastUpdate(saved);
         log.debug("Issue updated issueId={} actorId={}", issueId, actor.getId());
         return saved;
     }
