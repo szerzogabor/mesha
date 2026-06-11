@@ -86,7 +86,7 @@ export function useIssueEvents(projectId: string) {
         }
 
         if (isMounted) scheduleReconnect();
-      } catch (e) {
+      } catch {
         if (isMounted) scheduleReconnect();
       }
     }
