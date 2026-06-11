@@ -1,10 +1,11 @@
 package com.mesha.api.service;
 
+import com.mesha.api.dto.AutomationActionRequest;
 import com.mesha.api.dto.CreateAutomationRuleRequest;
 import com.mesha.api.dto.UpdateAutomationRuleRequest;
 import com.mesha.api.model.ActivityEventType;
-import com.mesha.api.model.AutomationActionType;
 import com.mesha.api.model.AutomationRule;
+import com.mesha.api.model.AutomationRuleAction;
 import com.mesha.api.model.AutomationTriggerType;
 import com.mesha.api.model.Issue;
 import com.mesha.api.model.Label;
@@ -62,7 +63,7 @@ public class AutomationService {
     }
 
     public List<AutomationRule> list(UUID projectId) {
-        return ruleRepository.findAllByProjectIdOrderByCreatedAtAsc(projectId);
+        return ruleRepository.findAllByProjectIdWithActions(projectId);
     }
 
     @Transactional
@@ -70,17 +71,18 @@ public class AutomationService {
         Project project = projectRepository.findById(projectId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
 
-        validateActionValue(project, req.actionType(), req.actionValue());
+        for (AutomationActionRequest action : req.actions()) {
+            validateActionValue(project, action);
+        }
 
         AutomationRule rule = new AutomationRule();
         rule.setProject(project);
         rule.setTriggerType(req.triggerType());
-        rule.setActionType(req.actionType());
-        rule.setActionValue(req.actionValue().trim());
         rule.setCreatedBy(actor);
+        applyActions(rule, req.actions());
         AutomationRule saved = ruleRepository.save(rule);
-        log.info("Created automation rule ruleId={} projectId={} trigger={} action={} value={}",
-                saved.getId(), projectId, req.triggerType(), req.actionType(), req.actionValue());
+        log.info("Created automation rule ruleId={} projectId={} trigger={} actionCount={}",
+                saved.getId(), projectId, req.triggerType(), req.actions().size());
         return saved;
     }
 
@@ -91,19 +93,22 @@ public class AutomationService {
         if (req.triggerType() != null) {
             rule.setTriggerType(req.triggerType());
         }
-        AutomationActionType actionType = req.actionType() != null ? req.actionType() : rule.getActionType();
-        String actionValue = req.actionValue() != null ? req.actionValue().trim() : rule.getActionValue();
-        if (req.actionType() != null || req.actionValue() != null) {
-            validateActionValue(rule.getProject(), actionType, actionValue);
-            rule.setActionType(actionType);
-            rule.setActionValue(actionValue);
+        if (req.actions() != null) {
+            if (req.actions().isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A rule must have at least one action");
+            }
+            for (AutomationActionRequest action : req.actions()) {
+                validateActionValue(rule.getProject(), action);
+            }
+            applyActions(rule, req.actions());
         }
         if (req.enabled() != null) {
             rule.setEnabled(req.enabled());
         }
 
         AutomationRule saved = ruleRepository.save(rule);
-        log.info("Updated automation rule ruleId={} projectId={} enabled={}", ruleId, projectId, saved.isEnabled());
+        log.info("Updated automation rule ruleId={} projectId={} enabled={} actionCount={}",
+                ruleId, projectId, saved.isEnabled(), saved.getActions().size());
         return saved;
     }
 
@@ -112,6 +117,19 @@ public class AutomationService {
         AutomationRule rule = getById(projectId, ruleId);
         ruleRepository.delete(rule);
         log.info("Deleted automation rule ruleId={} projectId={}", ruleId, projectId);
+    }
+
+    private void applyActions(AutomationRule rule, List<AutomationActionRequest> actions) {
+        rule.getActions().clear();
+        for (int i = 0; i < actions.size(); i++) {
+            AutomationActionRequest req = actions.get(i);
+            AutomationRuleAction action = new AutomationRuleAction();
+            action.setRule(rule);
+            action.setActionType(req.actionType());
+            action.setActionValue(req.actionValue().trim());
+            action.setPosition(i);
+            rule.getActions().add(action);
+        }
     }
 
     /**
@@ -144,7 +162,7 @@ public class AutomationService {
     private void runRules(AutomationTriggerType trigger, UUID projectId, UUID issueId) {
         List<AutomationRule> rules;
         try {
-            rules = ruleRepository.findAllByProjectIdAndTriggerTypeAndEnabledTrue(projectId, trigger);
+            rules = ruleRepository.findEnabledByProjectIdAndTriggerTypeWithActions(projectId, trigger);
         } catch (Exception e) {
             log.warn("automation_rule_lookup_failed projectId={} trigger={} error={}", projectId, trigger, e.getMessage());
             return;
@@ -165,14 +183,16 @@ public class AutomationService {
             log.warn("automation_issue_missing ruleId={} issueId={}", rule.getId(), issueId);
             return;
         }
-        switch (rule.getActionType()) {
-            case SET_STATUS -> applySetStatus(rule, projectId, issue);
-            case ADD_LABEL -> applyAddLabel(rule, issue);
+        for (AutomationRuleAction action : rule.getActions()) {
+            switch (action.getActionType()) {
+                case SET_STATUS -> applySetStatus(rule, action, projectId, issue);
+                case ADD_LABEL -> applyAddLabel(rule, action, issue);
+            }
         }
     }
 
-    private void applySetStatus(AutomationRule rule, UUID projectId, Issue issue) {
-        String newStatus = rule.getActionValue();
+    private void applySetStatus(AutomationRule rule, AutomationRuleAction action, UUID projectId, Issue issue) {
+        String newStatus = action.getActionValue();
         if (!projectStatusRepository.existsByProjectIdAndName(projectId, newStatus)) {
             log.warn("automation_status_missing ruleId={} projectId={} status={}", rule.getId(), projectId, newStatus);
             return;
@@ -188,12 +208,12 @@ public class AutomationService {
                 rule.getId(), issue.getId(), oldStatus, newStatus);
     }
 
-    private void applyAddLabel(AutomationRule rule, Issue issue) {
+    private void applyAddLabel(AutomationRule rule, AutomationRuleAction action, Issue issue) {
         UUID labelId;
         try {
-            labelId = UUID.fromString(rule.getActionValue());
+            labelId = UUID.fromString(action.getActionValue());
         } catch (IllegalArgumentException e) {
-            log.warn("automation_label_value_invalid ruleId={} value={}", rule.getId(), rule.getActionValue());
+            log.warn("automation_label_value_invalid ruleId={} value={}", rule.getId(), action.getActionValue());
             return;
         }
         boolean alreadyPresent = issue.getLabels().stream().anyMatch(l -> l.getId().equals(labelId));
@@ -211,11 +231,12 @@ public class AutomationService {
         log.info("automation_label_applied ruleId={} issueId={} labelId={}", rule.getId(), issue.getId(), labelId);
     }
 
-    private void validateActionValue(Project project, AutomationActionType actionType, String actionValue) {
+    private void validateActionValue(Project project, AutomationActionRequest action) {
+        String actionValue = action.actionValue();
         if (actionValue == null || actionValue.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Action value is required");
         }
-        switch (actionType) {
+        switch (action.actionType()) {
             case SET_STATUS -> {
                 if (!projectStatusRepository.existsByProjectIdAndName(project.getId(), actionValue.trim())) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST,

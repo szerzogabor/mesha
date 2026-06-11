@@ -1,18 +1,17 @@
 package com.mesha.api.dto;
 
-import com.mesha.api.model.AutomationActionType;
 import com.mesha.api.model.AutomationRule;
 import com.mesha.api.model.AutomationTriggerType;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public record AutomationRuleDto(
     UUID id,
     UUID projectId,
     AutomationTriggerType triggerType,
-    AutomationActionType actionType,
-    String actionValue,
+    List<AutomationActionDto> actions,
     boolean enabled,
     Instant createdAt,
     Instant updatedAt
@@ -22,8 +21,7 @@ public record AutomationRuleDto(
             r.getId(),
             r.getProject().getId(),
             r.getTriggerType(),
-            r.getActionType(),
-            r.getActionValue(),
+            r.getActions().stream().map(AutomationActionDto::from).toList(),
             r.isEnabled(),
             r.getCreatedAt(),
             r.getUpdatedAt()

@@ -1,9 +1,11 @@
 package com.mesha.api.service;
 
+import com.mesha.api.dto.AutomationActionRequest;
 import com.mesha.api.dto.CreateAutomationRuleRequest;
 import com.mesha.api.model.ActivityEventType;
 import com.mesha.api.model.AutomationActionType;
 import com.mesha.api.model.AutomationRule;
+import com.mesha.api.model.AutomationRuleAction;
 import com.mesha.api.model.AutomationTriggerType;
 import com.mesha.api.model.Issue;
 import com.mesha.api.model.Label;
@@ -83,15 +85,24 @@ class AutomationServiceTest {
         ReflectionTestUtils.setField(rule, "id", UUID.randomUUID());
         rule.setProject(project);
         rule.setTriggerType(AutomationTriggerType.PR_OPENED);
-        rule.setActionType(actionType);
-        rule.setActionValue(value);
+        addAction(rule, actionType, value);
         return rule;
+    }
+
+    private void addAction(AutomationRule rule, AutomationActionType actionType, String value) {
+        AutomationRuleAction action = new AutomationRuleAction();
+        ReflectionTestUtils.setField(action, "id", UUID.randomUUID());
+        action.setRule(rule);
+        action.setActionType(actionType);
+        action.setActionValue(value);
+        action.setPosition(rule.getActions().size());
+        rule.getActions().add(action);
     }
 
     @Test
     void executeForAppliesSetStatusRule() {
         AutomationRule rule = rule(AutomationActionType.SET_STATUS, "REVIEW");
-        when(ruleRepository.findAllByProjectIdAndTriggerTypeAndEnabledTrue(projectId, AutomationTriggerType.PR_OPENED))
+        when(ruleRepository.findEnabledByProjectIdAndTriggerTypeWithActions(projectId, AutomationTriggerType.PR_OPENED))
                 .thenReturn(List.of(rule));
         when(projectStatusRepository.existsByProjectIdAndName(projectId, "REVIEW")).thenReturn(true);
 
@@ -103,9 +114,32 @@ class AutomationServiceTest {
     }
 
     @Test
+    void executeForAppliesAllActionsOfOneRule() {
+        UUID labelId = UUID.randomUUID();
+        Label label = new Label();
+        ReflectionTestUtils.setField(label, "id", labelId);
+        label.setName("session failed");
+
+        AutomationRule rule = rule(AutomationActionType.SET_STATUS, "PENDING");
+        addAction(rule, AutomationActionType.ADD_LABEL, labelId.toString());
+
+        when(ruleRepository.findEnabledByProjectIdAndTriggerTypeWithActions(projectId, AutomationTriggerType.BLOCKS_SESSION_FAILED))
+                .thenReturn(List.of(rule));
+        when(projectStatusRepository.existsByProjectIdAndName(projectId, "PENDING")).thenReturn(true);
+        when(labelRepository.findById(labelId)).thenReturn(Optional.of(label));
+
+        service.executeFor(AutomationTriggerType.BLOCKS_SESSION_FAILED, issue);
+
+        assertThat(issue.getStatus()).isEqualTo("PENDING");
+        assertThat(issue.getLabels()).containsExactly(label);
+        verify(activityService).record(eq(issue), isNull(), eq(ActivityEventType.STATUS_CHANGED), eq("TODO"), eq("PENDING"));
+        verify(activityService).record(eq(issue), isNull(), eq(ActivityEventType.LABEL_ADDED), isNull(), eq("session failed"));
+    }
+
+    @Test
     void executeForSkipsSetStatusWhenStatusNoLongerExists() {
         AutomationRule rule = rule(AutomationActionType.SET_STATUS, "GONE");
-        when(ruleRepository.findAllByProjectIdAndTriggerTypeAndEnabledTrue(projectId, AutomationTriggerType.PR_OPENED))
+        when(ruleRepository.findEnabledByProjectIdAndTriggerTypeWithActions(projectId, AutomationTriggerType.PR_OPENED))
                 .thenReturn(List.of(rule));
         when(projectStatusRepository.existsByProjectIdAndName(projectId, "GONE")).thenReturn(false);
 
@@ -124,7 +158,7 @@ class AutomationServiceTest {
         label.setName("needs-review");
 
         AutomationRule rule = rule(AutomationActionType.ADD_LABEL, labelId.toString());
-        when(ruleRepository.findAllByProjectIdAndTriggerTypeAndEnabledTrue(projectId, AutomationTriggerType.PR_OPENED))
+        when(ruleRepository.findEnabledByProjectIdAndTriggerTypeWithActions(projectId, AutomationTriggerType.PR_OPENED))
                 .thenReturn(List.of(rule));
         when(labelRepository.findById(labelId)).thenReturn(Optional.of(label));
 
@@ -143,7 +177,7 @@ class AutomationServiceTest {
     @Test
     void executeForDefersExecutionUntilCallerTransactionCommits() {
         AutomationRule rule = rule(AutomationActionType.SET_STATUS, "REVIEW");
-        when(ruleRepository.findAllByProjectIdAndTriggerTypeAndEnabledTrue(projectId, AutomationTriggerType.PR_OPENED))
+        when(ruleRepository.findEnabledByProjectIdAndTriggerTypeWithActions(projectId, AutomationTriggerType.PR_OPENED))
                 .thenReturn(List.of(rule));
         when(projectStatusRepository.existsByProjectIdAndName(projectId, "REVIEW")).thenReturn(true);
 
@@ -168,7 +202,7 @@ class AutomationServiceTest {
     @Test
     void executeForNeverPropagatesRuleFailures() {
         AutomationRule rule = rule(AutomationActionType.SET_STATUS, "REVIEW");
-        when(ruleRepository.findAllByProjectIdAndTriggerTypeAndEnabledTrue(projectId, AutomationTriggerType.PR_OPENED))
+        when(ruleRepository.findEnabledByProjectIdAndTriggerTypeWithActions(projectId, AutomationTriggerType.PR_OPENED))
                 .thenReturn(List.of(rule));
         when(projectStatusRepository.existsByProjectIdAndName(projectId, "REVIEW")).thenReturn(true);
         when(issueRepository.save(any())).thenThrow(new RuntimeException("db down"));
@@ -182,7 +216,8 @@ class AutomationServiceTest {
         when(projectStatusRepository.existsByProjectIdAndName(projectId, "NOPE")).thenReturn(false);
 
         CreateAutomationRuleRequest req = new CreateAutomationRuleRequest(
-                AutomationTriggerType.PR_OPENED, AutomationActionType.SET_STATUS, "NOPE");
+                AutomationTriggerType.PR_OPENED,
+                List.of(new AutomationActionRequest(AutomationActionType.SET_STATUS, "NOPE")));
 
         assertThatThrownBy(() -> service.create(projectId, req, null))
                 .isInstanceOf(ResponseStatusException.class)
@@ -202,10 +237,38 @@ class AutomationServiceTest {
         when(labelRepository.findById(labelId)).thenReturn(Optional.of(label));
 
         CreateAutomationRuleRequest req = new CreateAutomationRuleRequest(
-                AutomationTriggerType.PR_MERGED, AutomationActionType.ADD_LABEL, labelId.toString());
+                AutomationTriggerType.PR_MERGED,
+                List.of(new AutomationActionRequest(AutomationActionType.ADD_LABEL, labelId.toString())));
 
         assertThatThrownBy(() -> service.create(projectId, req, null))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Unknown label");
+    }
+
+    @Test
+    void createStoresAllActionsInOrder() {
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+        when(projectStatusRepository.existsByProjectIdAndName(projectId, "PENDING")).thenReturn(true);
+
+        UUID labelId = UUID.randomUUID();
+        Label label = new Label();
+        ReflectionTestUtils.setField(label, "id", labelId);
+        label.setWorkspace(project.getWorkspace());
+        when(labelRepository.findById(labelId)).thenReturn(Optional.of(label));
+        when(ruleRepository.save(any(AutomationRule.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CreateAutomationRuleRequest req = new CreateAutomationRuleRequest(
+                AutomationTriggerType.BLOCKS_SESSION_FAILED,
+                List.of(
+                        new AutomationActionRequest(AutomationActionType.SET_STATUS, "PENDING"),
+                        new AutomationActionRequest(AutomationActionType.ADD_LABEL, labelId.toString())));
+
+        AutomationRule saved = service.create(projectId, req, null);
+
+        assertThat(saved.getActions()).hasSize(2);
+        assertThat(saved.getActions().get(0).getActionType()).isEqualTo(AutomationActionType.SET_STATUS);
+        assertThat(saved.getActions().get(0).getPosition()).isEqualTo(0);
+        assertThat(saved.getActions().get(1).getActionType()).isEqualTo(AutomationActionType.ADD_LABEL);
+        assertThat(saved.getActions().get(1).getPosition()).isEqualTo(1);
     }
 }

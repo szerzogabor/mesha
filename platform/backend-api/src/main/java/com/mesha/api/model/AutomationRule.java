@@ -2,6 +2,8 @@ package com.mesha.api.model;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -21,12 +23,9 @@ public class AutomationRule {
     @Column(name = "trigger_type", nullable = false, length = 50)
     private AutomationTriggerType triggerType;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "action_type", nullable = false, length = 50)
-    private AutomationActionType actionType;
-
-    @Column(name = "action_value", nullable = false, length = 255)
-    private String actionValue;
+    @OneToMany(mappedBy = "rule", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("position ASC")
+    private List<AutomationRuleAction> actions = new ArrayList<>();
 
     @Column(nullable = false)
     private boolean enabled = true;
@@ -51,10 +50,7 @@ public class AutomationRule {
     public void setProject(Project project) { this.project = project; }
     public AutomationTriggerType getTriggerType() { return triggerType; }
     public void setTriggerType(AutomationTriggerType triggerType) { this.triggerType = triggerType; }
-    public AutomationActionType getActionType() { return actionType; }
-    public void setActionType(AutomationActionType actionType) { this.actionType = actionType; }
-    public String getActionValue() { return actionValue; }
-    public void setActionValue(String actionValue) { this.actionValue = actionValue; }
+    public List<AutomationRuleAction> getActions() { return actions; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public User getCreatedBy() { return createdBy; }

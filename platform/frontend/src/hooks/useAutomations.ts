@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
-import { AutomationRule, AutomationActionType, AutomationTriggerType } from "@/types";
+import { AutomationAction, AutomationRule, AutomationTriggerType } from "@/types";
 
 export function useAutomations(projectId: string) {
   return useQuery({
@@ -17,8 +17,7 @@ export function useCreateAutomation(projectId: string) {
   return useMutation({
     mutationFn: (data: {
       triggerType: AutomationTriggerType;
-      actionType: AutomationActionType;
-      actionValue: string;
+      actions: AutomationAction[];
     }) => apiClient.post<AutomationRule>(`/api/projects/${projectId}/automations`, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automations", projectId] });
@@ -36,8 +35,7 @@ export function useUpdateAutomation(projectId: string) {
       ruleId: string;
       data: {
         triggerType?: AutomationTriggerType;
-        actionType?: AutomationActionType;
-        actionValue?: string;
+        actions?: AutomationAction[];
         enabled?: boolean;
       };
     }) => apiClient.patch<AutomationRule>(`/api/projects/${projectId}/automations/${ruleId}`, data),

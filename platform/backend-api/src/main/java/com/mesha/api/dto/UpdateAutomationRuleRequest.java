@@ -1,12 +1,12 @@
 package com.mesha.api.dto;
 
-import com.mesha.api.model.AutomationActionType;
 import com.mesha.api.model.AutomationTriggerType;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.Valid;
+
+import java.util.List;
 
 public record UpdateAutomationRuleRequest(
     AutomationTriggerType triggerType,
-    AutomationActionType actionType,
-    @Size(max = 255) String actionValue,
+    @Valid List<AutomationActionRequest> actions,
     Boolean enabled
 ) {}
