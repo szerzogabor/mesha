@@ -17,6 +17,7 @@ import { SessionsActivityList } from "@/components/blocks/SessionsActivityList";
 import { SessionChatDrawer } from "@/components/blocks/SessionChatDrawer";
 import { IssueStatus, IssuePriority, BlocksSession, AgentLlm } from "@/types";
 import { useLabels } from "@/hooks/useLabels";
+import { useIssueEvents } from "@/hooks/useIssueEvents";
 import { formatRelativeTime, statusLabel } from "@/lib/utils";
 const PRIORITIES: IssuePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
@@ -30,6 +31,8 @@ export default function IssueDetailPage({
 }) {
   const { workspaceId, projectId, issueId } = use(params);
   const router = useRouter();
+
+  useIssueEvents(projectId);
 
   const { data: issue, isLoading } = useIssue(projectId, issueId);
   const { data: comments = [] } = useComments(issueId);

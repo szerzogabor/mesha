@@ -8,6 +8,7 @@ import {
   useUpdateIssueInProject,
 } from "@/hooks/useIssues";
 import { useProjectStatuses, useReorderProjectStatuses } from "@/hooks/useProjectStatuses";
+import { useIssueEvents } from "@/hooks/useIssueEvents";
 import { IssueFilters } from "@/components/issues/IssueFilters";
 import { CreateIssueModal } from "@/components/issues/CreateIssueModal";
 import { AIDraftModal } from "@/components/issues/AIDraftModal";
@@ -70,6 +71,8 @@ export default function ProjectPage({
     setSearch(s);
     handleFilterChange();
   };
+
+  useIssueEvents(projectId);
 
   const listQuery = useIssues(projectId, {
     status,
