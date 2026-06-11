@@ -67,8 +67,9 @@ function ActionValueSelector({
 }: ActionValueSelectorProps) {
   const [creatingLabel, setCreatingLabel] = useState(false);
   const [labelName, setLabelName] = useState("");
-  const [labelColor, setLabelColor] = useState("#6366f1");
+  const [labelColor, setLabelColor] = useState(PRESET_COLORS[0]);
   const [labelError, setLabelError] = useState<string | null>(null);
+  const [pendingLabel, setPendingLabel] = useState<{ id: string; name: string } | null>(null);
   const createLabel = useCreateLabel(workspaceId);
 
   const valueOptions =
@@ -76,14 +77,24 @@ function ActionValueSelector({
       ? statuses.map((s) => ({ value: s.name, label: statusLabel(s.name) }))
       : labels.map((l) => ({ value: l.id, label: l.name }));
 
+  // Keep the selected value resolvable when it isn't in the fetched labels yet:
+  // a just-created label (cache refetch still in flight) or a since-deleted one.
+  if (actionType === "ADD_LABEL" && value && !labels.some((l) => l.id === value)) {
+    valueOptions.push({
+      value,
+      label: pendingLabel?.id === value ? pendingLabel.name : "(deleted label)",
+    });
+  }
+
   const handleCreateLabel = async () => {
-    if (!labelName.trim()) return;
+    if (!labelName.trim() || createLabel.isPending) return;
     setLabelError(null);
     try {
       const newLabel = await createLabel.mutateAsync({ name: labelName.trim(), color: labelColor });
+      setPendingLabel({ id: newLabel.id, name: newLabel.name });
       onChange(newLabel.id);
       setLabelName("");
-      setLabelColor("#6366f1");
+      setLabelColor(PRESET_COLORS[0]);
       setCreatingLabel(false);
     } catch (err) {
       setLabelError(err instanceof Error ? err.message : "Failed to create label");
@@ -140,6 +151,7 @@ function ActionValueSelector({
                   key={c}
                   type="button"
                   onClick={() => setLabelColor(c)}
+                  aria-label={`Select color ${c}`}
                   className="w-5 h-5 rounded-full border-2 transition-transform hover:scale-110"
                   style={{
                     backgroundColor: c,
