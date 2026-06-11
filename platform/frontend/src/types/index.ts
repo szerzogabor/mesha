@@ -301,7 +301,10 @@ export type AutomationTriggerType =
   | "PR_CLOSED"
   | "BLOCKS_SESSION_STARTED"
   | "BLOCKS_SESSION_COMPLETED"
-  | "BLOCKS_SESSION_FAILED";
+  | "BLOCKS_SESSION_FAILED"
+  | "STATUS_UPDATED"
+  | "LABEL_ADDED"
+  | "AI_TOKEN_LIMIT_HIT";
 
 export type AutomationActionType = "SET_STATUS" | "ADD_LABEL";
 
@@ -314,6 +317,7 @@ export interface AutomationRule {
   id: string;
   projectId: string;
   triggerType: AutomationTriggerType;
+  triggerValue?: string;
   actions: AutomationAction[];
   enabled: boolean;
   createdAt: string;

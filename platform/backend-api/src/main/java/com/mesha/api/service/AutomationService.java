@@ -71,6 +71,7 @@ public class AutomationService {
         Project project = projectRepository.findById(projectId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
 
+        validateTriggerValue(project, req.triggerType(), req.triggerValue());
         for (AutomationActionRequest action : req.actions()) {
             validateActionValue(project, action);
         }
@@ -78,11 +79,12 @@ public class AutomationService {
         AutomationRule rule = new AutomationRule();
         rule.setProject(project);
         rule.setTriggerType(req.triggerType());
+        rule.setTriggerValue(normalizeTriggerValue(req.triggerType(), req.triggerValue()));
         rule.setCreatedBy(actor);
         applyActions(rule, req.actions());
         AutomationRule saved = ruleRepository.save(rule);
-        log.info("Created automation rule ruleId={} projectId={} trigger={} actionCount={}",
-                saved.getId(), projectId, req.triggerType(), req.actions().size());
+        log.info("Created automation rule ruleId={} projectId={} trigger={} triggerValue={} actionCount={}",
+                saved.getId(), projectId, req.triggerType(), saved.getTriggerValue(), req.actions().size());
         return saved;
     }
 
@@ -90,8 +92,15 @@ public class AutomationService {
     public AutomationRule update(UUID projectId, UUID ruleId, UpdateAutomationRuleRequest req) {
         AutomationRule rule = getById(projectId, ruleId);
 
-        if (req.triggerType() != null) {
-            rule.setTriggerType(req.triggerType());
+        AutomationTriggerType effectiveTriggerType = req.triggerType() != null ? req.triggerType() : rule.getTriggerType();
+        if (req.triggerType() != null || req.triggerValue() != null) {
+            validateTriggerValue(rule.getProject(), effectiveTriggerType, req.triggerValue());
+            if (req.triggerType() != null) {
+                rule.setTriggerType(req.triggerType());
+            }
+            if (req.triggerValue() != null) {
+                rule.setTriggerValue(normalizeTriggerValue(effectiveTriggerType, req.triggerValue()));
+            }
         }
         if (req.actions() != null) {
             if (req.actions().isEmpty()) {
@@ -142,6 +151,14 @@ public class AutomationService {
      * then runs in its own transaction so one failing rule cannot roll back the others.
      */
     public void executeFor(AutomationTriggerType trigger, Issue issue) {
+        executeFor(trigger, issue, null);
+    }
+
+    /**
+     * Executes rules for parameterized triggers (STATUS_UPDATED, LABEL_ADDED).
+     * matchValue is compared against each rule's triggerValue; rules with no triggerValue always match.
+     */
+    public void executeFor(AutomationTriggerType trigger, Issue issue, String matchValue) {
         if (issue == null) {
             return;
         }
@@ -151,18 +168,22 @@ public class AutomationService {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    runRules(trigger, projectId, issueId);
+                    runRules(trigger, projectId, issueId, matchValue);
                 }
             });
         } else {
-            runRules(trigger, projectId, issueId);
+            runRules(trigger, projectId, issueId, matchValue);
         }
     }
 
-    private void runRules(AutomationTriggerType trigger, UUID projectId, UUID issueId) {
+    private void runRules(AutomationTriggerType trigger, UUID projectId, UUID issueId, String matchValue) {
         List<AutomationRule> rules;
         try {
-            rules = ruleRepository.findEnabledByProjectIdAndTriggerTypeWithActions(projectId, trigger);
+            if (matchValue != null) {
+                rules = ruleRepository.findEnabledByProjectIdAndTriggerTypeAndValueWithActions(projectId, trigger, matchValue);
+            } else {
+                rules = ruleRepository.findEnabledByProjectIdAndTriggerTypeWithActions(projectId, trigger);
+            }
         } catch (Exception e) {
             log.warn("automation_rule_lookup_failed projectId={} trigger={} error={}", projectId, trigger, e.getMessage());
             return;
@@ -229,6 +250,53 @@ public class AutomationService {
         issueRepository.save(issue);
         activityService.record(issue, null, ActivityEventType.LABEL_ADDED, null, label.get().getName());
         log.info("automation_label_applied ruleId={} issueId={} labelId={}", rule.getId(), issue.getId(), labelId);
+    }
+
+    private void validateTriggerValue(Project project, AutomationTriggerType triggerType, String triggerValue) {
+        switch (triggerType) {
+            case STATUS_UPDATED -> {
+                if (triggerValue == null || triggerValue.isBlank()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "triggerValue (target status) is required for STATUS_UPDATED trigger");
+                }
+                String normalized = triggerValue.trim().toUpperCase();
+                if (!projectStatusRepository.existsByProjectIdAndName(project.getId(), normalized)) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Unknown status for this project: " + triggerValue);
+                }
+            }
+            case LABEL_ADDED -> {
+                if (triggerValue == null || triggerValue.isBlank()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "triggerValue (label id) is required for LABEL_ADDED trigger");
+                }
+                UUID labelId;
+                try {
+                    labelId = UUID.fromString(triggerValue.trim());
+                } catch (IllegalArgumentException e) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "triggerValue must be a label id");
+                }
+                UUID workspaceId = project.getWorkspace().getId();
+                boolean inWorkspace = labelRepository.findById(labelId)
+                        .map(l -> l.getWorkspace().getId().equals(workspaceId))
+                        .orElse(false);
+                if (!inWorkspace) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Unknown label for this workspace: " + triggerValue);
+                }
+            }
+            default -> {
+                // Non-parameterized triggers do not require a triggerValue
+            }
+        }
+    }
+
+    private String normalizeTriggerValue(AutomationTriggerType triggerType, String triggerValue) {
+        if (triggerValue == null) return null;
+        return switch (triggerType) {
+            case STATUS_UPDATED -> triggerValue.trim().toUpperCase();
+            default -> triggerValue.trim();
+        };
     }
 
     private void validateActionValue(Project project, AutomationActionRequest action) {

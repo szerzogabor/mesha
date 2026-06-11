@@ -17,6 +17,7 @@ export function useCreateAutomation(projectId: string) {
   return useMutation({
     mutationFn: (data: {
       triggerType: AutomationTriggerType;
+      triggerValue?: string;
       actions: AutomationAction[];
     }) => apiClient.post<AutomationRule>(`/api/projects/${projectId}/automations`, data),
     onSuccess: () => {
@@ -35,6 +36,7 @@ export function useUpdateAutomation(projectId: string) {
       ruleId: string;
       data: {
         triggerType?: AutomationTriggerType;
+        triggerValue?: string;
         actions?: AutomationAction[];
         enabled?: boolean;
       };
