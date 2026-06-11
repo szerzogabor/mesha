@@ -268,6 +268,28 @@ export interface GitHubPullRequest {
   updatedAt: string;
 }
 
+export type IssueLinkType =
+  | "DEPENDS_ON"
+  | "BLOCKS"
+  | "DUPLICATE_OF"
+  | "PARENT_OF"
+  | "CHILD_OF";
+
+export interface LinkedIssueSummary {
+  id: string;
+  identifier?: string;
+  title: string;
+  status: string;
+}
+
+export interface IssueLink {
+  id: string;
+  linkType: IssueLinkType;
+  sourceIssue: LinkedIssueSummary;
+  targetIssue: LinkedIssueSummary;
+  createdAt: string;
+}
+
 export type AutomationTriggerType =
   | "PR_OPENED"
   | "PR_MERGED"

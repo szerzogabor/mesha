@@ -12,6 +12,7 @@ import { ActivityFeed } from "@/components/activity/ActivityFeed";
 import { Spinner } from "@/components/ui/Spinner";
 import { AISessionsPanel } from "@/components/blocks/AISessionsPanel";
 import { ResourcesPanel } from "@/components/blocks/ResourcesPanel";
+import { IssueLinksPanel } from "@/components/issues/IssueLinksPanel";
 import { SessionsActivityList } from "@/components/blocks/SessionsActivityList";
 import { SessionChatDrawer } from "@/components/blocks/SessionChatDrawer";
 import { IssueStatus, IssuePriority, BlocksSession } from "@/types";
@@ -359,6 +360,11 @@ export default function IssueDetailPage({
               )}
             </div>
           </div>
+
+          <IssueLinksPanel
+            issueId={issueId}
+            projectId={projectId}
+          />
 
           <AISessionsPanel
             workspaceId={workspaceId}
