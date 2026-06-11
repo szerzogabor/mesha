@@ -45,6 +45,11 @@ export function KanbanCard({ issue, workspaceId, projectId, overlay = false }: K
         onClick={(e) => isDragging && e.preventDefault()}
         draggable={false}
       >
+        {issue.identifier && (
+          <span className="text-xs font-mono text-text-tertiary mb-1 block">
+            {issue.identifier}
+          </span>
+        )}
         <p className="text-sm font-medium text-text-primary mb-2.5 line-clamp-2 leading-snug">
           {issue.title}
         </p>
