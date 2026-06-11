@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Issue } from "@/types";
+import { Issue, LinkedPullRequest } from "@/types";
 import { StatusBadge } from "./StatusBadge";
 import { PriorityBadge } from "./PriorityBadge";
 import { formatRelativeTime } from "@/lib/utils";
@@ -9,6 +9,19 @@ interface IssueCardProps {
   issue: Issue;
   workspaceId: string;
   projectId: string;
+}
+
+function getPrStateColor(pr: LinkedPullRequest): string {
+  if (pr.mergedAt) return "text-purple-500";
+  if (pr.state === "closed") return "text-red-500";
+  return "text-green-500";
+}
+
+function getPrLabel(pr: LinkedPullRequest): string {
+  const num = pr.githubPrNumber ? `#${pr.githubPrNumber}` : "PR";
+  if (pr.mergedAt) return `${num} merged`;
+  if (pr.state === "closed") return `${num} closed`;
+  return `${num} open`;
 }
 
 export function IssueCard({ issue, workspaceId, projectId }: IssueCardProps) {
@@ -43,6 +56,17 @@ export function IssueCard({ issue, workspaceId, projectId }: IssueCardProps) {
                 {label.name}
               </Badge>
             ))}
+            {issue.lastPullRequest && (
+              <a
+                href={issue.lastPullRequest.htmlUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className={`text-xs font-medium hover:underline ${getPrStateColor(issue.lastPullRequest)}`}
+              >
+                {getPrLabel(issue.lastPullRequest)}
+              </a>
+            )}
           </div>
         </div>
         <span className="text-xs text-text-tertiary whitespace-nowrap">

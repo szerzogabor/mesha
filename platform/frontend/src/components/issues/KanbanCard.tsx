@@ -3,7 +3,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
-import { Issue } from "@/types";
+import { Issue, LinkedPullRequest } from "@/types";
 import { PriorityBadge } from "./PriorityBadge";
 import { Badge } from "@/components/ui/Badge";
 import { formatRelativeTime, cn } from "@/lib/utils";
@@ -13,6 +13,19 @@ interface KanbanCardProps {
   workspaceId: string;
   projectId: string;
   overlay?: boolean;
+}
+
+function getPrStateColor(pr: LinkedPullRequest): string {
+  if (pr.mergedAt) return "text-purple-500";
+  if (pr.state === "closed") return "text-red-500";
+  return "text-green-500";
+}
+
+function getPrLabel(pr: LinkedPullRequest): string {
+  const num = pr.githubPrNumber ? `#${pr.githubPrNumber}` : "PR";
+  if (pr.mergedAt) return `${num} merged`;
+  if (pr.state === "closed") return `${num} closed`;
+  return `${num} open`;
 }
 
 export function KanbanCard({ issue, workspaceId, projectId, overlay = false }: KanbanCardProps) {
@@ -74,7 +87,21 @@ export function KanbanCard({ issue, workspaceId, projectId, overlay = false }: K
             </div>
           )}
         </div>
-        <p className="text-xs text-text-tertiary mt-2">{formatRelativeTime(issue.updatedAt)}</p>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-xs text-text-tertiary">{formatRelativeTime(issue.updatedAt)}</p>
+          {issue.lastPullRequest && (
+            <a
+              href={issue.lastPullRequest.htmlUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className={cn("text-xs font-medium hover:underline", getPrStateColor(issue.lastPullRequest))}
+              draggable={false}
+            >
+              {getPrLabel(issue.lastPullRequest)}
+            </a>
+          )}
+        </div>
       </Link>
     </div>
   );

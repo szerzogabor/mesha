@@ -34,4 +34,17 @@ public interface GitHubPullRequestRepository extends JpaRepository<GitHubPullReq
             """)
     List<GitHubPullRequest> findByRepositoryIdAndStatus(@Param("repositoryId") UUID repositoryId,
                                                         @Param("status") String status);
+
+    @Query("""
+            SELECT pr FROM GitHubPullRequest pr
+            WHERE pr.blocksSession.issue.id IN :issueIds
+              AND pr.updatedAt = (
+                SELECT MAX(pr2.updatedAt)
+                FROM GitHubPullRequest pr2
+                WHERE pr2.blocksSession.issue.id = pr.blocksSession.issue.id
+              )
+            """)
+    List<GitHubPullRequest> findLatestByIssueIds(@Param("issueIds") List<UUID> issueIds);
+
+    Optional<GitHubPullRequest> findFirstByBlocksSession_Issue_IdOrderByUpdatedAtDesc(UUID issueId);
 }

@@ -106,6 +106,7 @@ export interface Issue {
   agentLlm?: AgentLlm;
   createdAt: string;
   updatedAt: string;
+  lastPullRequest?: LinkedPullRequest;
 }
 
 export interface Comment {
