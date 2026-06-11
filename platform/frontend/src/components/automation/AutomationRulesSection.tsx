@@ -10,6 +10,7 @@ import {
 import { useProjectStatuses } from "@/hooks/useProjectStatuses";
 import { useLabels, useCreateLabel } from "@/hooks/useLabels";
 import {
+  AutomationAction,
   AutomationActionType,
   AutomationRule,
   AutomationTriggerType,
@@ -37,14 +38,30 @@ const PRESET_COLORS = [
   "#ef4444", "#f97316", "#06b6d4", "#ec4899", "#84cc16",
 ];
 
+// Editor rows carry a client-side key so React state (e.g. the inline label
+// mini-form) stays attached to the right row when rows are removed.
+type EditableAction = AutomationAction & { key: string };
+
+function newAction(): EditableAction {
+  return { key: crypto.randomUUID(), actionType: "SET_STATUS", actionValue: "" };
+}
+
+function toEditable(actions: AutomationAction[]): EditableAction[] {
+  return actions.map((a) => ({ ...a, key: crypto.randomUUID() }));
+}
+
+function toRequest(actions: EditableAction[]): AutomationAction[] {
+  return actions.map(({ actionType, actionValue }) => ({ actionType, actionValue }));
+}
+
 const selectClass =
   "border border-input-border rounded-lg px-3 py-1.5 text-sm bg-input-bg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent";
 
-function actionValueLabel(rule: AutomationRule, labels: Label[]): string {
-  if (rule.actionType === "SET_STATUS") {
-    return statusLabel(rule.actionValue);
+function actionValueLabel(action: AutomationAction, labels: Label[]): string {
+  if (action.actionType === "SET_STATUS") {
+    return statusLabel(action.actionValue);
   }
-  const label = labels.find((l) => l.id === rule.actionValue);
+  const label = labels.find((l) => l.id === action.actionValue);
   return label ? label.name : "(deleted label)";
 }
 
@@ -188,6 +205,93 @@ function ActionValueSelector({
   );
 }
 
+interface ActionsEditorProps {
+  workspaceId: string;
+  actions: EditableAction[];
+  onChange: (actions: EditableAction[]) => void;
+  statuses: ProjectStatus[];
+  labels: Label[];
+}
+
+function ActionsEditor({ workspaceId, actions, onChange, statuses, labels }: ActionsEditorProps) {
+  const updateAction = (index: number, patch: Partial<AutomationAction>) => {
+    onChange(actions.map((a, i) => (i === index ? { ...a, ...patch } : a)));
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      {actions.map((action, index) => (
+        <div key={action.key} className="flex gap-2 items-start flex-wrap">
+          <span className="text-sm text-text-secondary py-1.5 w-9">
+            {index === 0 ? "then" : "and"}
+          </span>
+          <select
+            value={action.actionType}
+            onChange={(e) =>
+              updateAction(index, {
+                actionType: e.target.value as AutomationActionType,
+                actionValue: "",
+              })
+            }
+            className={selectClass}
+          >
+            {(Object.keys(ACTION_LABELS) as AutomationActionType[]).map((a) => (
+              <option key={a} value={a}>{ACTION_LABELS[a]}</option>
+            ))}
+          </select>
+
+          <ActionValueSelector
+            workspaceId={workspaceId}
+            actionType={action.actionType}
+            value={action.actionValue}
+            onChange={(value) => updateAction(index, { actionValue: value })}
+            statuses={statuses}
+            labels={labels}
+          />
+
+          {actions.length > 1 && (
+            <button
+              type="button"
+              onClick={() => onChange(actions.filter((_, i) => i !== index))}
+              aria-label="Remove action"
+              className="p-1.5 mt-0.5 text-text-tertiary hover:text-destructive rounded hover:bg-bg-surface-hover transition-colors"
+              title="Remove action"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange([...actions, newAction()])}
+        className="self-start ml-11 text-sm text-accent hover:text-accent-hover transition-colors"
+      >
+        + Add action
+      </button>
+    </div>
+  );
+}
+
+function ruleSentence(rule: AutomationRule, labels: Label[]) {
+  return (
+    <>
+      When <span className="font-medium">{TRIGGER_LABELS[rule.triggerType]}</span>
+      {rule.actions.map((action, index) => (
+        <span key={index}>
+          {index === 0 ? " → " : " and "}
+          <span className="font-medium">
+            {ACTION_LABELS[action.actionType]}: {actionValueLabel(action, labels)}
+          </span>
+        </span>
+      ))}
+    </>
+  );
+}
+
 interface RuleRowProps {
   rule: AutomationRule;
   workspaceId: string;
@@ -199,11 +303,12 @@ interface RuleRowProps {
 function RuleRow({ rule, workspaceId, projectId, statuses, labels }: RuleRowProps) {
   const [editing, setEditing] = useState(false);
   const [triggerType, setTriggerType] = useState<AutomationTriggerType>(rule.triggerType);
-  const [actionType, setActionType] = useState<AutomationActionType>(rule.actionType);
-  const [actionValue, setActionValue] = useState(rule.actionValue);
+  const [actions, setActions] = useState<EditableAction[]>(() => toEditable(rule.actions));
   const [error, setError] = useState<string | null>(null);
   const updateRule = useUpdateAutomation(projectId);
   const deleteRule = useDeleteAutomation(projectId);
+
+  const allActionsComplete = actions.length > 0 && actions.every((a) => a.actionValue);
 
   const handleToggle = () => {
     updateRule.mutate({ ruleId: rule.id, data: { enabled: !rule.enabled } });
@@ -218,18 +323,13 @@ function RuleRow({ rule, workspaceId, projectId, statuses, labels }: RuleRowProp
     }
   };
 
-  const handleActionTypeChange = (next: AutomationActionType) => {
-    setActionType(next);
-    setActionValue(next === rule.actionType ? rule.actionValue : "");
-  };
-
   const handleSave = async () => {
-    if (!actionValue) return;
+    if (!allActionsComplete || updateRule.isPending) return;
     setError(null);
     try {
       await updateRule.mutateAsync({
         ruleId: rule.id,
-        data: { triggerType, actionType, actionValue },
+        data: { triggerType, actions: toRequest(actions) },
       });
       setEditing(false);
     } catch (err) {
@@ -239,8 +339,7 @@ function RuleRow({ rule, workspaceId, projectId, statuses, labels }: RuleRowProp
 
   const handleCancel = () => {
     setTriggerType(rule.triggerType);
-    setActionType(rule.actionType);
-    setActionValue(rule.actionValue);
+    setActions(toEditable(rule.actions));
     setError(null);
     setEditing(false);
   };
@@ -248,8 +347,8 @@ function RuleRow({ rule, workspaceId, projectId, statuses, labels }: RuleRowProp
   if (editing) {
     return (
       <div className="p-3 bg-bg-surface border border-border-default rounded-lg">
-        <div className="flex gap-3 items-center flex-wrap">
-          <span className="text-sm text-text-secondary">When</span>
+        <div className="flex gap-2 items-center mb-2">
+          <span className="text-sm text-text-secondary w-9">When</span>
           <select
             value={triggerType}
             onChange={(e) => setTriggerType(e.target.value as AutomationTriggerType)}
@@ -259,31 +358,20 @@ function RuleRow({ rule, workspaceId, projectId, statuses, labels }: RuleRowProp
               <option key={t} value={t}>{TRIGGER_LABELS[t]}</option>
             ))}
           </select>
-
-          <span className="text-sm text-text-secondary">then</span>
-          <select
-            value={actionType}
-            onChange={(e) => handleActionTypeChange(e.target.value as AutomationActionType)}
-            className={selectClass}
-          >
-            {(Object.keys(ACTION_LABELS) as AutomationActionType[]).map((a) => (
-              <option key={a} value={a}>{ACTION_LABELS[a]}</option>
-            ))}
-          </select>
-
-          <ActionValueSelector
-            workspaceId={workspaceId}
-            actionType={actionType}
-            value={actionValue}
-            onChange={setActionValue}
-            statuses={statuses}
-            labels={labels}
-          />
         </div>
+
+        <ActionsEditor
+          workspaceId={workspaceId}
+          actions={actions}
+          onChange={setActions}
+          statuses={statuses}
+          labels={labels}
+        />
+
         <div className="flex gap-2 mt-3">
           <button
             onClick={handleSave}
-            disabled={!actionValue || updateRule.isPending}
+            disabled={!allActionsComplete || updateRule.isPending}
             className="px-3 py-1.5 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover disabled:opacity-50 transition-colors"
           >
             {updateRule.isPending ? "Saving..." : "Save"}
@@ -307,11 +395,7 @@ function RuleRow({ rule, workspaceId, projectId, statuses, labels }: RuleRowProp
         title={rule.enabled ? "Enabled" : "Disabled"}
       />
       <span className={`flex-1 text-sm ${rule.enabled ? "text-text-primary" : "text-text-tertiary"}`}>
-        When <span className="font-medium">{TRIGGER_LABELS[rule.triggerType]}</span>
-        {" → "}
-        <span className="font-medium">
-          {ACTION_LABELS[rule.actionType]}: {actionValueLabel(rule, labels)}
-        </span>
+        {ruleSentence(rule, labels)}
       </span>
 
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -326,8 +410,7 @@ function RuleRow({ rule, workspaceId, projectId, statuses, labels }: RuleRowProp
         <button
           onClick={() => {
             setTriggerType(rule.triggerType);
-            setActionType(rule.actionType);
-            setActionValue(rule.actionValue);
+            setActions(toEditable(rule.actions));
             setError(null);
             setEditing(true);
           }}
@@ -366,23 +449,19 @@ interface CreateRuleFormProps {
 
 function CreateRuleForm({ workspaceId, projectId, statuses, labels }: CreateRuleFormProps) {
   const [triggerType, setTriggerType] = useState<AutomationTriggerType>("PR_OPENED");
-  const [actionType, setActionType] = useState<AutomationActionType>("SET_STATUS");
-  const [actionValue, setActionValue] = useState("");
+  const [actions, setActions] = useState<EditableAction[]>(() => [newAction()]);
   const [error, setError] = useState<string | null>(null);
   const createRule = useCreateAutomation(projectId);
 
-  const handleActionTypeChange = (next: AutomationActionType) => {
-    setActionType(next);
-    setActionValue("");
-  };
+  const allActionsComplete = actions.length > 0 && actions.every((a) => a.actionValue);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!actionValue) return;
+    if (!allActionsComplete || createRule.isPending) return;
     setError(null);
     try {
-      await createRule.mutateAsync({ triggerType, actionType, actionValue });
-      setActionValue("");
+      await createRule.mutateAsync({ triggerType, actions: toRequest(actions) });
+      setActions([newAction()]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create rule");
     }
@@ -391,8 +470,9 @@ function CreateRuleForm({ workspaceId, projectId, statuses, labels }: CreateRule
   return (
     <form onSubmit={handleSubmit} className="p-4 bg-bg-surface border border-border-default rounded-lg">
       <h3 className="text-sm font-semibold text-text-primary mb-3">Create New Rule</h3>
-      <div className="flex gap-3 items-center flex-wrap">
-        <span className="text-sm text-text-secondary">When</span>
+
+      <div className="flex gap-2 items-center mb-2">
+        <span className="text-sm text-text-secondary w-9">When</span>
         <select
           value={triggerType}
           onChange={(e) => setTriggerType(e.target.value as AutomationTriggerType)}
@@ -402,30 +482,20 @@ function CreateRuleForm({ workspaceId, projectId, statuses, labels }: CreateRule
             <option key={t} value={t}>{TRIGGER_LABELS[t]}</option>
           ))}
         </select>
+      </div>
 
-        <span className="text-sm text-text-secondary">then</span>
-        <select
-          value={actionType}
-          onChange={(e) => handleActionTypeChange(e.target.value as AutomationActionType)}
-          className={selectClass}
-        >
-          {(Object.keys(ACTION_LABELS) as AutomationActionType[]).map((a) => (
-            <option key={a} value={a}>{ACTION_LABELS[a]}</option>
-          ))}
-        </select>
+      <ActionsEditor
+        workspaceId={workspaceId}
+        actions={actions}
+        onChange={setActions}
+        statuses={statuses}
+        labels={labels}
+      />
 
-        <ActionValueSelector
-          workspaceId={workspaceId}
-          actionType={actionType}
-          value={actionValue}
-          onChange={setActionValue}
-          statuses={statuses}
-          labels={labels}
-        />
-
+      <div className="mt-3">
         <button
           type="submit"
-          disabled={!actionValue || createRule.isPending}
+          disabled={!allActionsComplete || createRule.isPending}
           className="px-4 py-1.5 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover disabled:opacity-50 transition-colors"
         >
           {createRule.isPending ? "Creating..." : "Create"}
@@ -455,7 +525,7 @@ export default function AutomationRulesSection({ workspaceId, projectId }: Autom
       <h3 className="text-base font-semibold text-text-primary mb-1">Automations</h3>
       <p className="text-sm text-text-tertiary mb-4">
         Automatically update tickets when something happens — for example, move a ticket to In Review
-        when its pull request is opened.
+        and add a label when its pull request is opened.
       </p>
 
       {rulesQuery.isLoading ? (

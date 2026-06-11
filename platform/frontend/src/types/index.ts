@@ -278,12 +278,16 @@ export type AutomationTriggerType =
 
 export type AutomationActionType = "SET_STATUS" | "ADD_LABEL";
 
+export interface AutomationAction {
+  actionType: AutomationActionType;
+  actionValue: string;
+}
+
 export interface AutomationRule {
   id: string;
   projectId: string;
   triggerType: AutomationTriggerType;
-  actionType: AutomationActionType;
-  actionValue: string;
+  actions: AutomationAction[];
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
