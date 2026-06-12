@@ -28,10 +28,14 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class GitHubPullRequestService {
@@ -106,6 +110,7 @@ public class GitHubPullRequestService {
                     .header("Authorization", "Bearer " + token)
                     .header("Accept", "application/vnd.github+json")
                     .header("X-GitHub-Api-Version", "2022-11-28")
+                    .timeout(Duration.ofSeconds(25))
                     .GET()
                     .build();
 
@@ -115,11 +120,16 @@ public class GitHubPullRequestService {
             log.debug("GitHub pull requests API responded repositoryId={} fullName={} httpStatus={} durationMs={}",
                     repositoryId, repo.getFullName(), response.statusCode(), durationMs);
 
+            Map<Integer, GitHubPullRequest> existingPrs = prRepo.findAllByRepositoryId(repositoryId)
+                    .stream()
+                    .collect(Collectors.toMap(GitHubPullRequest::getGithubPrNumber, Function.identity()));
+
             JsonNode prs = objectMapper.readTree(response.body());
             int[] counts = {0, 0};
             prs.forEach(pr -> {
-                boolean isNew = !prRepo.findByRepositoryIdAndGithubPrNumber(repo.getId(), pr.path("number").asInt()).isPresent();
-                upsertPullRequest(repo, pr);
+                int prNumber = pr.path("number").asInt();
+                boolean isNew = !existingPrs.containsKey(prNumber);
+                upsertPullRequest(repo, pr, existingPrs);
                 if (isNew) counts[0]++; else counts[1]++;
             });
 
@@ -180,9 +190,15 @@ public class GitHubPullRequestService {
     }
 
     private GitHubPullRequest upsertPullRequest(GitHubRepository repo, JsonNode prNode) {
+        return upsertPullRequest(repo, prNode, null);
+    }
+
+    private GitHubPullRequest upsertPullRequest(GitHubRepository repo, JsonNode prNode,
+            Map<Integer, GitHubPullRequest> existingPrs) {
         int prNumber = prNode.path("number").asInt();
-        Optional<GitHubPullRequest> existing =
-                prRepo.findByRepositoryIdAndGithubPrNumber(repo.getId(), prNumber);
+        Optional<GitHubPullRequest> existing = existingPrs != null
+                ? Optional.ofNullable(existingPrs.get(prNumber))
+                : prRepo.findByRepositoryIdAndGithubPrNumber(repo.getId(), prNumber);
 
         boolean isNew = existing.isEmpty();
         GitHubPullRequest pr = existing.orElse(new GitHubPullRequest());
