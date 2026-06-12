@@ -15,6 +15,7 @@ interface CreateIssueModalProps {
   onClose: () => void;
   workspaceId: string;
   projectStatuses?: ProjectStatus[];
+  defaultStatus?: string;
   onSubmit: (data: {
     title: string;
     description?: string;
@@ -24,10 +25,16 @@ interface CreateIssueModalProps {
   }) => Promise<void>;
 }
 
-export function CreateIssueModal({ open, onClose, workspaceId, projectStatuses, onSubmit }: CreateIssueModalProps) {
+export function CreateIssueModal({ open, onClose, workspaceId, projectStatuses, defaultStatus, onSubmit }: CreateIssueModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<IssueStatus>("");
+
+  useEffect(() => {
+    if (open && defaultStatus) {
+      setStatus(defaultStatus as IssueStatus);
+    }
+  }, [open, defaultStatus]);
   const [priority, setPriority] = useState<IssuePriority>("MEDIUM");
 
   useEffect(() => {

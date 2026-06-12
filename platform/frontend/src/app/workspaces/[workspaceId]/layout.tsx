@@ -35,14 +35,14 @@ export default function WorkspaceLayout({
 
   if (!workspace) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-bg-app">
+      <div className="flex-1 flex items-center justify-center bg-bg-app">
         <Spinner size="lg" className="text-accent" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex flex-1 min-h-0">
       <Sidebar
         workspace={workspace}
         projects={projects}
@@ -50,7 +50,7 @@ export default function WorkspaceLayout({
         isCollapsed={isCollapsed}
         onToggle={toggle}
       />
-      <main className="flex-1 bg-bg-app min-w-0">
+      <main className="flex-1 bg-bg-app min-w-0 overflow-hidden">
         {/* Mobile open button — only visible when sidebar is closed on small screens */}
         {isCollapsed && (
           <button

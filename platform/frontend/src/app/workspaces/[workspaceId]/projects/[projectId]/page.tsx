@@ -33,6 +33,7 @@ export default function ProjectPage({
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
+  const [createWithStatus, setCreateWithStatus] = useState<string | undefined>(undefined);
   const [showAIDraft, setShowAIDraft] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -203,15 +204,23 @@ export default function ProjectPage({
               updateIssue.mutate({ issueId, data: { status: newStatus } })
             }
             onReorderStatuses={(statusIds) => reorderStatuses.mutate(statusIds)}
+            onCreateIssueForStatus={(s) => {
+              setCreateWithStatus(s);
+              setShowCreate(true);
+            }}
           />
         )}
       </div>
 
       <CreateIssueModal
         open={showCreate}
-        onClose={() => setShowCreate(false)}
+        onClose={() => {
+          setShowCreate(false);
+          setCreateWithStatus(undefined);
+        }}
         workspaceId={workspaceId}
         projectStatuses={statusesQuery.data}
+        defaultStatus={createWithStatus}
         onSubmit={async (formData) => {
           await createIssue.mutateAsync(formData);
         }}
