@@ -17,7 +17,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class IssueService {
@@ -31,7 +33,9 @@ public class IssueService {
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final ActivityService activityService;
     private final ProjectStatusRepository projectStatusRepository;
+    private final AutomationService automationService;
     private final IssueSseService issueSseService;
+    private final TicketRuleService ticketRuleService;
 
     public IssueService(IssueRepository issueRepository,
                         ProjectRepository projectRepository,
@@ -40,7 +44,9 @@ public class IssueService {
                         WorkspaceMemberRepository workspaceMemberRepository,
                         ActivityService activityService,
                         ProjectStatusRepository projectStatusRepository,
-                        IssueSseService issueSseService) {
+                        AutomationService automationService,
+                        IssueSseService issueSseService,
+                        TicketRuleService ticketRuleService) {
         this.issueRepository = issueRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
@@ -48,7 +54,9 @@ public class IssueService {
         this.workspaceMemberRepository = workspaceMemberRepository;
         this.activityService = activityService;
         this.projectStatusRepository = projectStatusRepository;
+        this.automationService = automationService;
         this.issueSseService = issueSseService;
+        this.ticketRuleService = ticketRuleService;
     }
 
     @Transactional
@@ -136,14 +144,17 @@ public class IssueService {
             activityService.record(issue, actor, ActivityEventType.DESCRIPTION_CHANGED, old, req.description());
         }
 
+        String statusChangedTo = null;
         if (req.status() != null && !req.status().equalsIgnoreCase(issue.getStatus())) {
             UUID projectId = issue.getProject().getId();
             validateStatus(projectId, req.status());
-            String old = issue.getStatus();
             String newStatus = req.status().toUpperCase();
+            ticketRuleService.validateCanMoveToStatus(issue, newStatus);
+            String old = issue.getStatus();
             issue.setStatus(newStatus);
             activityService.record(issue, actor, ActivityEventType.STATUS_CHANGED, old, newStatus);
             log.debug("Issue status changed issueId={} from={} to={}", issueId, old, newStatus);
+            statusChangedTo = newStatus;
         }
 
         if (req.priority() != null && req.priority() != issue.getPriority()) {
@@ -167,11 +178,17 @@ public class IssueService {
             activityService.record(issue, actor, ActivityEventType.ASSIGNEE_CHANGED, old, assignee.getId().toString());
         }
 
+        Set<UUID> addedLabelIds = null;
         if (req.labelIds() != null) {
             List<Label> labels = labelRepository.findAllByIdInAndWorkspace_Id(req.labelIds(), workspaceId);
             if (labels.size() != req.labelIds().size()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One or more labels do not belong to this workspace");
             }
+            Set<UUID> existingLabelIds = issue.getLabels().stream().map(Label::getId).collect(Collectors.toSet());
+            addedLabelIds = labels.stream()
+                    .map(Label::getId)
+                    .filter(id -> !existingLabelIds.contains(id))
+                    .collect(Collectors.toSet());
             issue.setLabels(new ArrayList<>(labels));
         }
 
@@ -186,6 +203,16 @@ public class IssueService {
         Issue saved = issueRepository.save(issue);
         issueSseService.broadcastUpdate(saved);
         log.debug("Issue updated issueId={} actorId={}", issueId, actor.getId());
+
+        if (statusChangedTo != null) {
+            automationService.executeFor(AutomationTriggerType.STATUS_UPDATED, saved, statusChangedTo);
+        }
+        if (addedLabelIds != null) {
+            for (UUID labelId : addedLabelIds) {
+                automationService.executeFor(AutomationTriggerType.LABEL_ADDED, saved, labelId.toString());
+            }
+        }
+
         return saved;
     }
 

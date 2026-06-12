@@ -26,7 +26,12 @@ const TRIGGER_LABELS: Record<AutomationTriggerType, string> = {
   BLOCKS_SESSION_STARTED: "Blocks session started",
   BLOCKS_SESSION_COMPLETED: "Blocks session completed",
   BLOCKS_SESSION_FAILED: "Blocks session failed",
+  STATUS_UPDATED: "Status updated to",
+  LABEL_ADDED: "Labeled",
+  AI_TOKEN_LIMIT_HIT: "AI ran out of tokens",
 };
+
+const PARAMETERIZED_TRIGGERS: AutomationTriggerType[] = ["STATUS_UPDATED", "LABEL_ADDED"];
 
 const ACTION_LABELS: Record<AutomationActionType, string> = {
   SET_STATUS: "Move ticket to status",
@@ -63,6 +68,62 @@ function actionValueLabel(action: AutomationAction, labels: Label[]): string {
   }
   const label = labels.find((l) => l.id === action.actionValue);
   return label ? label.name : "(deleted label)";
+}
+
+function triggerValueLabel(
+  triggerType: AutomationTriggerType,
+  triggerValue: string | undefined,
+  statuses: ProjectStatus[],
+  labels: Label[]
+): string {
+  if (!triggerValue) return "";
+  if (triggerType === "STATUS_UPDATED") {
+    return statusLabel(triggerValue);
+  }
+  if (triggerType === "LABEL_ADDED") {
+    const label = labels.find((l) => l.id === triggerValue);
+    return label ? label.name : "(deleted label)";
+  }
+  return triggerValue;
+}
+
+interface TriggerValueSelectorProps {
+  workspaceId: string;
+  triggerType: AutomationTriggerType;
+  value: string;
+  onChange: (value: string) => void;
+  statuses: ProjectStatus[];
+  labels: Label[];
+}
+
+function TriggerValueSelector({
+  triggerType,
+  value,
+  onChange,
+  statuses,
+  labels,
+}: TriggerValueSelectorProps) {
+  if (!PARAMETERIZED_TRIGGERS.includes(triggerType)) return null;
+
+  const options =
+    triggerType === "STATUS_UPDATED"
+      ? statuses.map((s) => ({ value: s.name, label: statusLabel(s.name) }))
+      : labels.map((l) => ({ value: l.id, label: l.name }));
+
+  const placeholder = triggerType === "STATUS_UPDATED" ? "Select status..." : "Select label...";
+
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={selectClass}
+    >
+      <option value="" disabled>{placeholder}</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>{o.label}</option>
+      ))}
+    </select>
+  );
 }
 
 interface ActionValueSelectorProps {
@@ -276,10 +337,17 @@ function ActionsEditor({ workspaceId, actions, onChange, statuses, labels }: Act
   );
 }
 
-function ruleSentence(rule: AutomationRule, labels: Label[]) {
+function ruleSentence(rule: AutomationRule, statuses: ProjectStatus[], labels: Label[]) {
+  const tvLabel = rule.triggerValue
+    ? triggerValueLabel(rule.triggerType, rule.triggerValue, statuses, labels)
+    : null;
   return (
     <>
-      When <span className="font-medium">{TRIGGER_LABELS[rule.triggerType]}</span>
+      When{" "}
+      <span className="font-medium">
+        {TRIGGER_LABELS[rule.triggerType]}
+        {tvLabel ? ` "${tvLabel}"` : ""}
+      </span>
       {rule.actions.map((action, index) => (
         <span key={index}>
           {index === 0 ? " → " : " and "}
@@ -303,12 +371,14 @@ interface RuleRowProps {
 function RuleRow({ rule, workspaceId, projectId, statuses, labels }: RuleRowProps) {
   const [editing, setEditing] = useState(false);
   const [triggerType, setTriggerType] = useState<AutomationTriggerType>(rule.triggerType);
+  const [triggerValue, setTriggerValue] = useState<string>(rule.triggerValue ?? "");
   const [actions, setActions] = useState<EditableAction[]>(() => toEditable(rule.actions));
   const [error, setError] = useState<string | null>(null);
   const updateRule = useUpdateAutomation(projectId);
   const deleteRule = useDeleteAutomation(projectId);
 
-  const allActionsComplete = actions.length > 0 && actions.every((a) => a.actionValue);
+  const triggerValueComplete = !PARAMETERIZED_TRIGGERS.includes(triggerType) || triggerValue !== "";
+  const allActionsComplete = actions.length > 0 && actions.every((a) => a.actionValue) && triggerValueComplete;
 
   const handleToggle = () => {
     updateRule.mutate({ ruleId: rule.id, data: { enabled: !rule.enabled } });
@@ -329,7 +399,11 @@ function RuleRow({ rule, workspaceId, projectId, statuses, labels }: RuleRowProp
     try {
       await updateRule.mutateAsync({
         ruleId: rule.id,
-        data: { triggerType, actions: toRequest(actions) },
+        data: {
+          triggerType,
+          triggerValue: PARAMETERIZED_TRIGGERS.includes(triggerType) ? triggerValue : undefined,
+          actions: toRequest(actions),
+        },
       });
       setEditing(false);
     } catch (err) {
@@ -339,6 +413,7 @@ function RuleRow({ rule, workspaceId, projectId, statuses, labels }: RuleRowProp
 
   const handleCancel = () => {
     setTriggerType(rule.triggerType);
+    setTriggerValue(rule.triggerValue ?? "");
     setActions(toEditable(rule.actions));
     setError(null);
     setEditing(false);
@@ -347,17 +422,28 @@ function RuleRow({ rule, workspaceId, projectId, statuses, labels }: RuleRowProp
   if (editing) {
     return (
       <div className="p-3 bg-bg-surface border border-border-default rounded-lg">
-        <div className="flex gap-2 items-center mb-2">
+        <div className="flex gap-2 items-center mb-2 flex-wrap">
           <span className="text-sm text-text-secondary w-9">When</span>
           <select
             value={triggerType}
-            onChange={(e) => setTriggerType(e.target.value as AutomationTriggerType)}
+            onChange={(e) => {
+              setTriggerType(e.target.value as AutomationTriggerType);
+              setTriggerValue("");
+            }}
             className={selectClass}
           >
             {(Object.keys(TRIGGER_LABELS) as AutomationTriggerType[]).map((t) => (
               <option key={t} value={t}>{TRIGGER_LABELS[t]}</option>
             ))}
           </select>
+          <TriggerValueSelector
+            workspaceId={workspaceId}
+            triggerType={triggerType}
+            value={triggerValue}
+            onChange={setTriggerValue}
+            statuses={statuses}
+            labels={labels}
+          />
         </div>
 
         <ActionsEditor
@@ -395,7 +481,7 @@ function RuleRow({ rule, workspaceId, projectId, statuses, labels }: RuleRowProp
         title={rule.enabled ? "Enabled" : "Disabled"}
       />
       <span className={`flex-1 text-sm ${rule.enabled ? "text-text-primary" : "text-text-tertiary"}`}>
-        {ruleSentence(rule, labels)}
+        {ruleSentence(rule, statuses, labels)}
       </span>
 
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -410,6 +496,7 @@ function RuleRow({ rule, workspaceId, projectId, statuses, labels }: RuleRowProp
         <button
           onClick={() => {
             setTriggerType(rule.triggerType);
+            setTriggerValue(rule.triggerValue ?? "");
             setActions(toEditable(rule.actions));
             setError(null);
             setEditing(true);
@@ -449,18 +536,25 @@ interface CreateRuleFormProps {
 
 function CreateRuleForm({ workspaceId, projectId, statuses, labels }: CreateRuleFormProps) {
   const [triggerType, setTriggerType] = useState<AutomationTriggerType>("PR_OPENED");
+  const [triggerValue, setTriggerValue] = useState<string>("");
   const [actions, setActions] = useState<EditableAction[]>(() => [newAction()]);
   const [error, setError] = useState<string | null>(null);
   const createRule = useCreateAutomation(projectId);
 
-  const allActionsComplete = actions.length > 0 && actions.every((a) => a.actionValue);
+  const triggerValueComplete = !PARAMETERIZED_TRIGGERS.includes(triggerType) || triggerValue !== "";
+  const allActionsComplete = actions.length > 0 && actions.every((a) => a.actionValue) && triggerValueComplete;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!allActionsComplete || createRule.isPending) return;
     setError(null);
     try {
-      await createRule.mutateAsync({ triggerType, actions: toRequest(actions) });
+      await createRule.mutateAsync({
+        triggerType,
+        triggerValue: PARAMETERIZED_TRIGGERS.includes(triggerType) ? triggerValue : undefined,
+        actions: toRequest(actions),
+      });
+      setTriggerValue("");
       setActions([newAction()]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create rule");
@@ -471,17 +565,28 @@ function CreateRuleForm({ workspaceId, projectId, statuses, labels }: CreateRule
     <form onSubmit={handleSubmit} className="p-4 bg-bg-surface border border-border-default rounded-lg">
       <h3 className="text-sm font-semibold text-text-primary mb-3">Create New Rule</h3>
 
-      <div className="flex gap-2 items-center mb-2">
+      <div className="flex gap-2 items-center mb-2 flex-wrap">
         <span className="text-sm text-text-secondary w-9">When</span>
         <select
           value={triggerType}
-          onChange={(e) => setTriggerType(e.target.value as AutomationTriggerType)}
+          onChange={(e) => {
+            setTriggerType(e.target.value as AutomationTriggerType);
+            setTriggerValue("");
+          }}
           className={selectClass}
         >
           {(Object.keys(TRIGGER_LABELS) as AutomationTriggerType[]).map((t) => (
             <option key={t} value={t}>{TRIGGER_LABELS[t]}</option>
           ))}
         </select>
+        <TriggerValueSelector
+          workspaceId={workspaceId}
+          triggerType={triggerType}
+          value={triggerValue}
+          onChange={setTriggerValue}
+          statuses={statuses}
+          labels={labels}
+        />
       </div>
 
       <ActionsEditor

@@ -31,6 +31,7 @@ public class BlocksSessionService {
     private final BlocksAdapter blocksAdapter;
     private final GitHubPullRequestRepository gitHubPullRequestRepository;
     private final AutomationService automationService;
+    private final TicketRuleService ticketRuleService;
 
     public BlocksSessionService(BlocksSessionRepository blocksSessionRepository,
                                 IssueRepository issueRepository,
@@ -39,7 +40,8 @@ public class BlocksSessionService {
                                 BlocksMessageRepository blocksMessageRepository,
                                 BlocksAdapter blocksAdapter,
                                 GitHubPullRequestRepository gitHubPullRequestRepository,
-                                AutomationService automationService) {
+                                AutomationService automationService,
+                                TicketRuleService ticketRuleService) {
         this.blocksSessionRepository = blocksSessionRepository;
         this.issueRepository = issueRepository;
         this.activityService = activityService;
@@ -48,6 +50,7 @@ public class BlocksSessionService {
         this.blocksAdapter = blocksAdapter;
         this.gitHubPullRequestRepository = gitHubPullRequestRepository;
         this.automationService = automationService;
+        this.ticketRuleService = ticketRuleService;
     }
 
     @Transactional
@@ -60,6 +63,8 @@ public class BlocksSessionService {
             throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED,
                 "Blocks is not connected for this workspace. Configure it in Workspace Settings → Integrations → Blocks.");
         }
+
+        ticketRuleService.validateCanStartAiSession(issue);
 
         BlocksSession session = new BlocksSession();
         session.setIssue(issue);

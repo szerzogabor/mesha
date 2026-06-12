@@ -7,6 +7,7 @@ import java.util.List;
 
 public record UpdateAutomationRuleRequest(
     AutomationTriggerType triggerType,
+    String triggerValue,
     @Valid List<AutomationActionRequest> actions,
     Boolean enabled
 ) {}

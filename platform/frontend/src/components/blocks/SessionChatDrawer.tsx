@@ -183,7 +183,7 @@ export function SessionChatDrawer({ session, sessionIndex, projectId, issueId, o
         </div>
 
         {/* Links bar */}
-        {(session.sessionUrl || session.linkedPullRequest?.htmlUrl || session.prUrl) && (
+        {(session.sessionUrl || session.linkedPullRequests?.length || session.prUrl) && (
           <div className="flex flex-col gap-2 px-4 py-2 border-b border-border-default flex-shrink-0">
             {session.sessionUrl && (
               <a
@@ -201,11 +201,11 @@ export function SessionChatDrawer({ session, sessionIndex, projectId, issueId, o
                 </svg>
               </a>
             )}
-            {(session.linkedPullRequest?.htmlUrl ?? session.prUrl) && (() => {
-              const prUrl = session.linkedPullRequest?.htmlUrl ?? session.prUrl!;
-              const pr = session.linkedPullRequest;
+            {(session.linkedPullRequests?.length ? session.linkedPullRequests : session.prUrl ? [null] : []).map((pr, idx) => {
+              const prUrl = pr?.htmlUrl ?? session.prUrl!;
               return (
                 <a
+                  key={pr?.id ?? prUrl ?? idx}
                   href={prUrl}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -246,7 +246,7 @@ export function SessionChatDrawer({ session, sessionIndex, projectId, issueId, o
                   </svg>
                 </a>
               );
-            })()}
+            })}
           </div>
         )}
 

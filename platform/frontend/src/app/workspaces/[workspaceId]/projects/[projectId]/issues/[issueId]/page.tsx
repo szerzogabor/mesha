@@ -16,10 +16,17 @@ import { IssueLinksPanel } from "@/components/issues/IssueLinksPanel";
 import { SessionsActivityList } from "@/components/blocks/SessionsActivityList";
 import { SessionChatDrawer } from "@/components/blocks/SessionChatDrawer";
 import { IssueStatus, IssuePriority, BlocksSession, AgentLlm } from "@/types";
-import { useLabels } from "@/hooks/useLabels";
+import { useLabels, useCreateLabel } from "@/hooks/useLabels";
 import { useIssueEvents } from "@/hooks/useIssueEvents";
+import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers";
+import { AssigneeSelector } from "@/components/issues/AssigneeSelector";
 import { formatRelativeTime, statusLabel } from "@/lib/utils";
 const PRIORITIES: IssuePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+
+const LABEL_PRESET_COLORS = [
+  "#94a3b8", "#3b82f6", "#f59e0b", "#8b5cf6", "#22c55e",
+  "#ef4444", "#f97316", "#06b6d4", "#ec4899", "#84cc16",
+];
 
 const selectClass =
   "w-full border border-input-border rounded-lg px-3 py-2 text-sm bg-input-bg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent";
@@ -44,12 +51,18 @@ export default function IssueDetailPage({
   const createComment = useCreateComment(issueId);
 
   const { data: availableLabels = [] } = useLabels(workspaceId);
+  const createLabel = useCreateLabel(workspaceId);
+  const { data: workspaceMembers = [] } = useWorkspaceMembers(workspaceId);
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editingDesc, setEditingDesc] = useState(false);
   const [editDesc, setEditDesc] = useState("");
   const [showLabelPicker, setShowLabelPicker] = useState(false);
+  const [creatingLabel, setCreatingLabel] = useState(false);
+  const [newLabelName, setNewLabelName] = useState("");
+  const [newLabelColor, setNewLabelColor] = useState(LABEL_PRESET_COLORS[0]);
+  const [newLabelError, setNewLabelError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"comments" | "activity">("comments");
   const [selectedSession, setSelectedSession] = useState<{ session: BlocksSession; index: number } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -249,19 +262,9 @@ export default function IssueDetailPage({
                 }}
                 className={selectClass}
               >
-                {projectStatuses.length > 0 ? (
-                  projectStatuses.map((s) => (
-                    <option key={s.id} value={s.name}>{statusLabel(s.name)}</option>
-                  ))
-                ) : (
-                  <>
-                    <option value="BACKLOG">Backlog</option>
-                    <option value="TODO">Todo</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="REVIEW">Review</option>
-                    <option value="DONE">Done</option>
-                  </>
-                )}
+                {projectStatuses.map((s) => (
+                  <option key={s.id} value={s.name}>{statusLabel(s.name)}</option>
+                ))}
               </select>
             </div>
 
@@ -288,26 +291,18 @@ export default function IssueDetailPage({
               <label className="block text-xs font-semibold text-text-tertiary uppercase tracking-wide mb-1">
                 Assignee
               </label>
-              {issue.assignee ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-full bg-accent-muted flex items-center justify-center text-xs font-medium text-accent-muted-text">
-                      {(issue.assignee.name || issue.assignee.email)[0]?.toUpperCase()}
-                    </div>
-                    <span className="text-sm text-text-primary">
-                      {issue.assignee.name || issue.assignee.email}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => updateIssue.mutateAsync({ clearAssignee: true })}
-                    className="text-xs text-text-tertiary hover:text-destructive transition-colors"
-                  >
-                    ×
-                  </button>
-                </div>
-              ) : (
-                <p className="text-sm text-text-tertiary">Unassigned</p>
-              )}
+              <AssigneeSelector
+                assignee={issue.assignee}
+                members={workspaceMembers}
+                disabled={updateIssue.isPending}
+                onAssign={(userId) => {
+                  if (userId === null) {
+                    updateIssue.mutate({ clearAssignee: true });
+                  } else {
+                    updateIssue.mutate({ assigneeId: userId });
+                  }
+                }}
+              />
             </div>
 
             <div>
@@ -378,40 +373,118 @@ export default function IssueDetailPage({
                   Labels
                 </label>
                 <button
-                  onClick={() => setShowLabelPicker((v) => !v)}
+                  onClick={() => {
+                    setShowLabelPicker((v) => !v);
+                    setCreatingLabel(false);
+                    setNewLabelName("");
+                    setNewLabelColor(LABEL_PRESET_COLORS[0]);
+                    setNewLabelError(null);
+                  }}
                   className="text-xs text-text-tertiary hover:text-text-primary transition-colors"
                 >
                   {showLabelPicker ? "Done" : "Edit"}
                 </button>
               </div>
-              {showLabelPicker && availableLabels.length > 0 && (
-                <div className="mb-2 flex flex-wrap gap-1.5">
-                  {availableLabels.map((label) => {
-                    const active = issue.labels.some((l) => l.id === label.id);
-                    const newLabelIds = active
-                      ? issue.labels.filter((l) => l.id !== label.id).map((l) => l.id)
-                      : [...issue.labels.map((l) => l.id), label.id];
-                    return (
-                      <button
-                        key={label.id}
-                        type="button"
-                        onClick={() => updateIssue.mutate({ labelIds: newLabelIds })}
-                        className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium transition-all border"
-                        style={{
-                          backgroundColor: active ? label.color + "33" : "transparent",
-                          color: label.color,
-                          borderColor: active ? label.color : label.color + "55",
-                        }}
-                      >
-                        {active && <span className="mr-1">✓</span>}
-                        {label.name}
-                      </button>
-                    );
-                  })}
-                </div>
+              {showLabelPicker && (
+                <>
+                  {availableLabels.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                      {availableLabels.map((label) => {
+                        const active = issue.labels.some((l) => l.id === label.id);
+                        const updatedLabelIds = active
+                          ? issue.labels.filter((l) => l.id !== label.id).map((l) => l.id)
+                          : [...issue.labels.map((l) => l.id), label.id];
+                        return (
+                          <button
+                            key={label.id}
+                            type="button"
+                            onClick={() => updateIssue.mutate({ labelIds: updatedLabelIds })}
+                            className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium transition-all border"
+                            style={{
+                              backgroundColor: active ? label.color + "33" : "transparent",
+                              color: label.color,
+                              borderColor: active ? label.color : label.color + "55",
+                            }}
+                          >
+                            {active && <span className="mr-1">✓</span>}
+                            {label.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {creatingLabel ? (
+                    <div className="mt-2 space-y-2">
+                      <input
+                        autoFocus
+                        type="text"
+                        value={newLabelName}
+                        onChange={(e) => { setNewLabelName(e.target.value); setNewLabelError(null); }}
+                        placeholder="Label name"
+                        className="w-full border border-input-border rounded-lg px-2 py-1 text-xs bg-input-bg text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-2 focus:ring-accent"
+                        onKeyDown={(e) => { if (e.key === "Escape") { setCreatingLabel(false); setNewLabelName(""); setNewLabelError(null); } }}
+                      />
+                      <div className="flex flex-wrap gap-1">
+                        {LABEL_PRESET_COLORS.map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => setNewLabelColor(c)}
+                            className="h-4 w-4 rounded-full transition-transform hover:scale-110"
+                            style={{
+                              backgroundColor: c,
+                              outline: newLabelColor === c ? `2px solid ${c}` : "none",
+                              outlineOffset: "2px",
+                            }}
+                          />
+                        ))}
+                      </div>
+                      {newLabelError && (
+                        <p className="text-xs text-destructive">{newLabelError}</p>
+                      )}
+                      <div className="flex gap-1.5">
+                        <button
+                          type="button"
+                          disabled={!newLabelName.trim() || createLabel.isPending}
+                          onClick={async () => {
+                            if (!newLabelName.trim()) return;
+                            try {
+                              const created = await createLabel.mutateAsync({ name: newLabelName.trim(), color: newLabelColor });
+                              await updateIssue.mutateAsync({ labelIds: [...issue.labels.map((l) => l.id), created.id] });
+                              setCreatingLabel(false);
+                              setNewLabelName("");
+                              setNewLabelColor(LABEL_PRESET_COLORS[0]);
+                              setNewLabelError(null);
+                            } catch (err) {
+                              setNewLabelError(err instanceof Error ? err.message : "Failed to create label");
+                            }
+                          }}
+                          className="flex-1 px-2 py-1 text-xs bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50"
+                        >
+                          {createLabel.isPending ? "Creating…" : "Create & add"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setCreatingLabel(false); setNewLabelName(""); setNewLabelError(null); }}
+                          className="flex-1 px-2 py-1 text-xs border border-border-default rounded-lg text-text-secondary hover:bg-bg-surface-hover transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setCreatingLabel(true)}
+                      className="mt-1 text-xs text-text-tertiary hover:text-text-primary transition-colors"
+                    >
+                      + Create new label
+                    </button>
+                  )}
+                </>
               )}
               {issue.labels.length > 0 ? (
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap gap-1 mt-1">
                   {issue.labels.map((label) => (
                     <span
                       key={label.id}
@@ -423,7 +496,7 @@ export default function IssueDetailPage({
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-text-tertiary">No labels</p>
+                !showLabelPicker && <p className="text-sm text-text-tertiary">No labels</p>
               )}
             </div>
           </div>

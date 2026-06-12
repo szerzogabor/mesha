@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "automation_rules",
-       indexes = @Index(name = "idx_automation_rules_project_trigger", columnList = "project_id, trigger_type"))
-public class AutomationRule {
+@Table(name = "ticket_rules",
+       indexes = @Index(name = "idx_ticket_rules_project_id", columnList = "project_id"))
+public class TicketRule {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -19,20 +19,19 @@ public class AutomationRule {
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "trigger_type", nullable = false, length = 50)
-    private AutomationTriggerType triggerType;
-
-    /** Matching criterion for parameterized triggers (STATUS_UPDATED, LABEL_ADDED). Null for non-parameterized triggers. */
-    @Column(name = "trigger_value", length = 255)
-    private String triggerValue;
-
-    @OneToMany(mappedBy = "rule", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("position ASC")
-    private List<AutomationRuleAction> actions = new ArrayList<>();
+    @Column(nullable = false, length = 255)
+    private String name;
 
     @Column(nullable = false)
     private boolean enabled = true;
+
+    @OneToMany(mappedBy = "rule", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("position ASC")
+    private List<TicketRuleCondition> conditions = new ArrayList<>();
+
+    @OneToMany(mappedBy = "rule", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("position ASC")
+    private List<TicketRuleRestriction> restrictions = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
@@ -52,13 +51,12 @@ public class AutomationRule {
     public UUID getId() { return id; }
     public Project getProject() { return project; }
     public void setProject(Project project) { this.project = project; }
-    public AutomationTriggerType getTriggerType() { return triggerType; }
-    public void setTriggerType(AutomationTriggerType triggerType) { this.triggerType = triggerType; }
-    public String getTriggerValue() { return triggerValue; }
-    public void setTriggerValue(String triggerValue) { this.triggerValue = triggerValue; }
-    public List<AutomationRuleAction> getActions() { return actions; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public List<TicketRuleCondition> getConditions() { return conditions; }
+    public List<TicketRuleRestriction> getRestrictions() { return restrictions; }
     public User getCreatedBy() { return createdBy; }
     public void setCreatedBy(User createdBy) { this.createdBy = createdBy; }
     public Instant getCreatedAt() { return createdAt; }

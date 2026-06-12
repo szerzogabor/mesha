@@ -173,12 +173,12 @@ function SessionConversation({
         </div>
       )}
 
-      {/* PR card — rich if linkedPullRequest available, simple fallback otherwise */}
-      {(session.linkedPullRequest?.htmlUrl ?? session.prUrl) && (() => {
-        const prUrl = session.linkedPullRequest?.htmlUrl ?? session.prUrl!;
-        const pr = session.linkedPullRequest;
+      {/* PR cards — one per linked pull request */}
+      {(session.linkedPullRequests?.length ? session.linkedPullRequests : session.prUrl ? [null] : []).map((pr, idx) => {
+        const prUrl = pr?.htmlUrl ?? session.prUrl!;
         return (
           <a
+            key={pr?.id ?? prUrl ?? idx}
             href={prUrl}
             target="_blank"
             rel="noopener noreferrer"
@@ -226,7 +226,7 @@ function SessionConversation({
             </svg>
           </a>
         );
-      })()}
+      })}
 
       {session.sessionUrl && (
         <a
@@ -323,8 +323,8 @@ function SessionRow({
           )}
         </span>
         <SessionStatusBadge state={session.executionState} />
-        {(session.linkedPullRequest || session.prUrl) && (() => {
-          const pr = session.linkedPullRequest;
+        {(session.linkedPullRequests?.length || session.prUrl) && (() => {
+          const pr = session.linkedPullRequests?.[0];
           if (pr) {
             return (
               <span className={`shrink-0 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${prStateBadgeClass(pr)}`}>

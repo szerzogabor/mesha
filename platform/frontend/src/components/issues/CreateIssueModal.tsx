@@ -28,14 +28,21 @@ interface CreateIssueModalProps {
 export function CreateIssueModal({ open, onClose, workspaceId, projectStatuses, defaultStatus, onSubmit }: CreateIssueModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState<IssueStatus>((defaultStatus as IssueStatus) ?? "BACKLOG");
+  const [status, setStatus] = useState<IssueStatus>("");
 
   useEffect(() => {
-    if (open) {
-      setStatus((defaultStatus as IssueStatus) ?? "BACKLOG");
+    if (open && defaultStatus) {
+      setStatus(defaultStatus as IssueStatus);
     }
   }, [open, defaultStatus]);
   const [priority, setPriority] = useState<IssuePriority>("MEDIUM");
+
+  useEffect(() => {
+    if (projectStatuses && projectStatuses.length > 0 && !status) {
+      setStatus(projectStatuses[0].name);
+    }
+  }, [projectStatuses]);
+
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +70,7 @@ export function CreateIssueModal({ open, onClose, workspaceId, projectStatuses, 
       });
       setTitle("");
       setDescription("");
-      setStatus("BACKLOG");
+      setStatus(projectStatuses?.[0]?.name ?? "");
       setPriority("MEDIUM");
       setSelectedLabelIds([]);
       onClose();
@@ -113,19 +120,9 @@ export function CreateIssueModal({ open, onClose, workspaceId, projectStatuses, 
               onChange={(e) => setStatus(e.target.value)}
               className={inputClass}
             >
-              {projectStatuses && projectStatuses.length > 0 ? (
-                projectStatuses.map((s) => (
-                  <option key={s.id} value={s.name}>{statusLabel(s.name)}</option>
-                ))
-              ) : (
-                <>
-                  <option value="BACKLOG">Backlog</option>
-                  <option value="TODO">Todo</option>
-                  <option value="IN_PROGRESS">In Progress</option>
-                  <option value="REVIEW">Review</option>
-                  <option value="DONE">Done</option>
-                </>
-              )}
+              {(projectStatuses ?? []).map((s) => (
+                <option key={s.id} value={s.name}>{statusLabel(s.name)}</option>
+              ))}
             </select>
           </div>
           <div>

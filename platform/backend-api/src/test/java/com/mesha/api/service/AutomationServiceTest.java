@@ -216,7 +216,7 @@ class AutomationServiceTest {
         when(projectStatusRepository.existsByProjectIdAndName(projectId, "NOPE")).thenReturn(false);
 
         CreateAutomationRuleRequest req = new CreateAutomationRuleRequest(
-                AutomationTriggerType.PR_OPENED,
+                AutomationTriggerType.PR_OPENED, null,
                 List.of(new AutomationActionRequest(AutomationActionType.SET_STATUS, "NOPE")));
 
         assertThatThrownBy(() -> service.create(projectId, req, null))
@@ -237,7 +237,7 @@ class AutomationServiceTest {
         when(labelRepository.findById(labelId)).thenReturn(Optional.of(label));
 
         CreateAutomationRuleRequest req = new CreateAutomationRuleRequest(
-                AutomationTriggerType.PR_MERGED,
+                AutomationTriggerType.PR_MERGED, null,
                 List.of(new AutomationActionRequest(AutomationActionType.ADD_LABEL, labelId.toString())));
 
         assertThatThrownBy(() -> service.create(projectId, req, null))
@@ -258,7 +258,7 @@ class AutomationServiceTest {
         when(ruleRepository.save(any(AutomationRule.class))).thenAnswer(inv -> inv.getArgument(0));
 
         CreateAutomationRuleRequest req = new CreateAutomationRuleRequest(
-                AutomationTriggerType.BLOCKS_SESSION_FAILED,
+                AutomationTriggerType.BLOCKS_SESSION_FAILED, null,
                 List.of(
                         new AutomationActionRequest(AutomationActionType.SET_STATUS, "PENDING"),
                         new AutomationActionRequest(AutomationActionType.ADD_LABEL, labelId.toString())));
@@ -270,5 +270,47 @@ class AutomationServiceTest {
         assertThat(saved.getActions().get(0).getPosition()).isEqualTo(0);
         assertThat(saved.getActions().get(1).getActionType()).isEqualTo(AutomationActionType.ADD_LABEL);
         assertThat(saved.getActions().get(1).getPosition()).isEqualTo(1);
+    }
+
+    @Test
+    void createStatusUpdatedTriggerRequiresTriggerValue() {
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+
+        CreateAutomationRuleRequest req = new CreateAutomationRuleRequest(
+                AutomationTriggerType.STATUS_UPDATED, null,
+                List.of(new AutomationActionRequest(AutomationActionType.SET_STATUS, "DONE")));
+
+        assertThatThrownBy(() -> service.create(projectId, req, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("triggerValue");
+    }
+
+    @Test
+    void createStatusUpdatedTriggerValidatesStatusExists() {
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+        when(projectStatusRepository.existsByProjectIdAndName(projectId, "NONEXISTENT")).thenReturn(false);
+
+        CreateAutomationRuleRequest req = new CreateAutomationRuleRequest(
+                AutomationTriggerType.STATUS_UPDATED, "NONEXISTENT",
+                List.of(new AutomationActionRequest(AutomationActionType.SET_STATUS, "DONE")));
+
+        assertThatThrownBy(() -> service.create(projectId, req, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Unknown status");
+    }
+
+    @Test
+    void executeForWithMatchValueUsesParameterizedQuery() {
+        AutomationRule rule = rule(AutomationActionType.SET_STATUS, "REVIEW");
+        when(ruleRepository.findEnabledByProjectIdAndTriggerTypeAndValueWithActions(
+                projectId, AutomationTriggerType.STATUS_UPDATED, "IN_REVIEW"))
+                .thenReturn(List.of(rule));
+        when(projectStatusRepository.existsByProjectIdAndName(projectId, "REVIEW")).thenReturn(true);
+
+        service.executeFor(AutomationTriggerType.STATUS_UPDATED, issue, "IN_REVIEW");
+
+        verify(ruleRepository).findEnabledByProjectIdAndTriggerTypeAndValueWithActions(
+                projectId, AutomationTriggerType.STATUS_UPDATED, "IN_REVIEW");
+        verify(ruleRepository, never()).findEnabledByProjectIdAndTriggerTypeWithActions(any(), any());
     }
 }
