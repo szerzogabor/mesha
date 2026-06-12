@@ -115,8 +115,13 @@ public class GitHubAppService {
             long durationMs = System.currentTimeMillis() - start;
 
             if (response.statusCode() != 201) {
-                log.error("GitHub API returned unexpected status for installation token installationId={} httpStatus={} durationMs={}",
-                        installationId, response.statusCode(), durationMs);
+                log.error("GitHub API returned unexpected status for installation token installationId={} httpStatus={} durationMs={} body={}",
+                        installationId, response.statusCode(), durationMs, response.body());
+                if (response.statusCode() == 404) {
+                    throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                            "GitHub App installation not found (id=" + installationId
+                                    + "). The app may have been uninstalled or the installation ID is stale.");
+                }
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                         "GitHub API returned " + response.statusCode());
             }
