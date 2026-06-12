@@ -63,18 +63,28 @@ export function ResourcesPanel({ projectId, issueId }: Props) {
   const entries: ResourceEntry[] = [];
 
   for (const s of sessions) {
-    const url = s.linkedPullRequest?.htmlUrl ?? s.prUrl;
-    if (url) {
-      if (seenUrls.has(url)) continue;
-      seenUrls.add(url);
-      const pr: LinkedPullRequest = s.linkedPullRequest ?? {
-        id: s.id,
-        htmlUrl: url,
-        githubPrNumber: s.prNumber ?? undefined,
-        sourceBranch: s.branchName ?? undefined,
-      };
-      if (pr.sourceBranch) seenBranches.add(pr.sourceBranch);
-      entries.push({ key: url, url, pr });
+    const prs = s.linkedPullRequests ?? [];
+    if (prs.length > 0) {
+      for (const pr of prs) {
+        const url = pr.htmlUrl;
+        if (seenUrls.has(url)) continue;
+        seenUrls.add(url);
+        if (pr.sourceBranch) seenBranches.add(pr.sourceBranch);
+        entries.push({ key: url, url, pr });
+      }
+    } else if (s.prUrl) {
+      const url = s.prUrl;
+      if (!seenUrls.has(url)) {
+        seenUrls.add(url);
+        const pr: LinkedPullRequest = {
+          id: s.id,
+          htmlUrl: url,
+          githubPrNumber: s.prNumber ?? undefined,
+          sourceBranch: s.branchName ?? undefined,
+        };
+        if (pr.sourceBranch) seenBranches.add(pr.sourceBranch);
+        entries.push({ key: url, url, pr });
+      }
     } else if (s.branchName && !seenBranches.has(s.branchName)) {
       seenBranches.add(s.branchName);
       entries.push({ key: s.branchName, branchName: s.branchName });

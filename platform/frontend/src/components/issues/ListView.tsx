@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Issue, IssuePriority } from "@/types";
+import { Issue, IssuePriority, LinkedPullRequest } from "@/types";
 import { StatusBadge } from "./StatusBadge";
 import { PriorityBadge } from "./PriorityBadge";
 import { Pagination } from "@/components/ui/Pagination";
@@ -36,6 +36,19 @@ interface ListViewProps {
   workspaceId: string;
   projectId: string;
   onPageChange: (page: number) => void;
+}
+
+function getPrStateColor(pr: LinkedPullRequest): string {
+  if (pr.mergedAt) return "text-purple-500";
+  if (pr.state === "closed") return "text-red-500";
+  return "text-green-500";
+}
+
+function getPrLabel(pr: LinkedPullRequest): string {
+  const num = pr.githubPrNumber ? `#${pr.githubPrNumber}` : "PR";
+  if (pr.mergedAt) return `${num} merged`;
+  if (pr.state === "closed") return `${num} closed`;
+  return `${num} open`;
 }
 
 export function ListView({
@@ -127,12 +140,13 @@ export function ListView({
 
   return (
     <div>
-      <div className="hidden md:grid grid-cols-[80px_1fr_130px_110px_90px] gap-4 px-4 py-2 mx-6 mt-4 border-b border-border-default">
+      <div className="hidden md:grid grid-cols-[80px_1fr_130px_110px_90px_100px] gap-4 px-4 py-2 mx-6 mt-4 border-b border-border-default">
         <span className="text-xs font-medium text-text-tertiary">ID</span>
         <SortButton field="title" label="Title" />
         <SortButton field="status" label="Status" />
         <SortButton field="priority" label="Priority" />
         <SortButton field="updatedAt" label="Updated" />
+        <span className="text-xs font-medium text-text-tertiary">PR</span>
       </div>
 
       <div
@@ -143,24 +157,40 @@ export function ListView({
         )}
       >
         {sorted.map((issue) => (
-          <Link
-            key={issue.id}
-            href={`/workspaces/${workspaceId}/projects/${projectId}/issues/${issue.id}`}
-            className={cn(
-              "flex flex-col gap-2 px-4 py-3 hover:bg-bg-surface-hover transition-colors",
-              "md:grid md:grid-cols-[80px_1fr_130px_110px_90px] md:items-center md:gap-4"
-            )}
-          >
-            <span className="text-xs font-mono text-text-tertiary whitespace-nowrap">
-              {issue.identifier ?? ""}
-            </span>
-            <p className="text-sm font-medium text-text-primary truncate">{issue.title}</p>
-            <StatusBadge status={issue.status} />
-            <PriorityBadge priority={issue.priority} />
-            <span className="text-xs text-text-tertiary whitespace-nowrap">
-              {formatRelativeTime(issue.updatedAt)}
-            </span>
-          </Link>
+          <div key={issue.id} className="relative">
+            <Link
+              href={`/workspaces/${workspaceId}/projects/${projectId}/issues/${issue.id}`}
+              className={cn(
+                "flex flex-col gap-2 px-4 py-3 hover:bg-bg-surface-hover transition-colors",
+                "md:grid md:grid-cols-[80px_1fr_130px_110px_90px_100px] md:items-center md:gap-4"
+              )}
+            >
+              <span className="text-xs font-mono text-text-tertiary whitespace-nowrap">
+                {issue.identifier ?? ""}
+              </span>
+              <p className="text-sm font-medium text-text-primary truncate">{issue.title}</p>
+              <StatusBadge status={issue.status} />
+              <PriorityBadge priority={issue.priority} />
+              <span className="text-xs text-text-tertiary whitespace-nowrap">
+                {formatRelativeTime(issue.updatedAt)}
+              </span>
+              <span className="text-xs text-text-tertiary">
+                {issue.lastPullRequest ? (
+                  <a
+                    href={issue.lastPullRequest.htmlUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className={`font-medium hover:underline ${getPrStateColor(issue.lastPullRequest)}`}
+                  >
+                    {getPrLabel(issue.lastPullRequest)}
+                  </a>
+                ) : (
+                  "—"
+                )}
+              </span>
+            </Link>
+          </div>
         ))}
       </div>
 

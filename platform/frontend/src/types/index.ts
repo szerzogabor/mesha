@@ -106,6 +106,7 @@ export interface Issue {
   agentLlm?: AgentLlm;
   createdAt: string;
   updatedAt: string;
+  lastPullRequest?: LinkedPullRequest;
 }
 
 export interface Comment {
@@ -179,7 +180,7 @@ export interface BlocksSession {
   completedAt?: string;
   createdAt: string;
   updatedAt: string;
-  linkedPullRequest?: LinkedPullRequest;
+  linkedPullRequests?: LinkedPullRequest[];
 }
 
 export interface BlocksMessage {

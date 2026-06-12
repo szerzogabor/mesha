@@ -1,5 +1,6 @@
 package com.mesha.api.dto;
 
+import com.mesha.api.model.GitHubPullRequest;
 import com.mesha.api.model.Issue;
 import com.mesha.api.model.IssuePriority;
 import java.time.Instant;
@@ -20,9 +21,14 @@ public record IssueDto(
     String agentType,
     String agentLlm,
     Instant createdAt,
-    Instant updatedAt
+    Instant updatedAt,
+    GitHubPullRequestDto lastPullRequest
 ) {
     public static IssueDto from(Issue i) {
+        return from(i, null);
+    }
+
+    public static IssueDto from(Issue i, GitHubPullRequest lastPr) {
         String projectKey = i.getProject() != null ? i.getProject().getKey() : null;
         Integer number = i.getNumber();
         String identifier = (projectKey != null && number != null) ? projectKey + "-" + number : null;
@@ -40,7 +46,8 @@ public record IssueDto(
             i.getAgentType(),
             i.getAgentLlm(),
             i.getCreatedAt(),
-            i.getUpdatedAt()
+            i.getUpdatedAt(),
+            lastPr != null ? GitHubPullRequestDto.from(lastPr) : null
         );
     }
 }

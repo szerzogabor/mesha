@@ -8,6 +8,7 @@ import com.mesha.api.dto.UpdateBlocksSessionRequest;
 import com.mesha.api.model.BlocksSession;
 import com.mesha.api.model.GitHubPullRequest;
 import com.mesha.api.model.User;
+import java.util.List;
 import com.mesha.api.repository.GitHubPullRequestRepository;
 import com.mesha.api.security.CurrentUser;
 import com.mesha.api.service.BlocksMessageService;
@@ -41,16 +42,12 @@ public class BlocksSessionController {
     }
 
     private BlocksSessionDto toDto(BlocksSession session) {
-        GitHubPullRequest linkedPr = gitHubPullRequestRepository
-                .findByBlocksSessionId(session.getId())
-                .orElseGet(() -> {
-                    if (session.getBranchName() == null) return null;
-                    // Search by branch regardless of whether the PR is already linked to another session
-                    return gitHubPullRequestRepository
-                            .findBySourceBranch(session.getBranchName())
-                            .stream().findFirst().orElse(null);
-                });
-        return BlocksSessionDto.from(session, linkedPr);
+        List<GitHubPullRequest> linkedPrs = gitHubPullRequestRepository
+                .findAllByBlocksSessionId(session.getId());
+        if (linkedPrs.isEmpty() && session.getBranchName() != null) {
+            linkedPrs = gitHubPullRequestRepository.findBySourceBranch(session.getBranchName());
+        }
+        return BlocksSessionDto.from(session, linkedPrs);
     }
 
     @PostMapping
