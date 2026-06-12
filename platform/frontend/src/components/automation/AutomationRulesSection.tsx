@@ -155,14 +155,14 @@ function ActionValueSelector({
   statuses,
   labels,
 }: ActionValueSelectorProps) {
-  if (PARAMETERLESS_ACTIONS.includes(actionType)) return null;
-
   const [creatingLabel, setCreatingLabel] = useState(false);
   const [labelName, setLabelName] = useState("");
   const [labelColor, setLabelColor] = useState(PRESET_COLORS[0]);
   const [labelError, setLabelError] = useState<string | null>(null);
   const [pendingLabel, setPendingLabel] = useState<{ id: string; name: string } | null>(null);
   const createLabel = useCreateLabel(workspaceId);
+
+  if (PARAMETERLESS_ACTIONS.includes(actionType)) return null;
 
   const valueOptions =
     actionType === "SET_STATUS"
