@@ -302,7 +302,7 @@ class SessionPollService {
                 if (!hasApiMessages) {
                     recordStateTransitionMessage(session, newState, result.finalMessage());
                 }
-                fireSessionStateAutomation(session, newState);
+                fireSessionStateAutomation(session, newState, result.finalMessage());
             } else {
                 log.debug("session_state_unchanged session_id={} state={} poll_count={}",
                         session.getId(), newState, session.getRetryCount());
@@ -379,10 +379,10 @@ class SessionPollService {
         session.setErrorMessage(reason);
         sessionRepo.save(session);
         recordStateTransitionMessage(session, AIExecutionState.FAILED, reason);
-        fireSessionStateAutomation(session, AIExecutionState.FAILED);
+        fireSessionStateAutomation(session, AIExecutionState.FAILED, reason);
     }
 
-    private void fireSessionStateAutomation(BlocksSession session, AIExecutionState newState) {
+    private void fireSessionStateAutomation(BlocksSession session, AIExecutionState newState, String providerMessage) {
         AutomationTriggerType trigger = switch (newState) {
             case DONE -> AutomationTriggerType.BLOCKS_SESSION_COMPLETED;
             case FAILED -> AutomationTriggerType.BLOCKS_SESSION_FAILED;
@@ -391,6 +391,18 @@ class SessionPollService {
         if (trigger != null) {
             automationService.executeFor(trigger, session.getIssue());
         }
+        if (isTokenLimitMessage(providerMessage) || isTokenLimitMessage(session.getErrorMessage())) {
+            log.info("session_token_limit_detected session_id={}", session.getId());
+            automationService.executeFor(AutomationTriggerType.AI_TOKEN_LIMIT_HIT, session.getIssue());
+        }
+    }
+
+    private static final java.util.regex.Pattern TOKEN_LIMIT_PATTERN = java.util.regex.Pattern.compile(
+            "token[_ ]limit|context[_ ]limit|context[_ ]length|max[_ ]tokens|out[_ ]of[_ ]tokens|context[_ ]window",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    private boolean isTokenLimitMessage(String message) {
+        return message != null && TOKEN_LIMIT_PATTERN.matcher(message).find();
     }
 
     /**

@@ -17,6 +17,7 @@ public interface GitHubPullRequestRepository extends JpaRepository<GitHubPullReq
     Optional<GitHubPullRequest> findByHtmlUrl(String htmlUrl);
     Optional<GitHubPullRequest> findByBlocksSession(BlocksSession session);
     Optional<GitHubPullRequest> findByBlocksSessionId(UUID blocksSessionId);
+    List<GitHubPullRequest> findAllByBlocksSessionId(UUID blocksSessionId);
     List<GitHubPullRequest> findBySourceBranchAndBlocksSessionIsNull(String sourceBranch);
     List<GitHubPullRequest> findBySourceBranch(String sourceBranch);
 
@@ -33,4 +34,17 @@ public interface GitHubPullRequestRepository extends JpaRepository<GitHubPullReq
             """)
     List<GitHubPullRequest> findByRepositoryIdAndStatus(@Param("repositoryId") UUID repositoryId,
                                                         @Param("status") String status);
+
+    @Query("""
+            SELECT pr FROM GitHubPullRequest pr
+            WHERE pr.blocksSession.issue.id IN :issueIds
+              AND pr.updatedAt = (
+                SELECT MAX(pr2.updatedAt)
+                FROM GitHubPullRequest pr2
+                WHERE pr2.blocksSession.issue.id = pr.blocksSession.issue.id
+              )
+            """)
+    List<GitHubPullRequest> findLatestByIssueIds(@Param("issueIds") List<UUID> issueIds);
+
+    Optional<GitHubPullRequest> findFirstByBlocksSession_Issue_IdOrderByUpdatedAtDesc(UUID issueId);
 }

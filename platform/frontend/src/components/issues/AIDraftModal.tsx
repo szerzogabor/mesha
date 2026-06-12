@@ -54,7 +54,7 @@ export function AIDraftModal({ open, projectId, onClose }: AIDraftModalProps) {
   // Editable draft fields
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
-  const [editStatus, setEditStatus] = useState<IssueStatus>("BACKLOG");
+  const [editStatus, setEditStatus] = useState<IssueStatus>("");
   const [editPriority, setEditPriority] = useState<IssuePriority>("MEDIUM");
 
   const generate = useGenerateDraft(projectId);
@@ -78,7 +78,7 @@ export function AIDraftModal({ open, projectId, onClose }: AIDraftModalProps) {
     setEditDescription(buildFullDescription(d));
     const priority = (d.prioritySuggestion as IssuePriority) ?? "MEDIUM";
     setEditPriority(["LOW", "MEDIUM", "HIGH", "URGENT"].includes(priority) ? priority : "MEDIUM");
-    setEditStatus("BACKLOG");
+    setEditStatus(projectStatuses[0]?.name ?? "");
   }
 
   async function handleGenerate(e: React.FormEvent) {
@@ -243,19 +243,9 @@ export function AIDraftModal({ open, projectId, onClose }: AIDraftModalProps) {
                 onChange={(e) => setEditStatus(e.target.value as IssueStatus)}
                 className={inputClass}
               >
-                {projectStatuses.length > 0 ? (
-                  projectStatuses.map((s) => (
-                    <option key={s.id} value={s.name}>{statusLabel(s.name)}</option>
-                  ))
-                ) : (
-                  <>
-                    <option value="BACKLOG">Backlog</option>
-                    <option value="TODO">Todo</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="REVIEW">Review</option>
-                    <option value="DONE">Done</option>
-                  </>
-                )}
+                {projectStatuses.map((s) => (
+                  <option key={s.id} value={s.name}>{statusLabel(s.name)}</option>
+                ))}
               </select>
             </div>
             <div>

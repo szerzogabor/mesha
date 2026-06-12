@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Issue } from "@/types";
+import { Issue, LinkedPullRequest } from "@/types";
 import { StatusBadge } from "./StatusBadge";
 import { PriorityBadge } from "./PriorityBadge";
 import { formatRelativeTime } from "@/lib/utils";
@@ -9,6 +9,19 @@ interface IssueCardProps {
   issue: Issue;
   workspaceId: string;
   projectId: string;
+}
+
+function getPrStateColor(pr: LinkedPullRequest): string {
+  if (pr.mergedAt) return "text-purple-500";
+  if (pr.state === "closed") return "text-red-500";
+  return "text-green-500";
+}
+
+function getPrLabel(pr: LinkedPullRequest): string {
+  const num = pr.githubPrNumber ? `#${pr.githubPrNumber}` : "PR";
+  if (pr.mergedAt) return `${num} merged`;
+  if (pr.state === "closed") return `${num} closed`;
+  return `${num} open`;
 }
 
 export function IssueCard({ issue, workspaceId, projectId }: IssueCardProps) {
@@ -30,9 +43,23 @@ export function IssueCard({ issue, workspaceId, projectId }: IssueCardProps) {
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <StatusBadge status={issue.status} />
             <PriorityBadge priority={issue.priority} />
-            {issue.assignee && (
-              <span className="text-xs text-text-tertiary">
-                {issue.assignee.name || issue.assignee.email}
+            {issue.assignee ? (
+              <span className="inline-flex items-center gap-1">
+                <span className="h-4 w-4 rounded-full bg-accent-muted flex items-center justify-center text-[10px] font-medium text-accent-muted-text">
+                  {(issue.assignee.name || issue.assignee.email)[0]?.toUpperCase()}
+                </span>
+                <span className="text-xs text-text-tertiary">
+                  {issue.assignee.name || issue.assignee.email}
+                </span>
+              </span>
+            ) : (
+              <span
+                className="h-4 w-4 rounded-full border border-dashed border-border-default inline-flex items-center justify-center text-text-tertiary"
+                title="Unassigned"
+              >
+                <svg className="h-2.5 w-2.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
+                </svg>
               </span>
             )}
             {issue.labels.map((label) => (
@@ -43,6 +70,17 @@ export function IssueCard({ issue, workspaceId, projectId }: IssueCardProps) {
                 {label.name}
               </Badge>
             ))}
+            {issue.lastPullRequest && (
+              <a
+                href={issue.lastPullRequest.htmlUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className={`text-xs font-medium hover:underline ${getPrStateColor(issue.lastPullRequest)}`}
+              >
+                {getPrLabel(issue.lastPullRequest)}
+              </a>
+            )}
           </div>
         </div>
         <span className="text-xs text-text-tertiary whitespace-nowrap">

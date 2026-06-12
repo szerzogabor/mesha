@@ -21,4 +21,13 @@ public interface AutomationRuleRepository extends JpaRepository<AutomationRule, 
     List<AutomationRule> findEnabledByProjectIdAndTriggerTypeWithActions(
             @Param("projectId") UUID projectId,
             @Param("triggerType") AutomationTriggerType triggerType);
+
+    @Query("SELECT DISTINCT r FROM AutomationRule r LEFT JOIN FETCH r.actions "
+            + "WHERE r.project.id = :projectId AND r.triggerType = :triggerType AND r.enabled = true "
+            + "AND (r.triggerValue IS NULL OR r.triggerValue = :matchValue) "
+            + "ORDER BY r.createdAt ASC")
+    List<AutomationRule> findEnabledByProjectIdAndTriggerTypeAndValueWithActions(
+            @Param("projectId") UUID projectId,
+            @Param("triggerType") AutomationTriggerType triggerType,
+            @Param("matchValue") String matchValue);
 }

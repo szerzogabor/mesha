@@ -18,6 +18,8 @@ import { SessionChatDrawer } from "@/components/blocks/SessionChatDrawer";
 import { IssueStatus, IssuePriority, BlocksSession, AgentLlm } from "@/types";
 import { useLabels, useCreateLabel } from "@/hooks/useLabels";
 import { useIssueEvents } from "@/hooks/useIssueEvents";
+import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers";
+import { AssigneeSelector } from "@/components/issues/AssigneeSelector";
 import { formatRelativeTime, statusLabel } from "@/lib/utils";
 const PRIORITIES: IssuePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
@@ -50,6 +52,7 @@ export default function IssueDetailPage({
 
   const { data: availableLabels = [] } = useLabels(workspaceId);
   const createLabel = useCreateLabel(workspaceId);
+  const { data: workspaceMembers = [] } = useWorkspaceMembers(workspaceId);
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -259,19 +262,9 @@ export default function IssueDetailPage({
                 }}
                 className={selectClass}
               >
-                {projectStatuses.length > 0 ? (
-                  projectStatuses.map((s) => (
-                    <option key={s.id} value={s.name}>{statusLabel(s.name)}</option>
-                  ))
-                ) : (
-                  <>
-                    <option value="BACKLOG">Backlog</option>
-                    <option value="TODO">Todo</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="REVIEW">Review</option>
-                    <option value="DONE">Done</option>
-                  </>
-                )}
+                {projectStatuses.map((s) => (
+                  <option key={s.id} value={s.name}>{statusLabel(s.name)}</option>
+                ))}
               </select>
             </div>
 
@@ -298,26 +291,18 @@ export default function IssueDetailPage({
               <label className="block text-xs font-semibold text-text-tertiary uppercase tracking-wide mb-1">
                 Assignee
               </label>
-              {issue.assignee ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-full bg-accent-muted flex items-center justify-center text-xs font-medium text-accent-muted-text">
-                      {(issue.assignee.name || issue.assignee.email)[0]?.toUpperCase()}
-                    </div>
-                    <span className="text-sm text-text-primary">
-                      {issue.assignee.name || issue.assignee.email}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => updateIssue.mutateAsync({ clearAssignee: true })}
-                    className="text-xs text-text-tertiary hover:text-destructive transition-colors"
-                  >
-                    ×
-                  </button>
-                </div>
-              ) : (
-                <p className="text-sm text-text-tertiary">Unassigned</p>
-              )}
+              <AssigneeSelector
+                assignee={issue.assignee}
+                members={workspaceMembers}
+                disabled={updateIssue.isPending}
+                onAssign={(userId) => {
+                  if (userId === null) {
+                    updateIssue.mutate({ clearAssignee: true });
+                  } else {
+                    updateIssue.mutate({ assigneeId: userId });
+                  }
+                }}
+              />
             </div>
 
             <div>
