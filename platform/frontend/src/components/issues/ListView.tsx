@@ -4,10 +4,15 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Issue, IssuePriority, LinkedPullRequest } from "@/types";
 import { StatusBadge } from "./StatusBadge";
-import { PriorityBadge } from "./PriorityBadge";
+import { PrioritySelector } from "./PrioritySelector";
+import { LabelSelector } from "./LabelSelector";
+import { AssigneeSelector } from "./AssigneeSelector";
 import { Pagination } from "@/components/ui/Pagination";
 import { Spinner } from "@/components/ui/Spinner";
 import { formatRelativeTime, cn } from "@/lib/utils";
+import { useUpdateIssueInProject } from "@/hooks/useIssues";
+import { useLabels } from "@/hooks/useLabels";
+import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers";
 
 type SortField = "title" | "status" | "priority" | "updatedAt";
 type SortDir = "asc" | "desc";
@@ -63,6 +68,10 @@ export function ListView({
 }: ListViewProps) {
   const [sortField, setSortField] = useState<SortField>("updatedAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const { mutate: updateIssue } = useUpdateIssueInProject(projectId);
+  const { data: allLabels = [] } = useLabels(workspaceId);
+  const { data: members = [] } = useWorkspaceMembers(workspaceId);
 
   const sorted = useMemo(() => {
     return [...issues].sort((a, b) => {
@@ -140,11 +149,14 @@ export function ListView({
 
   return (
     <div>
-      <div className="hidden md:grid grid-cols-[80px_1fr_130px_110px_90px_100px] gap-4 px-4 py-2 mx-6 mt-4 border-b border-border-default">
+      {/* Header row */}
+      <div className="hidden md:grid grid-cols-[80px_1fr_130px_110px_110px_36px_90px_100px] gap-4 px-4 py-2 mx-6 mt-4 border-b border-border-default">
         <span className="text-xs font-medium text-text-tertiary">ID</span>
         <SortButton field="title" label="Title" />
         <SortButton field="status" label="Status" />
         <SortButton field="priority" label="Priority" />
+        <span className="text-xs font-medium text-text-tertiary">Labels</span>
+        <span className="text-xs font-medium text-text-tertiary">Who</span>
         <SortButton field="updatedAt" label="Updated" />
         <span className="text-xs font-medium text-text-tertiary">PR</span>
       </div>
@@ -157,39 +169,97 @@ export function ListView({
         )}
       >
         {sorted.map((issue) => (
-          <div key={issue.id} className="relative">
+          <div
+            key={issue.id}
+            className={cn(
+              "relative flex flex-col gap-2 px-4 py-3",
+              "md:grid md:grid-cols-[80px_1fr_130px_110px_110px_36px_90px_100px] md:items-center md:gap-4",
+              "hover:bg-bg-surface-hover transition-colors"
+            )}
+          >
+            {/* Navigate link covers the non-interactive parts */}
             <Link
               href={`/workspaces/${workspaceId}/projects/${projectId}/issues/${issue.id}`}
-              className={cn(
-                "flex flex-col gap-2 px-4 py-3 hover:bg-bg-surface-hover transition-colors",
-                "md:grid md:grid-cols-[80px_1fr_130px_110px_90px_100px] md:items-center md:gap-4"
-              )}
+              className="absolute inset-0"
+              tabIndex={-1}
+              aria-hidden="true"
+            />
+
+            {/* ID */}
+            <span className="relative text-xs font-mono text-text-tertiary whitespace-nowrap pointer-events-none">
+              {issue.identifier ?? ""}
+            </span>
+
+            {/* Title */}
+            <Link
+              href={`/workspaces/${workspaceId}/projects/${projectId}/issues/${issue.id}`}
+              className="relative text-sm font-medium text-text-primary truncate hover:underline"
             >
-              <span className="text-xs font-mono text-text-tertiary whitespace-nowrap">
-                {issue.identifier ?? ""}
-              </span>
-              <p className="text-sm font-medium text-text-primary truncate">{issue.title}</p>
-              <StatusBadge status={issue.status} />
-              <PriorityBadge priority={issue.priority} />
-              <span className="text-xs text-text-tertiary whitespace-nowrap">
-                {formatRelativeTime(issue.updatedAt)}
-              </span>
-              <span className="text-xs text-text-tertiary">
-                {issue.lastPullRequest ? (
-                  <a
-                    href={issue.lastPullRequest.htmlUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className={`font-medium hover:underline ${getPrStateColor(issue.lastPullRequest)}`}
-                  >
-                    {getPrLabel(issue.lastPullRequest)}
-                  </a>
-                ) : (
-                  "—"
-                )}
-              </span>
+              {issue.title}
             </Link>
+
+            {/* Status */}
+            <div className="relative pointer-events-none">
+              <StatusBadge status={issue.status} />
+            </div>
+
+            {/* Priority — interactive */}
+            <div className="relative">
+              <PrioritySelector
+                priority={issue.priority}
+                onUpdate={(priority) =>
+                  updateIssue({ issueId: issue.id, data: { priority } })
+                }
+              />
+            </div>
+
+            {/* Labels — interactive */}
+            <div className="relative">
+              <LabelSelector
+                selectedLabels={issue.labels}
+                allLabels={allLabels}
+                onUpdate={(labelIds) =>
+                  updateIssue({ issueId: issue.id, data: { labelIds } })
+                }
+              />
+            </div>
+
+            {/* Assignee — interactive compact */}
+            <div className="relative">
+              <AssigneeSelector
+                assignee={issue.assignee}
+                members={members}
+                compact
+                onAssign={(userId) =>
+                  updateIssue({
+                    issueId: issue.id,
+                    data: userId ? { assigneeId: userId } : { clearAssignee: true },
+                  })
+                }
+              />
+            </div>
+
+            {/* Updated */}
+            <span className="relative text-xs text-text-tertiary whitespace-nowrap pointer-events-none">
+              {formatRelativeTime(issue.updatedAt)}
+            </span>
+
+            {/* PR */}
+            <span className="relative text-xs text-text-tertiary">
+              {issue.lastPullRequest ? (
+                <a
+                  href={issue.lastPullRequest.htmlUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className={`font-medium hover:underline ${getPrStateColor(issue.lastPullRequest)}`}
+                >
+                  {getPrLabel(issue.lastPullRequest)}
+                </a>
+              ) : (
+                "—"
+              )}
+            </span>
           </div>
         ))}
       </div>
