@@ -11,7 +11,8 @@ spring:
     driver-class-name: org.postgresql.Driver
     hikari:
       pool-name: mesha-api-hikari
-      leak-detection-threshold: ${DB_LEAK_DETECTION_THRESHOLD_MS:30000}
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      leak-detection-threshold: ${DB_LEAK_DETECTION_THRESHOLD_MS:60000}
 
   jpa:
     hibernate:

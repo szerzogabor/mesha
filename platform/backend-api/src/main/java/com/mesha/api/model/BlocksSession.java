@@ -23,7 +23,7 @@ public class BlocksSession {
     @Column(nullable = false, length = 50)
     private String provider = "blocks";
 
-    @Column(name = "provider_session_id")
+    @Column(name = "provider_session_id", unique = true)
     private String providerSessionId;
 
     @Enumerated(EnumType.STRING)
