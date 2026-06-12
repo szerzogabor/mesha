@@ -445,6 +445,7 @@ interface CreateRuleFormProps {
 }
 
 function CreateRuleForm({ projectId, statuses, labels }: CreateRuleFormProps) {
+  const [name, setName] = useState("");
   const [conditions, setConditions] = useState<EditableCondition[]>(() => [newCondition()]);
   const [restrictions, setRestrictions] = useState<EditableRestriction[]>(() => [newRestriction()]);
   const [error, setError] = useState<string | null>(null);
@@ -452,10 +453,11 @@ function CreateRuleForm({ projectId, statuses, labels }: CreateRuleFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isComplete(conditions, restrictions) || createRule.isPending) return;
+    if (!name.trim() || !isComplete(conditions, restrictions) || createRule.isPending) return;
     setError(null);
     try {
       await createRule.mutateAsync({
+        name: name.trim(),
         conditions: conditions.map(({ conditionType, conditionValue }) => ({
           conditionType,
           conditionValue,
@@ -465,6 +467,7 @@ function CreateRuleForm({ projectId, statuses, labels }: CreateRuleFormProps) {
           restrictionValue,
         })),
       });
+      setName("");
       setConditions([newCondition()]);
       setRestrictions([newRestriction()]);
     } catch (err) {
@@ -475,6 +478,15 @@ function CreateRuleForm({ projectId, statuses, labels }: CreateRuleFormProps) {
   return (
     <form onSubmit={handleSubmit} className="p-4 bg-bg-surface border border-border-default rounded-lg">
       <h3 className="text-sm font-semibold text-text-primary mb-3">Create New Rule</h3>
+      <div className="mb-3">
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Rule name"
+          className="w-full border border-input-border rounded-lg px-3 py-1.5 text-sm bg-input-bg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+        />
+      </div>
       <div className="mb-3">
         <ConditionsEditor
           conditions={conditions}
@@ -491,7 +503,7 @@ function CreateRuleForm({ projectId, statuses, labels }: CreateRuleFormProps) {
       <div className="mt-3">
         <button
           type="submit"
-          disabled={!isComplete(conditions, restrictions) || createRule.isPending}
+          disabled={!name.trim() || !isComplete(conditions, restrictions) || createRule.isPending}
           className="px-4 py-1.5 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover disabled:opacity-50 transition-colors"
         >
           {createRule.isPending ? "Creating..." : "Create"}

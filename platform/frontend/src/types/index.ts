@@ -314,6 +314,7 @@ export interface TicketRuleRestriction {
 export interface TicketRule {
   id: string;
   projectId: string;
+  name: string;
   conditions: TicketRuleCondition[];
   restrictions: TicketRuleRestriction[];
   enabled: boolean;
