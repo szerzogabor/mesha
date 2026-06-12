@@ -2,8 +2,8 @@ package com.mesha.api.model;
 
 import jakarta.persistence.*;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -27,11 +27,11 @@ public class TicketRule {
 
     @OneToMany(mappedBy = "rule", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("position ASC")
-    private List<TicketRuleCondition> conditions = new ArrayList<>();
+    private Set<TicketRuleCondition> conditions = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "rule", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("position ASC")
-    private List<TicketRuleRestriction> restrictions = new ArrayList<>();
+    private Set<TicketRuleRestriction> restrictions = new LinkedHashSet<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
@@ -55,8 +55,8 @@ public class TicketRule {
     public void setName(String name) { this.name = name; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
-    public List<TicketRuleCondition> getConditions() { return conditions; }
-    public List<TicketRuleRestriction> getRestrictions() { return restrictions; }
+    public Set<TicketRuleCondition> getConditions() { return conditions; }
+    public Set<TicketRuleRestriction> getRestrictions() { return restrictions; }
     public User getCreatedBy() { return createdBy; }
     public void setCreatedBy(User createdBy) { this.createdBy = createdBy; }
     public Instant getCreatedAt() { return createdAt; }
