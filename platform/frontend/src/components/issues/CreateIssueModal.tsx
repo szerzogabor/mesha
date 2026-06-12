@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { logger } from "@/lib/logger";
 import { IssueStatus, IssuePriority, ProjectStatus } from "@/types";
@@ -15,6 +15,7 @@ interface CreateIssueModalProps {
   onClose: () => void;
   workspaceId: string;
   projectStatuses?: ProjectStatus[];
+  defaultStatus?: string;
   onSubmit: (data: {
     title: string;
     description?: string;
@@ -24,10 +25,16 @@ interface CreateIssueModalProps {
   }) => Promise<void>;
 }
 
-export function CreateIssueModal({ open, onClose, workspaceId, projectStatuses, onSubmit }: CreateIssueModalProps) {
+export function CreateIssueModal({ open, onClose, workspaceId, projectStatuses, defaultStatus, onSubmit }: CreateIssueModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState<IssueStatus>("BACKLOG");
+  const [status, setStatus] = useState<IssueStatus>((defaultStatus as IssueStatus) ?? "BACKLOG");
+
+  useEffect(() => {
+    if (open) {
+      setStatus((defaultStatus as IssueStatus) ?? "BACKLOG");
+    }
+  }, [open, defaultStatus]);
   const [priority, setPriority] = useState<IssuePriority>("MEDIUM");
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
