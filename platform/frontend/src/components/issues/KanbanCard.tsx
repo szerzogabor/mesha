@@ -4,7 +4,6 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
 import { Issue, LinkedPullRequest } from "@/types";
-import { Badge } from "@/components/ui/Badge";
 import { formatRelativeTime, cn } from "@/lib/utils";
 import { PrioritySelector } from "./PrioritySelector";
 import { LabelSelector } from "./LabelSelector";
