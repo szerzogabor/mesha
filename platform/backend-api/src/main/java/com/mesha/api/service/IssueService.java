@@ -35,6 +35,7 @@ public class IssueService {
     private final ProjectStatusRepository projectStatusRepository;
     private final AutomationService automationService;
     private final IssueSseService issueSseService;
+    private final TicketRuleService ticketRuleService;
 
     public IssueService(IssueRepository issueRepository,
                         ProjectRepository projectRepository,
@@ -44,7 +45,8 @@ public class IssueService {
                         ActivityService activityService,
                         ProjectStatusRepository projectStatusRepository,
                         AutomationService automationService,
-                        IssueSseService issueSseService) {
+                        IssueSseService issueSseService,
+                        TicketRuleService ticketRuleService) {
         this.issueRepository = issueRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
@@ -54,6 +56,7 @@ public class IssueService {
         this.projectStatusRepository = projectStatusRepository;
         this.automationService = automationService;
         this.issueSseService = issueSseService;
+        this.ticketRuleService = ticketRuleService;
     }
 
     @Transactional
@@ -145,8 +148,9 @@ public class IssueService {
         if (req.status() != null && !req.status().equalsIgnoreCase(issue.getStatus())) {
             UUID projectId = issue.getProject().getId();
             validateStatus(projectId, req.status());
-            String old = issue.getStatus();
             String newStatus = req.status().toUpperCase();
+            ticketRuleService.validateCanMoveToStatus(issue, newStatus);
+            String old = issue.getStatus();
             issue.setStatus(newStatus);
             activityService.record(issue, actor, ActivityEventType.STATUS_CHANGED, old, newStatus);
             log.debug("Issue status changed issueId={} from={} to={}", issueId, old, newStatus);
