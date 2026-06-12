@@ -57,8 +57,7 @@ function conditionValueLabel(
 
 function restrictionValueLabel(
   restrictionType: TicketRuleRestrictionType,
-  restrictionValue: string | undefined,
-  statuses: ProjectStatus[]
+  restrictionValue: string | undefined
 ): string {
   if (restrictionType === "CANNOT_MOVE_TO_STATUS" && restrictionValue) {
     return statusLabel(restrictionValue);
@@ -73,7 +72,7 @@ function ruleSummary(rule: TicketRule, statuses: ProjectStatus[], labels: Label[
   });
 
   const restrictionParts = rule.restrictions.map((r) => {
-    const valLabel = restrictionValueLabel(r.restrictionType, r.restrictionValue, statuses);
+    const valLabel = restrictionValueLabel(r.restrictionType, r.restrictionValue);
     return valLabel
       ? `${RESTRICTION_LABELS[r.restrictionType]}: "${valLabel}"`
       : RESTRICTION_LABELS[r.restrictionType];
