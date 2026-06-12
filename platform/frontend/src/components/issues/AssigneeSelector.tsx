@@ -9,6 +9,7 @@ interface AssigneeSelectorProps {
   members: WorkspaceMember[];
   onAssign: (userId: string | null) => void;
   disabled?: boolean;
+  compact?: boolean;
 }
 
 function initials(member: WorkspaceMember | UserSummary): string {
@@ -39,6 +40,7 @@ export function AssigneeSelector({
   members,
   onAssign,
   disabled = false,
+  compact = false,
 }: AssigneeSelectorProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -54,24 +56,35 @@ export function AssigneeSelector({
   }, [open]);
 
   return (
-    <div ref={ref} className="relative">
+    <div
+      ref={ref}
+      className="relative"
+      onPointerDown={compact ? (e) => e.stopPropagation() : undefined}
+    >
       <button
         type="button"
         disabled={disabled}
-        onClick={() => setOpen((v) => !v)}
+        onClick={(e) => {
+          if (compact) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          setOpen((v) => !v);
+        }}
         className="flex items-center gap-2 hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+        title={assignee ? displayName(assignee) : "Unassigned — click to assign"}
       >
         {assignee ? (
           <>
             <div className="h-6 w-6 rounded-full bg-accent-muted flex items-center justify-center text-xs font-medium text-accent-muted-text">
               {initials(assignee)}
             </div>
-            <span className="text-sm text-text-primary">{displayName(assignee)}</span>
+            {!compact && <span className="text-sm text-text-primary">{displayName(assignee)}</span>}
           </>
         ) : (
           <>
             <PlaceholderAvatar />
-            <span className="text-sm text-text-tertiary">Unassigned</span>
+            {!compact && <span className="text-sm text-text-tertiary">Unassigned</span>}
           </>
         )}
       </button>
