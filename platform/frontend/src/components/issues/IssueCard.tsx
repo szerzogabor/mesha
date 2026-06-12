@@ -43,9 +43,23 @@ export function IssueCard({ issue, workspaceId, projectId }: IssueCardProps) {
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <StatusBadge status={issue.status} />
             <PriorityBadge priority={issue.priority} />
-            {issue.assignee && (
-              <span className="text-xs text-text-tertiary">
-                {issue.assignee.name || issue.assignee.email}
+            {issue.assignee ? (
+              <span className="inline-flex items-center gap-1">
+                <span className="h-4 w-4 rounded-full bg-accent-muted flex items-center justify-center text-[10px] font-medium text-accent-muted-text">
+                  {(issue.assignee.name || issue.assignee.email)[0]?.toUpperCase()}
+                </span>
+                <span className="text-xs text-text-tertiary">
+                  {issue.assignee.name || issue.assignee.email}
+                </span>
+              </span>
+            ) : (
+              <span
+                className="h-4 w-4 rounded-full border border-dashed border-border-default inline-flex items-center justify-center text-text-tertiary"
+                title="Unassigned"
+              >
+                <svg className="h-2.5 w-2.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
+                </svg>
               </span>
             )}
             {issue.labels.map((label) => (

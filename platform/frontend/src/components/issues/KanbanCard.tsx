@@ -78,12 +78,21 @@ export function KanbanCard({ issue, workspaceId, projectId, overlay = false }: K
               </Badge>
             ))}
           </div>
-          {issue.assignee && (
+          {issue.assignee ? (
             <div
               className="w-5 h-5 rounded-full bg-accent-muted flex items-center justify-center text-xs font-medium text-accent-muted-text flex-shrink-0"
               title={issue.assignee.name || issue.assignee.email}
             >
               {(issue.assignee.name || issue.assignee.email)[0]?.toUpperCase()}
+            </div>
+          ) : (
+            <div
+              className="w-5 h-5 rounded-full border-2 border-dashed border-border-default flex items-center justify-center text-text-tertiary flex-shrink-0"
+              title="Unassigned"
+            >
+              <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
+              </svg>
             </div>
           )}
         </div>
