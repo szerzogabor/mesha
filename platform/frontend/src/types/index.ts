@@ -333,11 +333,11 @@ export type AutomationTriggerType =
   | "LABEL_ADDED"
   | "AI_TOKEN_LIMIT_HIT";
 
-export type AutomationActionType = "SET_STATUS" | "ADD_LABEL";
+export type AutomationActionType = "SET_STATUS" | "ADD_LABEL" | "START_AI_SESSION";
 
 export interface AutomationAction {
   actionType: AutomationActionType;
-  actionValue: string;
+  actionValue?: string;
 }
 
 export interface AutomationRule {
