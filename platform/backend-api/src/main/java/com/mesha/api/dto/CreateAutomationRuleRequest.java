@@ -9,5 +9,6 @@ import java.util.List;
 
 public record CreateAutomationRuleRequest(
     @NotNull AutomationTriggerType triggerType,
+    String triggerValue,
     @NotEmpty @Valid List<AutomationActionRequest> actions
 ) {}

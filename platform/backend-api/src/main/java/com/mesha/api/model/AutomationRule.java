@@ -23,6 +23,10 @@ public class AutomationRule {
     @Column(name = "trigger_type", nullable = false, length = 50)
     private AutomationTriggerType triggerType;
 
+    /** Matching criterion for parameterized triggers (STATUS_UPDATED, LABEL_ADDED). Null for non-parameterized triggers. */
+    @Column(name = "trigger_value", length = 255)
+    private String triggerValue;
+
     @OneToMany(mappedBy = "rule", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("position ASC")
     private List<AutomationRuleAction> actions = new ArrayList<>();
@@ -50,6 +54,8 @@ public class AutomationRule {
     public void setProject(Project project) { this.project = project; }
     public AutomationTriggerType getTriggerType() { return triggerType; }
     public void setTriggerType(AutomationTriggerType triggerType) { this.triggerType = triggerType; }
+    public String getTriggerValue() { return triggerValue; }
+    public void setTriggerValue(String triggerValue) { this.triggerValue = triggerValue; }
     public List<AutomationRuleAction> getActions() { return actions; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
