@@ -22,7 +22,7 @@ public interface BlocksSessionRepository extends JpaRepository<BlocksSession, UU
 
     List<BlocksSession> findByExecutionState(AIExecutionState executionState);
 
-    Optional<BlocksSession> findByProviderSessionId(String providerSessionId);
+    Optional<BlocksSession> findFirstByProviderSessionIdOrderByCreatedAtDesc(String providerSessionId);
 
     Optional<BlocksSession> findFirstByBranchName(String branchName);
 

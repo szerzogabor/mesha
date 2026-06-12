@@ -35,7 +35,7 @@ public class IssueSseService {
         list.add(emitter);
 
         emitter.onCompletion(() -> removeEmitter(projectId, emitter));
-        emitter.onTimeout(() -> removeEmitter(projectId, emitter));
+        emitter.onTimeout(() -> { removeEmitter(projectId, emitter); emitter.complete(); });
         emitter.onError(e -> removeEmitter(projectId, emitter));
 
         try {

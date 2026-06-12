@@ -206,7 +206,7 @@ public class BlocksSessionService {
     public void handleWebhookStateUpdate(String providerSessionId, AIExecutionState newState,
                                          String prUrl, Integer prNumber, String branchName,
                                          String errorMessage, String sessionUrl) {
-        BlocksSession session = blocksSessionRepository.findByProviderSessionId(providerSessionId)
+        BlocksSession session = blocksSessionRepository.findFirstByProviderSessionIdOrderByCreatedAtDesc(providerSessionId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                 "No Blocks session with providerSessionId: " + providerSessionId));
 
