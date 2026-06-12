@@ -26,6 +26,7 @@ export function useCreateTicketRule(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: {
+      name: string;
       conditions: TicketRuleConditionRequest[];
       restrictions: TicketRuleRestrictionRequest[];
     }) => apiClient.post<TicketRule>(`/api/projects/${projectId}/ticket-rules`, data),
