@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -198,6 +199,7 @@ public class TicketRuleService {
 
     private void applyConditions(TicketRule rule, List<TicketRuleConditionRequest> requests) {
         rule.getConditions().clear();
+        LinkedHashSet<TicketRuleCondition> newConditions = new LinkedHashSet<>();
         for (int i = 0; i < requests.size(); i++) {
             TicketRuleConditionRequest req = requests.get(i);
             TicketRuleCondition condition = new TicketRuleCondition();
@@ -205,12 +207,14 @@ public class TicketRuleService {
             condition.setConditionType(req.conditionType());
             condition.setConditionValue(req.conditionValue().trim());
             condition.setPosition(i);
-            rule.getConditions().add(condition);
+            newConditions.add(condition);
         }
+        rule.getConditions().addAll(newConditions);
     }
 
     private void applyRestrictions(TicketRule rule, List<TicketRuleRestrictionRequest> requests) {
         rule.getRestrictions().clear();
+        LinkedHashSet<TicketRuleRestriction> newRestrictions = new LinkedHashSet<>();
         for (int i = 0; i < requests.size(); i++) {
             TicketRuleRestrictionRequest req = requests.get(i);
             TicketRuleRestriction restriction = new TicketRuleRestriction();
@@ -218,8 +222,9 @@ public class TicketRuleService {
             restriction.setRestrictionType(req.restrictionType());
             restriction.setRestrictionValue(req.restrictionValue() != null ? req.restrictionValue().trim() : null);
             restriction.setPosition(i);
-            rule.getRestrictions().add(restriction);
+            newRestrictions.add(restriction);
         }
+        rule.getRestrictions().addAll(newRestrictions);
     }
 
     private void validateConditions(Project project, List<TicketRuleConditionRequest> conditions) {
