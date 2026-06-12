@@ -18,6 +18,8 @@ import com.mesha.api.repository.ProjectRepository;
 import com.mesha.api.repository.ProjectStatusRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -44,6 +46,7 @@ public class AutomationService {
     private final IssueRepository issueRepository;
     private final ActivityService activityService;
     private final TransactionTemplate ruleTransactionTemplate;
+    private BlocksSessionService blocksSessionService;
 
     public AutomationService(AutomationRuleRepository ruleRepository,
                              ProjectRepository projectRepository,
@@ -60,6 +63,11 @@ public class AutomationService {
         this.activityService = activityService;
         this.ruleTransactionTemplate = new TransactionTemplate(transactionManager);
         this.ruleTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
+
+    @Autowired
+    public void setBlocksSessionService(@Lazy BlocksSessionService blocksSessionService) {
+        this.blocksSessionService = blocksSessionService;
     }
 
     public List<AutomationRule> list(UUID projectId) {
@@ -135,7 +143,7 @@ public class AutomationService {
             AutomationRuleAction action = new AutomationRuleAction();
             action.setRule(rule);
             action.setActionType(req.actionType());
-            action.setActionValue(req.actionValue().trim());
+            action.setActionValue(req.actionValue() != null ? req.actionValue().trim() : null);
             action.setPosition(i);
             rule.getActions().add(action);
         }
@@ -208,6 +216,7 @@ public class AutomationService {
             switch (action.getActionType()) {
                 case SET_STATUS -> applySetStatus(rule, action, projectId, issue);
                 case ADD_LABEL -> applyAddLabel(rule, action, issue);
+                case START_AI_SESSION -> applyStartAiSession(rule, issue);
             }
         }
     }
@@ -250,6 +259,15 @@ public class AutomationService {
         issueRepository.save(issue);
         activityService.record(issue, null, ActivityEventType.LABEL_ADDED, null, label.get().getName());
         log.info("automation_label_applied ruleId={} issueId={} labelId={}", rule.getId(), issue.getId(), labelId);
+    }
+
+    private void applyStartAiSession(AutomationRule rule, Issue issue) {
+        try {
+            blocksSessionService.assignToBlocks(issue.getId(), null, null);
+            log.info("automation_ai_session_started ruleId={} issueId={}", rule.getId(), issue.getId());
+        } catch (Exception e) {
+            log.warn("automation_ai_session_failed ruleId={} issueId={} error={}", rule.getId(), issue.getId(), e.getMessage());
+        }
     }
 
     private void validateTriggerValue(Project project, AutomationTriggerType triggerType, String triggerValue) {
@@ -301,17 +319,23 @@ public class AutomationService {
 
     private void validateActionValue(Project project, AutomationActionRequest action) {
         String actionValue = action.actionValue();
-        if (actionValue == null || actionValue.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Action value is required");
-        }
         switch (action.actionType()) {
+            case START_AI_SESSION -> {
+                // No value needed for this action
+            }
             case SET_STATUS -> {
+                if (actionValue == null || actionValue.isBlank()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Action value is required");
+                }
                 if (!projectStatusRepository.existsByProjectIdAndName(project.getId(), actionValue.trim())) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Unknown status for this project: " + actionValue);
                 }
             }
             case ADD_LABEL -> {
+                if (actionValue == null || actionValue.isBlank()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Action value is required");
+                }
                 UUID labelId;
                 try {
                     labelId = UUID.fromString(actionValue.trim());

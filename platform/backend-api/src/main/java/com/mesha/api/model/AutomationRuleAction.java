@@ -20,7 +20,7 @@ public class AutomationRuleAction {
     @Column(name = "action_type", nullable = false, length = 50)
     private AutomationActionType actionType;
 
-    @Column(name = "action_value", nullable = false, length = 255)
+    @Column(name = "action_value", length = 255)
     private String actionValue;
 
     @Column(nullable = false)

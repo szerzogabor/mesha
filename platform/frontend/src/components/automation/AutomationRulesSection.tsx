@@ -36,7 +36,10 @@ const PARAMETERIZED_TRIGGERS: AutomationTriggerType[] = ["STATUS_UPDATED", "LABE
 const ACTION_LABELS: Record<AutomationActionType, string> = {
   SET_STATUS: "Move ticket to status",
   ADD_LABEL: "Add label to ticket",
+  START_AI_SESSION: "Start AI session",
 };
+
+const PARAMETERLESS_ACTIONS: AutomationActionType[] = ["START_AI_SESSION"];
 
 const PRESET_COLORS = [
   "#94a3b8", "#3b82f6", "#f59e0b", "#8b5cf6", "#22c55e",
@@ -51,20 +54,29 @@ function newAction(): EditableAction {
   return { key: crypto.randomUUID(), actionType: "SET_STATUS", actionValue: "" };
 }
 
+function isActionComplete(action: EditableAction): boolean {
+  if (PARAMETERLESS_ACTIONS.includes(action.actionType)) return true;
+  return !!action.actionValue;
+}
+
 function toEditable(actions: AutomationAction[]): EditableAction[] {
   return actions.map((a) => ({ ...a, key: crypto.randomUUID() }));
 }
 
 function toRequest(actions: EditableAction[]): AutomationAction[] {
-  return actions.map(({ actionType, actionValue }) => ({ actionType, actionValue }));
+  return actions.map(({ actionType, actionValue }) => ({
+    actionType,
+    actionValue: PARAMETERLESS_ACTIONS.includes(actionType) ? undefined : actionValue,
+  }));
 }
 
 const selectClass =
   "border border-input-border rounded-lg px-3 py-1.5 text-sm bg-input-bg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent";
 
 function actionValueLabel(action: AutomationAction, labels: Label[]): string {
+  if (action.actionType === "START_AI_SESSION") return "";
   if (action.actionType === "SET_STATUS") {
-    return statusLabel(action.actionValue);
+    return statusLabel(action.actionValue ?? "");
   }
   const label = labels.find((l) => l.id === action.actionValue);
   return label ? label.name : "(deleted label)";
@@ -129,7 +141,7 @@ function TriggerValueSelector({
 interface ActionValueSelectorProps {
   workspaceId: string;
   actionType: AutomationActionType;
-  value: string;
+  value: string | undefined;
   onChange: (value: string) => void;
   statuses: ProjectStatus[];
   labels: Label[];
@@ -149,6 +161,8 @@ function ActionValueSelector({
   const [labelError, setLabelError] = useState<string | null>(null);
   const [pendingLabel, setPendingLabel] = useState<{ id: string; name: string } | null>(null);
   const createLabel = useCreateLabel(workspaceId);
+
+  if (PARAMETERLESS_ACTIONS.includes(actionType)) return null;
 
   const valueOptions =
     actionType === "SET_STATUS"
@@ -183,7 +197,7 @@ function ActionValueSelector({
     <div className="flex flex-col gap-2">
       <div className="flex gap-2 items-center">
         <select
-          value={value}
+          value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           className={selectClass}
         >
@@ -348,14 +362,17 @@ function ruleSentence(rule: AutomationRule, statuses: ProjectStatus[], labels: L
         {TRIGGER_LABELS[rule.triggerType]}
         {tvLabel ? ` "${tvLabel}"` : ""}
       </span>
-      {rule.actions.map((action, index) => (
-        <span key={index}>
-          {index === 0 ? " → " : " and "}
-          <span className="font-medium">
-            {ACTION_LABELS[action.actionType]}: {actionValueLabel(action, labels)}
+      {rule.actions.map((action, index) => {
+        const valLabel = actionValueLabel(action, labels);
+        return (
+          <span key={index}>
+            {index === 0 ? " → " : " and "}
+            <span className="font-medium">
+              {ACTION_LABELS[action.actionType]}{valLabel ? `: ${valLabel}` : ""}
+            </span>
           </span>
-        </span>
-      ))}
+        );
+      })}
     </>
   );
 }
@@ -378,7 +395,7 @@ function RuleRow({ rule, workspaceId, projectId, statuses, labels }: RuleRowProp
   const deleteRule = useDeleteAutomation(projectId);
 
   const triggerValueComplete = !PARAMETERIZED_TRIGGERS.includes(triggerType) || triggerValue !== "";
-  const allActionsComplete = actions.length > 0 && actions.every((a) => a.actionValue) && triggerValueComplete;
+  const allActionsComplete = actions.length > 0 && actions.every((a) => isActionComplete(a)) && triggerValueComplete;
 
   const handleToggle = () => {
     updateRule.mutate({ ruleId: rule.id, data: { enabled: !rule.enabled } });
@@ -542,7 +559,7 @@ function CreateRuleForm({ workspaceId, projectId, statuses, labels }: CreateRule
   const createRule = useCreateAutomation(projectId);
 
   const triggerValueComplete = !PARAMETERIZED_TRIGGERS.includes(triggerType) || triggerValue !== "";
-  const allActionsComplete = actions.length > 0 && actions.every((a) => a.actionValue) && triggerValueComplete;
+  const allActionsComplete = actions.length > 0 && actions.every((a) => isActionComplete(a)) && triggerValueComplete;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

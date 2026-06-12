@@ -1,0 +1,117 @@
+package com.mesha.api.worker.scheduling;
+
+import com.mesha.api.repository.BlocksMessageRepository;
+import com.mesha.api.repository.BlocksSessionRepository;
+import com.mesha.api.repository.CommentRepository;
+import com.mesha.api.repository.GitHubRepositoryRepository;
+import com.mesha.api.repository.IssueRepository;
+import com.mesha.api.repository.WorkspaceBlocksConfigRepository;
+import com.mesha.api.service.AutomationService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class SessionPollTransactionsTokenLimitTest {
+
+    @Mock private BlocksSessionRepository sessionRepo;
+    @Mock private IssueRepository issueRepo;
+    @Mock private CommentRepository commentRepo;
+    @Mock private GitHubRepositoryRepository gitHubRepoRepo;
+    @Mock private BlocksMessageRepository messageRepo;
+    @Mock private WorkspaceBlocksConfigRepository configRepo;
+    @Mock private BlocksApiKeyService apiKeyService;
+    @Mock private AutomationService automationService;
+
+    private SessionPollTransactions txns;
+    private AutoCloseable mocks;
+
+    @BeforeEach
+    void setUp() {
+        mocks = MockitoAnnotations.openMocks(this);
+        txns = new SessionPollTransactions(sessionRepo, issueRepo, commentRepo,
+                gitHubRepoRepo, messageRepo, configRepo, apiKeyService, automationService);
+    }
+
+    @AfterEach
+    void tearDown() throws Exception {
+        mocks.close();
+    }
+
+    @Test
+    void isTokenLimitMessage_returnsFalseForNull() {
+        assertThat(txns.isTokenLimitMessage(null)).isFalse();
+    }
+
+    @Test
+    void isTokenLimitMessage_returnsFalseForNonLimitMessage() {
+        assertThat(txns.isTokenLimitMessage("Session completed successfully")).isFalse();
+    }
+
+    // Claude.ai: "You've hit your limit · resets 4:40pm (UTC)"
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "You've hit your limit · resets 4:40pm (UTC)",
+            "You've hit your limit. Come back tomorrow.",
+            "hit your limit",
+    })
+    void isTokenLimitMessage_detectsClaudeUsageLimitMessages(String message) {
+        assertThat(txns.isTokenLimitMessage(message)).isTrue();
+    }
+
+    // Claude API: "prompt is too long"
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "prompt is too long",
+            "The prompt is too long for this model",
+    })
+    void isTokenLimitMessage_detectsClaudeApiContextMessages(String message) {
+        assertThat(txns.isTokenLimitMessage(message)).isTrue();
+    }
+
+    // Gemini: "The input token count (X) exceeds the maximum number of tokens allowed (Y)"
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "The input token count (1624359) exceeds the maximum number of tokens allowed (1048576).",
+            "maximum number of tokens allowed",
+            "input token count exceeds limit",
+            "API Error: Input Token Count Exceeds Maximum Number of Tokens Allowed",
+    })
+    void isTokenLimitMessage_detectsGeminiTokenLimitMessages(String message) {
+        assertThat(txns.isTokenLimitMessage(message)).isTrue();
+    }
+
+    // GitHub Copilot (ghagpt): various token limit messages
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Oops, the token limit exceeded. Try to shorten your prompt or start a new conversation.",
+            "Note: I'm nearing the token limit for this thread",
+            "prompt token count of 131835 exceeds the limit of 128000",
+            "token count exceeds maximum",
+            "This model's maximum context length is 8192 tokens",
+    })
+    void isTokenLimitMessage_detectsGitHubCopilotTokenLimitMessages(String message) {
+        assertThat(txns.isTokenLimitMessage(message)).isTrue();
+    }
+
+    // Pre-existing generic patterns
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "token_limit reached",
+            "context_limit exceeded",
+            "context_length exceeded",
+            "max_tokens exceeded",
+            "out_of_tokens",
+            "context_window overflow",
+            "TOKEN LIMIT",
+            "CONTEXT WINDOW",
+    })
+    void isTokenLimitMessage_detectsGenericPatterns(String message) {
+        assertThat(txns.isTokenLimitMessage(message)).isTrue();
+    }
+}

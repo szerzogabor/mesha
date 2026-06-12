@@ -304,10 +304,21 @@ class SessionPollTransactions {
     }
 
     private static final java.util.regex.Pattern TOKEN_LIMIT_PATTERN = java.util.regex.Pattern.compile(
-            "token[_ ]limit|context[_ ]limit|context[_ ]length|max[_ ]tokens|out[_ ]of[_ ]tokens|context[_ ]window",
+            // Generic token/context limit terms
+            "token[_ ]limit|context[_ ]limit|context[_ ]length|max[_ ]tokens|out[_ ]of[_ ]tokens|context[_ ]window"
+            // Claude.ai usage limit: "You've hit your limit · resets 4:40pm (UTC)"
+            + "|hit your limit"
+            // Claude API context overflow: "prompt is too long"
+            + "|prompt is too long"
+            // Gemini: "The input token count (X) exceeds the maximum number of tokens allowed (Y)"
+            + "|maximum number of tokens allowed|input token count"
+            // GitHub Copilot (ghagpt): "prompt token count of X exceeds the limit of Y"
+            + "|prompt token count"
+            // Various providers: "token count exceeds maximum"
+            + "|token count exceeds",
             java.util.regex.Pattern.CASE_INSENSITIVE);
 
-    private boolean isTokenLimitMessage(String message) {
+    boolean isTokenLimitMessage(String message) {
         return message != null && TOKEN_LIMIT_PATTERN.matcher(message).find();
     }
 
