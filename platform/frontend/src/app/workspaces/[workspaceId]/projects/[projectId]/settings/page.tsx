@@ -5,6 +5,7 @@ import { useProjectStatuses, useCreateProjectStatus, useUpdateProjectStatus, use
 import { ProjectStatus } from "@/types";
 import { statusLabel } from "@/lib/utils";
 import AutomationRulesSection from "@/components/automation/AutomationRulesSection";
+import TicketRulesSection from "@/components/settings/TicketRulesSection";
 import Link from "next/link";
 import {
   DndContext,
@@ -317,6 +318,8 @@ export default function ProjectSettingsPage({
         </div>
 
         <AutomationRulesSection workspaceId={workspaceId} projectId={projectId} />
+
+        <TicketRulesSection workspaceId={workspaceId} projectId={projectId} />
       </div>
     </div>
   );
