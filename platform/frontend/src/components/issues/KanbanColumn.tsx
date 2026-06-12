@@ -12,9 +12,10 @@ interface KanbanColumnProps {
   issues: Issue[];
   workspaceId: string;
   projectId: string;
+  onCreateIssue?: () => void;
 }
 
-export function KanbanColumn({ status, issues, workspaceId, projectId }: KanbanColumnProps) {
+export function KanbanColumn({ status, issues, workspaceId, projectId, onCreateIssue }: KanbanColumnProps) {
   const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: status.name,
     data: { status: status.name, type: "column" },
@@ -96,6 +97,19 @@ export function KanbanColumn({ status, issues, workspaceId, projectId }: KanbanC
           </div>
         )}
       </div>
+
+      {onCreateIssue && (
+        <button
+          onClick={onCreateIssue}
+          className="mt-1.5 w-full flex items-center gap-1.5 px-2 py-1.5 text-xs text-text-tertiary hover:text-text-secondary hover:bg-bg-surface-hover rounded-lg transition-colors flex-shrink-0"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <line x1="6" y1="1" x2="6" y2="11" />
+            <line x1="1" y1="6" x2="11" y2="6" />
+          </svg>
+          Add issue
+        </button>
+      )}
     </div>
   );
 }

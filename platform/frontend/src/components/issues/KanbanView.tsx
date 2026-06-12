@@ -58,6 +58,7 @@ interface KanbanViewProps {
   projectId: string;
   onUpdateStatus: (issueId: string, status: string) => void;
   onReorderStatuses: (statusIds: string[]) => void;
+  onCreateIssueForStatus?: (status: string) => void;
 }
 
 export function KanbanView({
@@ -69,6 +70,7 @@ export function KanbanView({
   projectId,
   onUpdateStatus,
   onReorderStatuses,
+  onCreateIssueForStatus,
 }: KanbanViewProps) {
   const [localIssues, setLocalIssues] = useState<Issue[]>(issues);
   const [localStatuses, setLocalStatuses] = useState<ProjectStatus[]>(initialStatuses);
@@ -226,6 +228,7 @@ export function KanbanView({
               issues={localIssues.filter((i) => i.status === status.name)}
               workspaceId={workspaceId}
               projectId={projectId}
+              onCreateIssue={onCreateIssueForStatus ? () => onCreateIssueForStatus(status.name) : undefined}
             />
           ))}
         </SortableContext>
