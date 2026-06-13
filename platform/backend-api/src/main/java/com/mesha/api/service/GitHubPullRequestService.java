@@ -198,7 +198,7 @@ public class GitHubPullRequestService {
         int prNumber = prNode.path("number").asInt();
         Optional<GitHubPullRequest> existing = existingPrs != null
                 ? Optional.ofNullable(existingPrs.get(prNumber))
-                : prRepo.findByRepositoryIdAndGithubPrNumber(repo.getId(), prNumber);
+                : prRepo.findFirstByRepositoryIdAndGithubPrNumberOrderByUpdatedAtDesc(repo.getId(), prNumber);
 
         boolean isNew = existing.isEmpty();
         GitHubPullRequest pr = existing.orElse(new GitHubPullRequest());
@@ -264,8 +264,7 @@ public class GitHubPullRequestService {
             } catch (NumberFormatException e) {
                 continue;
             }
-            blocksSessionRepo.findActiveSessionsByProjectKeyAndIssueNumber(
-                    workspaceId, projectKey, issueNumber, TERMINAL_STATES)
+            blocksSessionRepo.findSessionsByProjectKeyAndIssueNumber(workspaceId, projectKey, issueNumber)
                 .stream().findFirst().ifPresent(session -> {
                     pr.setBlocksSession(session);
                     advanceSessionToPrOpened(session, pr);
@@ -280,7 +279,9 @@ public class GitHubPullRequestService {
         if (session.getPrUrl() == null) {
             session.setPrUrl(pr.getHtmlUrl());
             session.setPrNumber(pr.getGithubPrNumber());
-            session.setExecutionState(AIExecutionState.PR_OPENED);
+            if (!TERMINAL_STATES.contains(session.getExecutionState())) {
+                session.setExecutionState(AIExecutionState.PR_OPENED);
+            }
             blocksSessionRepo.save(session);
         }
     }

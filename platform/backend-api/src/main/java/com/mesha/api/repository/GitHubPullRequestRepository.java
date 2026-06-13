@@ -13,7 +13,7 @@ import java.util.UUID;
 public interface GitHubPullRequestRepository extends JpaRepository<GitHubPullRequest, UUID> {
     List<GitHubPullRequest> findAllByRepositoryId(UUID repositoryId);
     List<GitHubPullRequest> findAllByRepositoryIdAndState(UUID repositoryId, String state);
-    Optional<GitHubPullRequest> findByRepositoryIdAndGithubPrNumber(UUID repositoryId, Integer githubPrNumber);
+    Optional<GitHubPullRequest> findFirstByRepositoryIdAndGithubPrNumberOrderByUpdatedAtDesc(UUID repositoryId, Integer githubPrNumber);
     Optional<GitHubPullRequest> findByHtmlUrl(String htmlUrl);
     Optional<GitHubPullRequest> findByBlocksSession(BlocksSession session);
     Optional<GitHubPullRequest> findByBlocksSessionId(UUID blocksSessionId);
