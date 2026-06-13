@@ -43,6 +43,7 @@ public class IssueController {
     @GetMapping
     @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    @Transactional(readOnly = true)
     public ResponseEntity<PagedResponse<IssueDto>> list(
             @PathVariable UUID projectId,
             @RequestParam(required = false) String status,
@@ -77,6 +78,7 @@ public class IssueController {
     @GetMapping("/{issueId}")
     @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    @Transactional(readOnly = true)
     public ResponseEntity<IssueDto> get(@PathVariable UUID projectId,
                                          @PathVariable UUID issueId) {
         Issue issue = issueService.getById(issueId);
@@ -107,6 +109,7 @@ public class IssueController {
     @GetMapping("/{issueId}/activity")
     @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    @Transactional(readOnly = true)
     public ResponseEntity<List<ActivityEventDto>> getActivity(@PathVariable UUID projectId,
                                                                @PathVariable UUID issueId) {
         List<ActivityEventDto> events = activityService.getForIssue(issueId)

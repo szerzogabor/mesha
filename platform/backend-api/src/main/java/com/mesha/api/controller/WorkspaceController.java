@@ -48,6 +48,7 @@ public class WorkspaceController {
     @GetMapping("/{workspaceId}/members")
     @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isMember(authentication, #workspaceId)")
+    @Transactional(readOnly = true)
     public ResponseEntity<List<WorkspaceMemberDto>> listMembers(@PathVariable String workspaceId) {
         List<WorkspaceMemberDto> members = workspaceService.listMembers(UUID.fromString(workspaceId))
             .stream().map(WorkspaceMemberDto::from).toList();

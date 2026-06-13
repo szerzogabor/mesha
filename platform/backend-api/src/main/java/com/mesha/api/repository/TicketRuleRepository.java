@@ -13,18 +13,32 @@ public interface TicketRuleRepository extends JpaRepository<TicketRule, UUID> {
     @Query("""
         SELECT DISTINCT r FROM TicketRule r
         LEFT JOIN FETCH r.conditions
+        WHERE r.project.id = :projectId
+        ORDER BY r.createdAt ASC
+        """)
+    List<TicketRule> findAllByProjectIdWithConditions(@Param("projectId") UUID projectId);
+
+    @Query("""
+        SELECT DISTINCT r FROM TicketRule r
         LEFT JOIN FETCH r.restrictions
         WHERE r.project.id = :projectId
         ORDER BY r.createdAt ASC
         """)
-    List<TicketRule> findAllByProjectIdWithDetails(@Param("projectId") UUID projectId);
+    List<TicketRule> findAllByProjectIdWithRestrictions(@Param("projectId") UUID projectId);
 
     @Query("""
         SELECT DISTINCT r FROM TicketRule r
         LEFT JOIN FETCH r.conditions
+        WHERE r.project.id = :projectId AND r.enabled = true
+        ORDER BY r.createdAt ASC
+        """)
+    List<TicketRule> findEnabledByProjectIdWithConditions(@Param("projectId") UUID projectId);
+
+    @Query("""
+        SELECT DISTINCT r FROM TicketRule r
         LEFT JOIN FETCH r.restrictions
         WHERE r.project.id = :projectId AND r.enabled = true
         ORDER BY r.createdAt ASC
         """)
-    List<TicketRule> findEnabledByProjectIdWithDetails(@Param("projectId") UUID projectId);
+    List<TicketRule> findEnabledByProjectIdWithRestrictions(@Param("projectId") UUID projectId);
 }

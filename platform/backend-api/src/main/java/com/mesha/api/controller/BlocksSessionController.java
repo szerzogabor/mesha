@@ -68,6 +68,7 @@ public class BlocksSessionController {
     @GetMapping
     @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    @Transactional(readOnly = true)
     public ResponseEntity<List<BlocksSessionDto>> list(
             @PathVariable UUID projectId,
             @PathVariable UUID issueId) {
@@ -79,6 +80,7 @@ public class BlocksSessionController {
     @GetMapping("/active")
     @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    @Transactional(readOnly = true)
     public ResponseEntity<BlocksSessionDto> getActive(
             @PathVariable UUID projectId,
             @PathVariable UUID issueId) {
@@ -88,6 +90,7 @@ public class BlocksSessionController {
     @GetMapping("/{sessionId}")
     @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    @Transactional(readOnly = true)
     public ResponseEntity<BlocksSessionDto> get(
             @PathVariable UUID projectId,
             @PathVariable UUID issueId,
@@ -110,6 +113,7 @@ public class BlocksSessionController {
     @GetMapping("/{sessionId}/messages")
     @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    @Transactional(readOnly = true)
     public ResponseEntity<List<BlocksMessageDto>> getMessages(
             @PathVariable UUID projectId,
             @PathVariable UUID issueId,

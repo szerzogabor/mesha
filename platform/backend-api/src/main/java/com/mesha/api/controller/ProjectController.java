@@ -27,6 +27,7 @@ public class ProjectController {
     @GetMapping
     @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isMember(authentication, #workspaceId)")
+    @Transactional(readOnly = true)
     public ResponseEntity<List<ProjectDto>> list(@PathVariable String workspaceId) {
         List<ProjectDto> projects = projectService.listByWorkspace(UUID.fromString(workspaceId))
             .stream().map(ProjectDto::from).toList();
@@ -45,6 +46,7 @@ public class ProjectController {
     @GetMapping("/{projectId}")
     @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isMember(authentication, #workspaceId)")
+    @Transactional(readOnly = true)
     public ResponseEntity<ProjectDto> get(@PathVariable String workspaceId,
                                           @PathVariable UUID projectId) {
         return ResponseEntity.ok(ProjectDto.from(projectService.getById(projectId)));
