@@ -267,7 +267,7 @@ class SessionPollTransactions {
                 if (effectiveMsg == null && apiMessages != null && !apiMessages.isEmpty()) {
                     effectiveMsg = apiMessages.get(apiMessages.size() - 1);
                 }
-                fireAutomationInternal(session, newState, effectiveMsg);
+                fireAutomationInternal(session, newState, effectiveMsg, apiMessages);
             }
         });
     }
@@ -295,6 +295,11 @@ class SessionPollTransactions {
     }
 
     private void fireAutomationInternal(BlocksSession session, AIExecutionState state, String providerMessage) {
+        fireAutomationInternal(session, state, providerMessage, null);
+    }
+
+    private void fireAutomationInternal(BlocksSession session, AIExecutionState state,
+                                        String providerMessage, List<String> allMessages) {
         AutomationTriggerType trigger = switch (state) {
             case DONE   -> AutomationTriggerType.BLOCKS_SESSION_COMPLETED;
             case FAILED -> AutomationTriggerType.BLOCKS_SESSION_FAILED;
@@ -304,7 +309,10 @@ class SessionPollTransactions {
             automationService.executeFor(trigger, session.getIssue());
         }
         String errorMsg = session.getErrorMessage();
-        if (isTokenLimitMessage(providerMessage) || isTokenLimitMessage(errorMsg)) {
+        boolean tokenLimitHit = isTokenLimitMessage(providerMessage)
+                || isTokenLimitMessage(errorMsg)
+                || anyMessageIsTokenLimit(allMessages);
+        if (tokenLimitHit) {
             log.info("session_token_limit_detected session_id={}", session.getId());
             automationService.executeFor(AutomationTriggerType.AI_TOKEN_LIMIT_HIT, session.getIssue());
         }
@@ -336,6 +344,10 @@ class SessionPollTransactions {
 
     boolean isTokenLimitMessage(String message) {
         return message != null && TOKEN_LIMIT_PATTERN.matcher(message).find();
+    }
+
+    boolean anyMessageIsTokenLimit(List<String> messages) {
+        return messages != null && messages.stream().anyMatch(this::isTokenLimitMessage);
     }
 
     /** Immutable snapshot of session state loaded before any HTTP call. */
