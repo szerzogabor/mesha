@@ -260,7 +260,14 @@ class SessionPollTransactions {
             sessionRepo.save(session);
 
             if (newState != prevState) {
-                fireAutomationInternal(session, newState, finalMessage);
+                // Fall back to the last assistant message when the provider's final_message is
+                // absent (e.g. Blocks returns null final_message on FAILED sessions and the
+                // token-limit text arrives via the messages list instead).
+                String effectiveMsg = finalMessage;
+                if (effectiveMsg == null && apiMessages != null && !apiMessages.isEmpty()) {
+                    effectiveMsg = apiMessages.get(apiMessages.size() - 1);
+                }
+                fireAutomationInternal(session, newState, effectiveMsg);
             }
         });
     }
@@ -308,12 +315,21 @@ class SessionPollTransactions {
             "token[_ ]limit|context[_ ]limit|context[_ ]length|max[_ ]tokens|out[_ ]of[_ ]tokens|context[_ ]window"
             // Claude.ai usage limit: "You've hit your limit · resets 4:40pm (UTC)"
             + "|hit your limit"
+            // Claude.ai alternate: "You're out of messages until <time>"
+            + "|out of messages"
             // Claude API context overflow: "prompt is too long"
             + "|prompt is too long"
+            // Claude API / OpenAI rate limiting: "rate limit reached", "rate_limit_error"
+            + "|rate.?limit"
             // Gemini: "The input token count (X) exceeds the maximum number of tokens allowed (Y)"
             + "|maximum number of tokens allowed|input token count"
+            // Gemini quota/rate errors: "RESOURCE_EXHAUSTED", "Resource has been exhausted",
+            // "Quota exceeded for quota metric"
+            + "|resource.exhausted|quota.exceeded|resource_exhausted"
             // GitHub Copilot (ghagpt): "prompt token count of X exceeds the limit of Y"
             + "|prompt token count"
+            // OpenAI/ChatGPT: "insufficient_quota", "exceeded your current quota"
+            + "|insufficient.quota"
             // Various providers: "token count exceeds maximum"
             + "|token count exceeds",
             java.util.regex.Pattern.CASE_INSENSITIVE);
