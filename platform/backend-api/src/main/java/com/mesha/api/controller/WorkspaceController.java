@@ -46,6 +46,7 @@ public class WorkspaceController {
     }
 
     @GetMapping("/{workspaceId}/members")
+    @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isMember(authentication, #workspaceId)")
     @Transactional(readOnly = true)
     public ResponseEntity<List<WorkspaceMemberDto>> listMembers(@PathVariable String workspaceId) {

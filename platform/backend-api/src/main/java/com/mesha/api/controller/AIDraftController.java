@@ -45,6 +45,7 @@ public class AIDraftController {
     }
 
     @GetMapping("/{draftId}")
+    @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
     @Transactional(readOnly = true)
     public ResponseEntity<AIDraftDto> get(

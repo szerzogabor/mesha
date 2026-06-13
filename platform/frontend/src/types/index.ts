@@ -296,13 +296,13 @@ export interface IssueLink {
   createdAt: string;
 }
 
-export type TicketRuleConditionType = "HAS_STATUS" | "HAS_LABEL";
+export type TicketRuleConditionType = "HAS_STATUS" | "HAS_LABEL" | "ASSIGNED_TO_AGENT" | "ASSIGNED_TO_HUMAN";
 export type TicketRuleRestrictionType = "CANNOT_START_AI_SESSION" | "CANNOT_MOVE_TO_STATUS";
 
 export interface TicketRuleCondition {
   id: string;
   conditionType: TicketRuleConditionType;
-  conditionValue: string;
+  conditionValue?: string;
 }
 
 export interface TicketRuleRestriction {

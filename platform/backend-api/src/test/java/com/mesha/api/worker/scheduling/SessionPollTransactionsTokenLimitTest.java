@@ -59,34 +59,49 @@ class SessionPollTransactionsTokenLimitTest {
             "You've hit your limit · resets 4:40pm (UTC)",
             "You've hit your limit. Come back tomorrow.",
             "hit your limit",
+            // Claude.ai alternate: runs out of messages in a conversation
+            "You're out of messages until 4:40pm (UTC)",
+            "out of messages",
     })
     void isTokenLimitMessage_detectsClaudeUsageLimitMessages(String message) {
         assertThat(txns.isTokenLimitMessage(message)).isTrue();
     }
 
-    // Claude API: "prompt is too long"
+    // Claude API: "prompt is too long" and rate limit errors
     @ParameterizedTest
     @ValueSource(strings = {
             "prompt is too long",
             "The prompt is too long for this model",
+            // Claude API rate limiting: "rate_limit_error" / "Rate limit reached"
+            "Rate limit reached for model claude-3-5-sonnet",
+            "rate_limit_error: too many requests",
+            "rate-limit exceeded",
     })
     void isTokenLimitMessage_detectsClaudeApiContextMessages(String message) {
         assertThat(txns.isTokenLimitMessage(message)).isTrue();
     }
 
     // Gemini: "The input token count (X) exceeds the maximum number of tokens allowed (Y)"
+    // and quota/resource exhausted errors
     @ParameterizedTest
     @ValueSource(strings = {
             "The input token count (1624359) exceeds the maximum number of tokens allowed (1048576).",
             "maximum number of tokens allowed",
             "input token count exceeds limit",
             "API Error: Input Token Count Exceeds Maximum Number of Tokens Allowed",
+            // Gemini quota/rate errors: HTTP 429 RESOURCE_EXHAUSTED
+            "429 RESOURCE_EXHAUSTED: Quota exceeded for quota metric",
+            "RESOURCE_EXHAUSTED",
+            "resource_exhausted",
+            "Resource has been exhausted (e.g. check quota).",
+            "quota_exceeded: daily limit reached",
+            "Quota exceeded for this project",
     })
     void isTokenLimitMessage_detectsGeminiTokenLimitMessages(String message) {
         assertThat(txns.isTokenLimitMessage(message)).isTrue();
     }
 
-    // GitHub Copilot (ghagpt): various token limit messages
+    // GitHub Copilot (ghagpt) / OpenAI / ChatGPT: various token and rate limit messages
     @ParameterizedTest
     @ValueSource(strings = {
             "Oops, the token limit exceeded. Try to shorten your prompt or start a new conversation.",
@@ -94,6 +109,11 @@ class SessionPollTransactionsTokenLimitTest {
             "prompt token count of 131835 exceeds the limit of 128000",
             "token count exceeds maximum",
             "This model's maximum context length is 8192 tokens",
+            // OpenAI/ChatGPT quota errors: "insufficient_quota", "exceeded your current quota"
+            "insufficient_quota: you have exceeded your current quota",
+            "insufficient quota",
+            // OpenAI rate limiting
+            "Rate limit reached for gpt-4: 10000 tokens per minute",
     })
     void isTokenLimitMessage_detectsGitHubCopilotTokenLimitMessages(String message) {
         assertThat(txns.isTokenLimitMessage(message)).isTrue();
