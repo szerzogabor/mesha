@@ -264,9 +264,9 @@ public class GitHubPullRequestService {
             } catch (NumberFormatException e) {
                 continue;
             }
-            blocksSessionRepo.findActiveSessionByProjectKeyAndIssueNumber(
+            blocksSessionRepo.findActiveSessionsByProjectKeyAndIssueNumber(
                     workspaceId, projectKey, issueNumber, TERMINAL_STATES)
-                .ifPresent(session -> {
+                .stream().findFirst().ifPresent(session -> {
                     pr.setBlocksSession(session);
                     advanceSessionToPrOpened(session, pr);
                     log.info("auto_linked_pr_by_identifier identifier={}-{} prNumber={} sessionId={}",

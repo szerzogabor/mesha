@@ -35,8 +35,9 @@ public interface BlocksSessionRepository extends JpaRepository<BlocksSession, UU
              AND s.issue.project.workspace.id = :workspaceId
              AND UPPER(s.issue.project.key) = :projectKey
              AND s.issue.number = :issueNumber
+           ORDER BY s.createdAt DESC
            """)
-    Optional<BlocksSession> findActiveSessionByProjectKeyAndIssueNumber(
+    List<BlocksSession> findActiveSessionsByProjectKeyAndIssueNumber(
             @Param("workspaceId") UUID workspaceId,
             @Param("projectKey") String projectKey,
             @Param("issueNumber") Integer issueNumber,
