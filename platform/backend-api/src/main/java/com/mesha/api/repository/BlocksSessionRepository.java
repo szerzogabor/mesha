@@ -42,4 +42,16 @@ public interface BlocksSessionRepository extends JpaRepository<BlocksSession, UU
             @Param("projectKey") String projectKey,
             @Param("issueNumber") Integer issueNumber,
             @Param("terminalStates") Set<AIExecutionState> terminalStates);
+
+    @Query("""
+           SELECT s FROM BlocksSession s
+           WHERE s.issue.project.workspace.id = :workspaceId
+             AND UPPER(s.issue.project.key) = :projectKey
+             AND s.issue.number = :issueNumber
+           ORDER BY s.createdAt DESC
+           """)
+    List<BlocksSession> findSessionsByProjectKeyAndIssueNumber(
+            @Param("workspaceId") UUID workspaceId,
+            @Param("projectKey") String projectKey,
+            @Param("issueNumber") Integer issueNumber);
 }
