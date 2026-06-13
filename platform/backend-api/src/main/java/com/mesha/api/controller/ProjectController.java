@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,6 +25,7 @@ public class ProjectController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isMember(authentication, #workspaceId)")
     public ResponseEntity<List<ProjectDto>> list(@PathVariable String workspaceId) {
         List<ProjectDto> projects = projectService.listByWorkspace(UUID.fromString(workspaceId))
@@ -41,6 +43,7 @@ public class ProjectController {
     }
 
     @GetMapping("/{projectId}")
+    @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isMember(authentication, #workspaceId)")
     public ResponseEntity<ProjectDto> get(@PathVariable String workspaceId,
                                           @PathVariable UUID projectId) {

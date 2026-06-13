@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -45,6 +46,7 @@ public class WorkspaceController {
     }
 
     @GetMapping("/{workspaceId}/members")
+    @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isMember(authentication, #workspaceId)")
     public ResponseEntity<List<WorkspaceMemberDto>> listMembers(@PathVariable String workspaceId) {
         List<WorkspaceMemberDto> members = workspaceService.listMembers(UUID.fromString(workspaceId))

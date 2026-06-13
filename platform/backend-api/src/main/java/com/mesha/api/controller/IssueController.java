@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -40,6 +41,7 @@ public class IssueController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
     public ResponseEntity<PagedResponse<IssueDto>> list(
             @PathVariable UUID projectId,
@@ -73,6 +75,7 @@ public class IssueController {
     }
 
     @GetMapping("/{issueId}")
+    @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
     public ResponseEntity<IssueDto> get(@PathVariable UUID projectId,
                                          @PathVariable UUID issueId) {
@@ -102,6 +105,7 @@ public class IssueController {
     }
 
     @GetMapping("/{issueId}/activity")
+    @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
     public ResponseEntity<List<ActivityEventDto>> getActivity(@PathVariable UUID projectId,
                                                                @PathVariable UUID issueId) {
