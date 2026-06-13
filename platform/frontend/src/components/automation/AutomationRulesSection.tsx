@@ -11,6 +11,8 @@ import { useProjectStatuses } from "@/hooks/useProjectStatuses";
 import { useLabels, useCreateLabel } from "@/hooks/useLabels";
 import {
   AutomationAction,
+  AutomationActionCondition,
+  AutomationActionConditionType,
   AutomationActionType,
   AutomationRule,
   AutomationTriggerType,
@@ -41,6 +43,11 @@ const ACTION_LABELS: Record<AutomationActionType, string> = {
 
 const PARAMETERLESS_ACTIONS: AutomationActionType[] = ["START_AI_SESSION"];
 
+const CONDITION_TYPE_LABELS: Record<AutomationActionConditionType, string> = {
+  HAS_STATUS: "Ticket status is",
+  HAS_LABEL: "Ticket has label",
+};
+
 const PRESET_COLORS = [
   "#94a3b8", "#3b82f6", "#f59e0b", "#8b5cf6", "#22c55e",
   "#ef4444", "#f97316", "#06b6d4", "#ec4899", "#84cc16",
@@ -48,30 +55,54 @@ const PRESET_COLORS = [
 
 // Editor rows carry a client-side key so React state (e.g. the inline label
 // mini-form) stays attached to the right row when rows are removed.
-type EditableAction = AutomationAction & { key: string };
+type EditableCondition = AutomationActionCondition & { key: string };
+type EditableAction = AutomationAction & { key: string; editableConditions: EditableCondition[] };
+
+function newCondition(): EditableCondition {
+  return { key: crypto.randomUUID(), conditionType: "HAS_STATUS", conditionValue: "" };
+}
 
 function newAction(): EditableAction {
-  return { key: crypto.randomUUID(), actionType: "SET_STATUS", actionValue: "" };
+  return { key: crypto.randomUUID(), actionType: "SET_STATUS", actionValue: "", editableConditions: [] };
 }
 
 function isActionComplete(action: EditableAction): boolean {
-  if (PARAMETERLESS_ACTIONS.includes(action.actionType)) return true;
-  return !!action.actionValue;
+  if (PARAMETERLESS_ACTIONS.includes(action.actionType)) {
+    return action.editableConditions.every((c) => c.conditionValue !== "");
+  }
+  return !!action.actionValue && action.editableConditions.every((c) => c.conditionValue !== "");
 }
 
 function toEditable(actions: AutomationAction[]): EditableAction[] {
-  return actions.map((a) => ({ ...a, key: crypto.randomUUID() }));
+  return actions.map((a) => ({
+    ...a,
+    key: crypto.randomUUID(),
+    editableConditions: (a.conditions ?? []).map((c) => ({ ...c, key: crypto.randomUUID() })),
+  }));
 }
 
 function toRequest(actions: EditableAction[]): AutomationAction[] {
-  return actions.map(({ actionType, actionValue }) => ({
+  return actions.map(({ actionType, actionValue, editableConditions }) => ({
     actionType,
     actionValue: PARAMETERLESS_ACTIONS.includes(actionType) ? undefined : actionValue,
+    conditions: editableConditions.map(({ conditionType, conditionValue }) => ({ conditionType, conditionValue })),
   }));
 }
 
 const selectClass =
   "border border-input-border rounded-lg px-3 py-1.5 text-sm bg-input-bg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent";
+
+function conditionValueLabel(
+  conditionType: AutomationActionConditionType,
+  conditionValue: string,
+  statuses: ProjectStatus[],
+  labels: Label[]
+): string {
+  if (!conditionValue) return "";
+  if (conditionType === "HAS_STATUS") return statusLabel(conditionValue);
+  const label = labels.find((l) => l.id === conditionValue);
+  return label ? label.name : "(deleted label)";
+}
 
 function actionValueLabel(action: AutomationAction, labels: Label[]): string {
   if (action.actionType === "START_AI_SESSION") return "";
@@ -280,6 +311,98 @@ function ActionValueSelector({
   );
 }
 
+interface ConditionValueSelectorProps {
+  conditionType: AutomationActionConditionType;
+  value: string;
+  onChange: (value: string) => void;
+  statuses: ProjectStatus[];
+  labels: Label[];
+}
+
+function ConditionValueSelector({ conditionType, value, onChange, statuses, labels }: ConditionValueSelectorProps) {
+  const options =
+    conditionType === "HAS_STATUS"
+      ? statuses.map((s) => ({ value: s.name, label: statusLabel(s.name) }))
+      : labels.map((l) => ({ value: l.id, label: l.name }));
+
+  const placeholder = conditionType === "HAS_STATUS" ? "Select status..." : "Select label...";
+
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={selectClass}
+    >
+      <option value="" disabled>{placeholder}</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>{o.label}</option>
+      ))}
+    </select>
+  );
+}
+
+interface ActionConditionsEditorProps {
+  conditions: EditableCondition[];
+  onChange: (conditions: EditableCondition[]) => void;
+  statuses: ProjectStatus[];
+  labels: Label[];
+}
+
+function ActionConditionsEditor({ conditions, onChange, statuses, labels }: ActionConditionsEditorProps) {
+  const updateCondition = (index: number, patch: Partial<EditableCondition>) => {
+    onChange(conditions.map((c, i) => (i === index ? { ...c, ...patch } : c)));
+  };
+
+  return (
+    <div className="mt-2 ml-11 pl-3 border-l-2 border-border-default flex flex-col gap-1.5">
+      {conditions.map((condition, index) => (
+        <div key={condition.key} className="flex gap-2 items-center flex-wrap">
+          <span className="text-xs text-text-tertiary w-4">if</span>
+          <select
+            value={condition.conditionType}
+            onChange={(e) =>
+              updateCondition(index, {
+                conditionType: e.target.value as AutomationActionConditionType,
+                conditionValue: "",
+              })
+            }
+            className="border border-input-border rounded-lg px-2 py-1 text-xs bg-input-bg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+          >
+            {(Object.keys(CONDITION_TYPE_LABELS) as AutomationActionConditionType[]).map((t) => (
+              <option key={t} value={t}>{CONDITION_TYPE_LABELS[t]}</option>
+            ))}
+          </select>
+          <ConditionValueSelector
+            conditionType={condition.conditionType}
+            value={condition.conditionValue}
+            onChange={(value) => updateCondition(index, { conditionValue: value })}
+            statuses={statuses}
+            labels={labels}
+          />
+          <button
+            type="button"
+            onClick={() => onChange(conditions.filter((_, i) => i !== index))}
+            aria-label="Remove condition"
+            className="p-1 text-text-tertiary hover:text-destructive rounded hover:bg-bg-surface-hover transition-colors"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange([...conditions, newCondition()])}
+        className="self-start text-xs text-accent hover:text-accent-hover transition-colors"
+      >
+        + Add condition
+      </button>
+    </div>
+  );
+}
+
 interface ActionsEditorProps {
   workspaceId: string;
   actions: EditableAction[];
@@ -289,55 +412,64 @@ interface ActionsEditorProps {
 }
 
 function ActionsEditor({ workspaceId, actions, onChange, statuses, labels }: ActionsEditorProps) {
-  const updateAction = (index: number, patch: Partial<AutomationAction>) => {
+  const updateAction = (index: number, patch: Partial<EditableAction>) => {
     onChange(actions.map((a, i) => (i === index ? { ...a, ...patch } : a)));
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       {actions.map((action, index) => (
-        <div key={action.key} className="flex gap-2 items-start flex-wrap">
-          <span className="text-sm text-text-secondary py-1.5 w-9">
-            {index === 0 ? "then" : "and"}
-          </span>
-          <select
-            value={action.actionType}
-            onChange={(e) =>
-              updateAction(index, {
-                actionType: e.target.value as AutomationActionType,
-                actionValue: "",
-              })
-            }
-            className={selectClass}
-          >
-            {(Object.keys(ACTION_LABELS) as AutomationActionType[]).map((a) => (
-              <option key={a} value={a}>{ACTION_LABELS[a]}</option>
-            ))}
-          </select>
+        <div key={action.key}>
+          <div className="flex gap-2 items-start flex-wrap">
+            <span className="text-sm text-text-secondary py-1.5 w-9">
+              {index === 0 ? "then" : "and"}
+            </span>
+            <select
+              value={action.actionType}
+              onChange={(e) =>
+                updateAction(index, {
+                  actionType: e.target.value as AutomationActionType,
+                  actionValue: "",
+                })
+              }
+              className={selectClass}
+            >
+              {(Object.keys(ACTION_LABELS) as AutomationActionType[]).map((a) => (
+                <option key={a} value={a}>{ACTION_LABELS[a]}</option>
+              ))}
+            </select>
 
-          <ActionValueSelector
-            workspaceId={workspaceId}
-            actionType={action.actionType}
-            value={action.actionValue}
-            onChange={(value) => updateAction(index, { actionValue: value })}
+            <ActionValueSelector
+              workspaceId={workspaceId}
+              actionType={action.actionType}
+              value={action.actionValue}
+              onChange={(value) => updateAction(index, { actionValue: value })}
+              statuses={statuses}
+              labels={labels}
+            />
+
+            {actions.length > 1 && (
+              <button
+                type="button"
+                onClick={() => onChange(actions.filter((_, i) => i !== index))}
+                aria-label="Remove action"
+                className="p-1.5 mt-0.5 text-text-tertiary hover:text-destructive rounded hover:bg-bg-surface-hover transition-colors"
+                title="Remove action"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          <ActionConditionsEditor
+            conditions={action.editableConditions}
+            onChange={(editableConditions) => updateAction(index, { editableConditions })}
             statuses={statuses}
             labels={labels}
           />
-
-          {actions.length > 1 && (
-            <button
-              type="button"
-              onClick={() => onChange(actions.filter((_, i) => i !== index))}
-              aria-label="Remove action"
-              className="p-1.5 mt-0.5 text-text-tertiary hover:text-destructive rounded hover:bg-bg-surface-hover transition-colors"
-              title="Remove action"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          )}
         </div>
       ))}
       <button
@@ -364,12 +496,25 @@ function ruleSentence(rule: AutomationRule, statuses: ProjectStatus[], labels: L
       </span>
       {rule.actions.map((action, index) => {
         const valLabel = actionValueLabel(action, labels);
+        const conditions = action.conditions ?? [];
         return (
           <span key={index}>
             {index === 0 ? " → " : " and "}
             <span className="font-medium">
               {ACTION_LABELS[action.actionType]}{valLabel ? `: ${valLabel}` : ""}
             </span>
+            {conditions.length > 0 && (
+              <span className="text-text-tertiary text-xs ml-1">
+                {conditions.map((c, ci) => (
+                  <span key={ci}>
+                    {ci === 0 ? " (if " : " and "}
+                    {CONDITION_TYPE_LABELS[c.conditionType]}{" "}
+                    &ldquo;{conditionValueLabel(c.conditionType, c.conditionValue, statuses, labels)}&rdquo;
+                    {ci === conditions.length - 1 ? ")" : ""}
+                  </span>
+                ))}
+              </span>
+            )}
           </span>
         );
       })}
@@ -647,7 +792,8 @@ export default function AutomationRulesSection({ workspaceId, projectId }: Autom
       <h3 className="text-base font-semibold text-text-primary mb-1">Automations</h3>
       <p className="text-sm text-text-tertiary mb-4">
         Automatically update tickets when something happens — for example, move a ticket to In Review
-        and add a label when its pull request is opened.
+        and add a label when its pull request is opened. Each action can optionally have conditions
+        that must be met for that specific action to run.
       </p>
 
       {rulesQuery.isLoading ? (
