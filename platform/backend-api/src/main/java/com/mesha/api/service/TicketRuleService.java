@@ -184,6 +184,8 @@ public class TicketRuleService {
                 }
                 yield issue.getLabels().stream().anyMatch(l -> l.getId().equals(labelId));
             }
+            case ASSIGNED_TO_AGENT -> issue.getAiAssignmentState() != null && !issue.getAiAssignmentState().isBlank();
+            case ASSIGNED_TO_HUMAN -> issue.getAssignee() != null;
         };
     }
 
@@ -205,7 +207,7 @@ public class TicketRuleService {
             TicketRuleCondition condition = new TicketRuleCondition();
             condition.setRule(rule);
             condition.setConditionType(req.conditionType());
-            condition.setConditionValue(req.conditionValue().trim());
+            condition.setConditionValue(req.conditionValue() != null ? req.conditionValue().trim() : null);
             condition.setPosition(i);
             newConditions.add(condition);
         }
@@ -229,11 +231,15 @@ public class TicketRuleService {
 
     private void validateConditions(Project project, List<TicketRuleConditionRequest> conditions) {
         for (TicketRuleConditionRequest condition : conditions) {
+            TicketRuleConditionType type = condition.conditionType();
+            if (type == TicketRuleConditionType.ASSIGNED_TO_AGENT || type == TicketRuleConditionType.ASSIGNED_TO_HUMAN) {
+                continue;
+            }
             String value = condition.conditionValue();
             if (value == null || value.isBlank()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Condition value is required");
             }
-            switch (condition.conditionType()) {
+            switch (type) {
                 case HAS_STATUS -> {
                     if (!projectStatusRepository.existsByProjectIdAndName(project.getId(), value.trim().toUpperCase())) {
                         throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -257,6 +263,7 @@ public class TicketRuleService {
                             "Unknown label for this workspace: " + value);
                     }
                 }
+                default -> { }
             }
         }
     }

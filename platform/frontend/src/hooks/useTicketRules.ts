@@ -6,7 +6,7 @@ import { TicketRule, TicketRuleConditionType, TicketRuleRestrictionType } from "
 
 export interface TicketRuleConditionRequest {
   conditionType: TicketRuleConditionType;
-  conditionValue: string;
+  conditionValue?: string;
 }
 
 export interface TicketRuleRestrictionRequest {

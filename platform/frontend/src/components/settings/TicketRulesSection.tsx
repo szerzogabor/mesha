@@ -23,7 +23,11 @@ import { statusLabel } from "@/lib/utils";
 const CONDITION_LABELS: Record<TicketRuleConditionType, string> = {
   HAS_STATUS: "Ticket is in status",
   HAS_LABEL: "Ticket has label",
+  ASSIGNED_TO_AGENT: "Ticket is assigned to agent",
+  ASSIGNED_TO_HUMAN: "Ticket is assigned to human",
 };
+
+const NO_VALUE_CONDITIONS: TicketRuleConditionType[] = ["ASSIGNED_TO_AGENT", "ASSIGNED_TO_HUMAN"];
 
 const RESTRICTION_LABELS: Record<TicketRuleRestrictionType, string> = {
   CANNOT_START_AI_SESSION: "Cannot start AI session",
@@ -46,10 +50,12 @@ function newRestriction(): EditableRestriction {
 
 function conditionValueLabel(
   conditionType: TicketRuleConditionType,
-  conditionValue: string,
+  conditionValue: string | undefined,
   statuses: ProjectStatus[],
   labels: Label[]
 ): string {
+  if (NO_VALUE_CONDITIONS.includes(conditionType)) return "";
+  if (!conditionValue) return "";
   if (conditionType === "HAS_STATUS") return statusLabel(conditionValue);
   const label = labels.find((l) => l.id === conditionValue);
   return label ? label.name : "(deleted label)";
@@ -68,7 +74,9 @@ function restrictionValueLabel(
 function ruleSummary(rule: TicketRule, statuses: ProjectStatus[], labels: Label[]) {
   const conditionParts = rule.conditions.map((c) => {
     const valLabel = conditionValueLabel(c.conditionType, c.conditionValue, statuses, labels);
-    return `${CONDITION_LABELS[c.conditionType]}: "${valLabel}"`;
+    return valLabel
+      ? `${CONDITION_LABELS[c.conditionType]}: "${valLabel}"`
+      : CONDITION_LABELS[c.conditionType];
   });
 
   const restrictionParts = rule.restrictions.map((r) => {
@@ -104,13 +112,15 @@ function ruleSummary(rule: TicketRule, statuses: ProjectStatus[], labels: Label[
 
 interface ConditionValueSelectorProps {
   conditionType: TicketRuleConditionType;
-  value: string;
+  value: string | undefined;
   onChange: (value: string) => void;
   statuses: ProjectStatus[];
   labels: Label[];
 }
 
 function ConditionValueSelector({ conditionType, value, onChange, statuses, labels }: ConditionValueSelectorProps) {
+  if (NO_VALUE_CONDITIONS.includes(conditionType)) return null;
+
   const options =
     conditionType === "HAS_STATUS"
       ? statuses.map((s) => ({ value: s.name, label: statusLabel(s.name) }))
@@ -119,7 +129,7 @@ function ConditionValueSelector({ conditionType, value, onChange, statuses, labe
   const placeholder = conditionType === "HAS_STATUS" ? "Select status..." : "Select label...";
 
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} className={selectClass}>
+    <select value={value ?? ""} onChange={(e) => onChange(e.target.value)} className={selectClass}>
       <option value="" disabled>{placeholder}</option>
       {options.map((o) => (
         <option key={o.value} value={o.value}>{o.label}</option>
@@ -169,12 +179,13 @@ function ConditionsEditor({ conditions, onChange, statuses, labels }: Conditions
           </span>
           <select
             value={condition.conditionType}
-            onChange={(e) =>
+            onChange={(e) => {
+              const newType = e.target.value as TicketRuleConditionType;
               update(index, {
-                conditionType: e.target.value as TicketRuleConditionType,
-                conditionValue: "",
-              })
-            }
+                conditionType: newType,
+                conditionValue: NO_VALUE_CONDITIONS.includes(newType) ? undefined : "",
+              });
+            }}
             className={selectClass}
           >
             {(Object.keys(CONDITION_LABELS) as TicketRuleConditionType[]).map((t) => (
@@ -279,7 +290,9 @@ function RestrictionsEditor({ restrictions, onChange, statuses }: RestrictionsEd
 function isComplete(conditions: EditableCondition[], restrictions: EditableRestriction[]): boolean {
   return (
     conditions.length > 0 &&
-    conditions.every((c) => c.conditionValue !== "") &&
+    conditions.every(
+      (c) => NO_VALUE_CONDITIONS.includes(c.conditionType) || c.conditionValue !== ""
+    ) &&
     restrictions.length > 0 &&
     restrictions.every(
       (r) =>
