@@ -20,7 +20,7 @@ public class TicketRuleCondition {
     @Column(name = "condition_type", nullable = false, length = 50)
     private TicketRuleConditionType conditionType;
 
-    @Column(name = "condition_value", nullable = false, length = 255)
+    @Column(name = "condition_value", length = 255)
     private String conditionValue;
 
     @Column(nullable = false)

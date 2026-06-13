@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,6 +27,7 @@ public class TicketRuleController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
     public ResponseEntity<List<TicketRuleDto>> list(@PathVariable UUID projectId) {
         List<TicketRuleDto> dtos = ticketRuleService.list(projectId)
@@ -34,6 +36,7 @@ public class TicketRuleController {
     }
 
     @PostMapping
+    @Transactional
     @PreAuthorize("@workspaceSecurity.isProjectAdminOrAbove(authentication, #projectId.toString())")
     public ResponseEntity<TicketRuleDto> create(
             @PathVariable UUID projectId,
@@ -44,6 +47,7 @@ public class TicketRuleController {
     }
 
     @PatchMapping("/{ruleId}")
+    @Transactional
     @PreAuthorize("@workspaceSecurity.isProjectAdminOrAbove(authentication, #projectId.toString())")
     public ResponseEntity<TicketRuleDto> update(
             @PathVariable UUID projectId,
