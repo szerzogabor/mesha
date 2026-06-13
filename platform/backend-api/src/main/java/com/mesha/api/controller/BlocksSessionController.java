@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -66,6 +67,7 @@ public class BlocksSessionController {
 
     @GetMapping
     @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    @Transactional(readOnly = true)
     public ResponseEntity<List<BlocksSessionDto>> list(
             @PathVariable UUID projectId,
             @PathVariable UUID issueId) {
@@ -76,6 +78,7 @@ public class BlocksSessionController {
 
     @GetMapping("/active")
     @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    @Transactional(readOnly = true)
     public ResponseEntity<BlocksSessionDto> getActive(
             @PathVariable UUID projectId,
             @PathVariable UUID issueId) {
@@ -84,6 +87,7 @@ public class BlocksSessionController {
 
     @GetMapping("/{sessionId}")
     @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    @Transactional(readOnly = true)
     public ResponseEntity<BlocksSessionDto> get(
             @PathVariable UUID projectId,
             @PathVariable UUID issueId,
@@ -105,6 +109,7 @@ public class BlocksSessionController {
 
     @GetMapping("/{sessionId}/messages")
     @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    @Transactional(readOnly = true)
     public ResponseEntity<List<BlocksMessageDto>> getMessages(
             @PathVariable UUID projectId,
             @PathVariable UUID issueId,
