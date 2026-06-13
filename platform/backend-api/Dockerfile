@@ -14,7 +14,7 @@ COPY --from=build /app/target/agents/opentelemetry-javaagent.jar opentelemetry-j
 EXPOSE 10000
 ENTRYPOINT ["java", \
     "-XX:+UseContainerSupport", \
-    "-XX:MaxRAMPercentage=75.0", \
+    "-XX:MaxRAMPercentage=60.0", \
     "-XX:+HeapDumpOnOutOfMemoryError", \
     "-XX:HeapDumpPath=/tmp/mesha-api-heapdump.hprof", \
     "-XX:+ExitOnOutOfMemoryError", \

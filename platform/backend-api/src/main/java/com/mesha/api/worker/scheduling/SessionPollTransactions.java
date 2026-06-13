@@ -164,9 +164,13 @@ class SessionPollTransactions {
         );
     }
 
+    private static final int MAX_COMMENTS_PER_DISPATCH = 50;
+
     private List<String> loadCommentTexts(UUID issueId) {
         try {
-            return commentRepo.findAllByIssueId(issueId).stream()
+            List<Comment> comments = commentRepo.findAllByIssueId(issueId);
+            int fromIndex = Math.max(0, comments.size() - MAX_COMMENTS_PER_DISPATCH);
+            return comments.subList(fromIndex, comments.size()).stream()
                     .map(c -> {
                         String author = c.getAuthor() == null ? "Unknown"
                                 : (c.getAuthor().getName() != null && !c.getAuthor().getName().isBlank()

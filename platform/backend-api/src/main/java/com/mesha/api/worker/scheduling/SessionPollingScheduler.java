@@ -1,6 +1,5 @@
 package com.mesha.api.worker.scheduling;
 
-import com.mesha.api.model.BlocksSession;
 import com.mesha.api.repository.BlocksSessionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,9 +75,6 @@ public class SessionPollingScheduler {
     }
 
     private List<UUID> fetchActiveSessionIds() {
-        return sessionRepo.findAllByExecutionStateNotIn(SessionPollService.TERMINAL_STATES)
-                .stream()
-                .map(BlocksSession::getId)
-                .toList();
+        return sessionRepo.findAllIdsByExecutionStateNotIn(SessionPollService.TERMINAL_STATES);
     }
 }

@@ -29,6 +29,9 @@ public interface BlocksSessionRepository extends JpaRepository<BlocksSession, UU
     @Query("SELECT s FROM BlocksSession s WHERE s.executionState NOT IN :states")
     List<BlocksSession> findAllByExecutionStateNotIn(@Param("states") Collection<AIExecutionState> states);
 
+    @Query("SELECT s.id FROM BlocksSession s WHERE s.executionState NOT IN :states")
+    List<UUID> findAllIdsByExecutionStateNotIn(@Param("states") Collection<AIExecutionState> states);
+
     @Query("""
            SELECT s FROM BlocksSession s
            WHERE s.executionState NOT IN :terminalStates

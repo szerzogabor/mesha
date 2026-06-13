@@ -74,10 +74,10 @@ public class IssueSseService {
     }
 
     private void removeEmitter(UUID projectId, SseEmitter emitter) {
-        List<SseEmitter> list = emitters.get(projectId);
-        if (list != null) {
+        emitters.computeIfPresent(projectId, (id, list) -> {
             list.remove(emitter);
-            log.debug("SSE subscriber removed projectId={} remaining={}", projectId, list.size());
-        }
+            log.debug("SSE subscriber removed projectId={} remaining={}", id, list.size());
+            return list.isEmpty() ? null : list;
+        });
     }
 }

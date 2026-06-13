@@ -93,7 +93,7 @@
                  Loki4j direct-push is intentionally omitted here to avoid duplicate ingestion and
                  spurious 401 errors when only OTLP credentials are configured. -->
         </root>
-        <logger name="com.mesha" level="DEBUG"/>
+        <logger name="com.mesha" level="INFO"/>
         <logger name="org.springframework.security" level="WARN"/>
         <logger name="org.hibernate.SQL" level="WARN"/>
         <logger name="com.github.loki4j" level="WARN"/>
