@@ -40,8 +40,11 @@ public class TicketRuleService {
         this.issueLinkRepository = issueLinkRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<TicketRule> list(UUID projectId) {
-        return ticketRuleRepository.findAllByProjectIdWithDetails(projectId);
+        List<TicketRule> rules = ticketRuleRepository.findAllByProjectIdWithConditions(projectId);
+        ticketRuleRepository.findAllByProjectIdWithRestrictions(projectId);
+        return rules;
     }
 
     @Transactional
@@ -107,6 +110,7 @@ public class TicketRuleService {
      * Validates that the given issue can have an AI session started on it.
      * Checks configured ticket rules as well as dependency-based blocking.
      */
+    @Transactional(readOnly = true)
     public void validateCanStartAiSession(Issue issue) {
         checkRulesForRestriction(issue, TicketRuleRestrictionType.CANNOT_START_AI_SESSION, null);
         checkDependencyBlocking(issue);
@@ -115,12 +119,15 @@ public class TicketRuleService {
     /**
      * Validates that the given issue can be moved to the target status.
      */
+    @Transactional(readOnly = true)
     public void validateCanMoveToStatus(Issue issue, String targetStatus) {
         checkRulesForRestriction(issue, TicketRuleRestrictionType.CANNOT_MOVE_TO_STATUS, targetStatus);
     }
 
     private void checkRulesForRestriction(Issue issue, TicketRuleRestrictionType restrictionType, String restrictionValue) {
-        List<TicketRule> rules = ticketRuleRepository.findEnabledByProjectIdWithDetails(issue.getProject().getId());
+        UUID projectId = issue.getProject().getId();
+        List<TicketRule> rules = ticketRuleRepository.findEnabledByProjectIdWithConditions(projectId);
+        ticketRuleRepository.findEnabledByProjectIdWithRestrictions(projectId);
         for (TicketRule rule : rules) {
             if (conditionsMatch(rule, issue)) {
                 for (TicketRuleRestriction restriction : rule.getRestrictions()) {
