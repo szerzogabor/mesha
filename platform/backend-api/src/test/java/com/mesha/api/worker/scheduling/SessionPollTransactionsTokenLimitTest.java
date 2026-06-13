@@ -15,6 +15,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class SessionPollTransactionsTokenLimitTest {
@@ -133,5 +135,53 @@ class SessionPollTransactionsTokenLimitTest {
     })
     void isTokenLimitMessage_detectsGenericPatterns(String message) {
         assertThat(txns.isTokenLimitMessage(message)).isTrue();
+    }
+
+    // anyMessageIsTokenLimit — verifies that the token limit is detected even when it is
+    // not the last message in the list (the root cause of TP-42: only the final message
+    // was checked, so a limit notice followed by a follow-up message was missed).
+
+    @Test
+    void anyMessageIsTokenLimit_returnsFalseForNull() {
+        assertThat(txns.anyMessageIsTokenLimit(null)).isFalse();
+    }
+
+    @Test
+    void anyMessageIsTokenLimit_returnsFalseForEmptyList() {
+        assertThat(txns.anyMessageIsTokenLimit(List.of())).isFalse();
+    }
+
+    @Test
+    void anyMessageIsTokenLimit_returnsFalseWhenNoLimitMessage() {
+        assertThat(txns.anyMessageIsTokenLimit(
+                List.of("Analyzing issue...", "Implementing fix...", "Done."))).isFalse();
+    }
+
+    @Test
+    void anyMessageIsTokenLimit_detectsLimitInLastMessage() {
+        assertThat(txns.anyMessageIsTokenLimit(
+                List.of("Analyzing issue...", "You've hit your limit · resets 4:40pm (UTC)"))).isTrue();
+    }
+
+    @Test
+    void anyMessageIsTokenLimit_detectsLimitWhenNotLastMessage() {
+        // The token limit notice is followed by a closing message — only scanning all
+        // messages (not just the last) catches it.
+        List<String> messages = List.of(
+                "Analyzing the codebase...",
+                "You've hit your limit · resets 4:40pm (UTC)",
+                "I was unable to complete the task due to the usage limit."
+        );
+        assertThat(txns.anyMessageIsTokenLimit(messages)).isTrue();
+    }
+
+    @Test
+    void anyMessageIsTokenLimit_detectsGeminiLimitInMiddleOfList() {
+        List<String> messages = List.of(
+                "Let me look at the code.",
+                "429 RESOURCE_EXHAUSTED: Quota exceeded for quota metric",
+                "Please try again later."
+        );
+        assertThat(txns.anyMessageIsTokenLimit(messages)).isTrue();
     }
 }
