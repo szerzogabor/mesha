@@ -3,17 +3,46 @@
 import { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { logger } from "@/lib/logger";
-import { IssueStatus, IssuePriority, ProjectStatus } from "@/types";
+import { IssueStatus, IssuePriority, ProjectStatus, IssueLinkType } from "@/types";
 import { useLabels } from "@/hooks/useLabels";
 import { statusLabel } from "@/lib/utils";
+import { useAllIssues } from "@/hooks/useIssues";
+import { apiClient } from "@/lib/api-client";
 
 const inputClass =
   "w-full border border-input-border rounded-lg px-3 py-2 text-sm bg-input-bg text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-2 focus:ring-accent";
+
+const smallInputClass =
+  "w-full border border-input-border rounded-lg px-2 py-1.5 text-xs bg-input-bg text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-2 focus:ring-accent";
+
+const LINK_TYPE_OPTIONS: { value: IssueLinkType; label: string }[] = [
+  { value: "DEPENDS_ON", label: "Depends on" },
+  { value: "BLOCKS", label: "Blocks" },
+  { value: "DUPLICATE_OF", label: "Duplicate of" },
+  { value: "PARENT_OF", label: "Parent of" },
+  { value: "CHILD_OF", label: "Child of (sub-ticket)" },
+];
+
+const LINK_TYPE_LABELS: Record<IssueLinkType, string> = {
+  DEPENDS_ON: "depends on",
+  BLOCKS: "blocks",
+  DUPLICATE_OF: "duplicate of",
+  PARENT_OF: "parent of",
+  CHILD_OF: "child of",
+};
+
+interface PendingLink {
+  targetIssueId: string;
+  targetIdentifier?: string;
+  targetTitle: string;
+  linkType: IssueLinkType;
+}
 
 interface CreateIssueModalProps {
   open: boolean;
   onClose: () => void;
   workspaceId: string;
+  projectId: string;
   projectStatuses?: ProjectStatus[];
   defaultStatus?: string;
   onSubmit: (data: {
@@ -22,10 +51,10 @@ interface CreateIssueModalProps {
     status: IssueStatus;
     priority: IssuePriority;
     labelIds?: string[];
-  }) => Promise<void>;
+  }) => Promise<{ id: string }>;
 }
 
-export function CreateIssueModal({ open, onClose, workspaceId, projectStatuses, defaultStatus, onSubmit }: CreateIssueModalProps) {
+export function CreateIssueModal({ open, onClose, workspaceId, projectId, projectStatuses, defaultStatus, onSubmit }: CreateIssueModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<IssueStatus>("");
@@ -35,6 +64,7 @@ export function CreateIssueModal({ open, onClose, workspaceId, projectStatuses, 
       setStatus(defaultStatus as IssueStatus);
     }
   }, [open, defaultStatus]);
+
   const [priority, setPriority] = useState<IssuePriority>("MEDIUM");
 
   useEffect(() => {
@@ -47,7 +77,21 @@ export function CreateIssueModal({ open, onClose, workspaceId, projectStatuses, 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [pendingLinks, setPendingLinks] = useState<PendingLink[]>([]);
+  const [showLinkAdd, setShowLinkAdd] = useState(false);
+  const [linkSearch, setLinkSearch] = useState("");
+  const [selectedLinkType, setSelectedLinkType] = useState<IssueLinkType>("DEPENDS_ON");
+
   const { data: labels = [] } = useLabels(workspaceId);
+
+  const { data: issueSearchResult } = useAllIssues(
+    projectId,
+    { search: linkSearch.trim() || undefined },
+    { enabled: linkSearch.trim().length > 0 }
+  );
+  const searchResults = (issueSearchResult?.content ?? []).filter(
+    (i) => !pendingLinks.some((l) => l.targetIssueId === i.id)
+  );
 
   const toggleLabel = (labelId: string) => {
     setSelectedLabelIds((prev) =>
@@ -55,24 +99,57 @@ export function CreateIssueModal({ open, onClose, workspaceId, projectStatuses, 
     );
   };
 
+  function addPendingLink(issue: { id: string; identifier?: string; title: string }) {
+    setPendingLinks((prev) => [
+      ...prev,
+      {
+        targetIssueId: issue.id,
+        targetIdentifier: issue.identifier,
+        targetTitle: issue.title,
+        linkType: selectedLinkType,
+      },
+    ]);
+    setLinkSearch("");
+    setShowLinkAdd(false);
+  }
+
+  function removePendingLink(targetIssueId: string) {
+    setPendingLinks((prev) => prev.filter((l) => l.targetIssueId !== targetIssueId));
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
     setLoading(true);
     setError(null);
     try {
-      await onSubmit({
+      const newIssue = await onSubmit({
         title: title.trim(),
         description: description || undefined,
         status,
         priority,
         labelIds: selectedLabelIds.length > 0 ? selectedLabelIds : undefined,
       });
+
+      if (pendingLinks.length > 0) {
+        await Promise.all(
+          pendingLinks.map((link) =>
+            apiClient.post(`/api/issues/${newIssue.id}/links`, {
+              targetIssueId: link.targetIssueId,
+              linkType: link.linkType,
+            })
+          )
+        );
+      }
+
       setTitle("");
       setDescription("");
       setStatus(projectStatuses?.[0]?.name ?? "");
       setPriority("MEDIUM");
       setSelectedLabelIds([]);
+      setPendingLinks([]);
+      setShowLinkAdd(false);
+      setLinkSearch("");
       onClose();
     } catch (err) {
       logger.error("Failed to create issue", err instanceof Error ? err : undefined);
@@ -166,6 +243,94 @@ export function CreateIssueModal({ open, onClose, workspaceId, projectStatuses, 
             </div>
           </div>
         )}
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium text-text-secondary">
+              Links{pendingLinks.length > 0 && ` (${pendingLinks.length})`}
+            </label>
+            <button
+              type="button"
+              onClick={() => { setShowLinkAdd((v) => !v); setLinkSearch(""); }}
+              className="text-xs text-text-tertiary hover:text-text-primary transition-colors"
+            >
+              {showLinkAdd ? "Cancel" : "+ Add"}
+            </button>
+          </div>
+
+          {pendingLinks.length > 0 && (
+            <ul className="space-y-1.5 mb-2">
+              {pendingLinks.map((link) => (
+                <li key={link.targetIssueId} className="flex items-start gap-2 group">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] text-text-tertiary capitalize block">
+                      {LINK_TYPE_LABELS[link.linkType]}
+                    </span>
+                    <span className="text-xs text-text-primary truncate block">
+                      {link.targetIdentifier && (
+                        <span className="font-mono text-text-tertiary mr-1">{link.targetIdentifier}</span>
+                      )}
+                      {link.targetTitle}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removePendingLink(link.targetIssueId)}
+                    className="opacity-0 group-hover:opacity-100 text-text-tertiary hover:text-destructive transition-all text-xs shrink-0 mt-0.5"
+                    title="Remove link"
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {showLinkAdd && (
+            <div className="space-y-2 pt-2 border-t border-border-default">
+              <select
+                value={selectedLinkType}
+                onChange={(e) => setSelectedLinkType(e.target.value as IssueLinkType)}
+                className={smallInputClass}
+              >
+                {LINK_TYPE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+
+              <input
+                type="text"
+                placeholder="Search issues by title…"
+                value={linkSearch}
+                onChange={(e) => setLinkSearch(e.target.value)}
+                className={smallInputClass}
+              />
+
+              {linkSearch.trim().length > 0 && searchResults.length === 0 && (
+                <p className="text-xs text-text-tertiary">No issues found.</p>
+              )}
+
+              {searchResults.length > 0 && (
+                <ul className="space-y-1 max-h-32 overflow-y-auto">
+                  {searchResults.map((issue) => (
+                    <li key={issue.id}>
+                      <button
+                        type="button"
+                        onClick={() => addPendingLink(issue)}
+                        className="w-full text-left px-2 py-1.5 rounded-lg text-xs hover:bg-bg-surface-hover transition-colors"
+                      >
+                        {issue.identifier && (
+                          <span className="font-mono text-text-tertiary mr-1">{issue.identifier}</span>
+                        )}
+                        <span className="text-text-primary">{issue.title}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
 
         {error && (
           <p className="text-sm text-destructive">{error}</p>

@@ -219,10 +219,11 @@ export default function ProjectPage({
           setCreateWithStatus(undefined);
         }}
         workspaceId={workspaceId}
+        projectId={projectId}
         projectStatuses={statusesQuery.data}
         defaultStatus={createWithStatus}
         onSubmit={async (formData) => {
-          await createIssue.mutateAsync(formData);
+          return createIssue.mutateAsync(formData);
         }}
       />
 
