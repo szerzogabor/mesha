@@ -73,6 +73,7 @@ export function useIssueEvents(projectId: string) {
                   queryClient.invalidateQueries({ queryKey: ["issues-all", projectId] });
                   if (data?.id) {
                     queryClient.invalidateQueries({ queryKey: ["issue", data.id] });
+                    queryClient.invalidateQueries({ queryKey: ["activity", data.id] });
                   }
                 } catch {
                   // ignore malformed event data
