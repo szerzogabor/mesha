@@ -131,6 +131,27 @@ export function Sidebar({ workspace, projects, onCreateProject, isCollapsed, onT
 
           <div className="px-3 mt-4 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-sidebar-text-muted">
+              Settings
+            </span>
+          </div>
+          <ul className="space-y-0.5 px-2 mb-2">
+            <li>
+              <Link
+                href={`/workspaces/${workspace.id}/agents`}
+                className={cn(
+                  "block px-3 py-2 rounded-lg text-sm truncate transition-colors",
+                  pathname.startsWith(`/workspaces/${workspace.id}/agents`)
+                    ? "bg-sidebar-item-active text-white"
+                    : "text-sidebar-text hover:bg-sidebar-item-hover hover:text-sidebar-text-active"
+                )}
+              >
+                AI Agents
+              </Link>
+            </li>
+          </ul>
+
+          <div className="px-3 mt-4 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-sidebar-text-muted">
               Integrations
             </span>
           </div>

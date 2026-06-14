@@ -1,0 +1,17 @@
+package com.mesha.api.dto;
+
+import com.mesha.api.model.AgentProviderType;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
+import java.util.Map;
+
+public record UpdateAgentDefinitionRequest(
+    @Size(max = 150) String title,
+    @Size(max = 100) @Pattern(regexp = "^[a-z][a-z0-9]*(-[a-z0-9]+)*$", message = "Name must be lowercase kebab-case") String name,
+    String description,
+    AgentProviderType providerType,
+    String systemPrompt,
+    Map<String, Object> providerParameters,
+    Boolean active
+) {}
