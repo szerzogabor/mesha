@@ -40,7 +40,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     let errorBody: string;
     try {
       const json = await res.json();
-      errorBody = json?.message ?? json?.error ?? JSON.stringify(json);
+      errorBody = json?.message ?? json?.error ?? json?.detail ?? JSON.stringify(json);
     } catch {
       errorBody = await res.text().catch(() => res.statusText);
     }
