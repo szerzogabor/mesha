@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useIssueLinks, useCreateIssueLink, useDeleteIssueLink } from "@/hooks/useIssueLinks";
 import { useAllIssues } from "@/hooks/useIssues";
 import { IssueLink, IssueLinkType } from "@/types";
@@ -24,9 +25,10 @@ const LINK_TYPE_OPTIONS: { value: IssueLinkType; label: string }[] = [
 interface Props {
   issueId: string;
   projectId: string;
+  workspaceId: string;
 }
 
-export function IssueLinksPanel({ issueId, projectId }: Props) {
+export function IssueLinksPanel({ issueId, projectId, workspaceId }: Props) {
   const { data: links = [], isLoading } = useIssueLinks(issueId);
   const createLink = useCreateIssueLink(issueId);
   const deleteLink = useDeleteIssueLink(issueId);
@@ -94,12 +96,24 @@ export function IssueLinksPanel({ issueId, projectId }: Props) {
                   <span className="text-[10px] text-text-tertiary capitalize block">
                     {labelFor(link)}
                   </span>
-                  <span className="text-xs text-text-primary truncate block">
-                    {issue.identifier && (
-                      <span className="font-mono text-text-tertiary mr-1">{issue.identifier}</span>
-                    )}
-                    {issue.title}
-                  </span>
+                  {issue.projectId ? (
+                    <Link
+                      href={`/workspaces/${workspaceId}/projects/${issue.projectId}/issues/${issue.id}`}
+                      className="text-xs text-text-primary truncate block hover:text-accent transition-colors"
+                    >
+                      {issue.identifier && (
+                        <span className="font-mono text-text-tertiary mr-1">{issue.identifier}</span>
+                      )}
+                      {issue.title}
+                    </Link>
+                  ) : (
+                    <span className="text-xs text-text-primary truncate block">
+                      {issue.identifier && (
+                        <span className="font-mono text-text-tertiary mr-1">{issue.identifier}</span>
+                      )}
+                      {issue.title}
+                    </span>
+                  )}
                 </div>
                 <button
                   onClick={() => deleteLink.mutate(link.id)}
