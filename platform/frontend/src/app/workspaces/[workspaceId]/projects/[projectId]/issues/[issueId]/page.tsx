@@ -21,6 +21,8 @@ import { useIssueEvents } from "@/hooks/useIssueEvents";
 import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers";
 import { AssigneeSelector } from "@/components/issues/AssigneeSelector";
 import { formatRelativeTime, statusLabel } from "@/lib/utils";
+import { RuleViolationDialog } from "@/components/ui/RuleViolationDialog";
+import { extractApiErrorMessage, isRuleViolationError } from "@/lib/error-utils";
 const PRIORITIES: IssuePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
 const LABEL_PRESET_COLORS = [
@@ -68,6 +70,7 @@ export default function IssueDetailPage({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showAgentPicker, setShowAgentPicker] = useState(false);
   const [pendingAgentLlm, setPendingAgentLlm] = useState<AgentLlm>("claude");
+  const [ruleViolation, setRuleViolation] = useState<string | null>(null);
 
   if (isLoading || !issue) {
     return (
@@ -258,7 +261,13 @@ export default function IssueDetailPage({
               <select
                 value={issue.status}
                 onChange={async (e) => {
-                  await updateIssue.mutateAsync({ status: e.target.value as IssueStatus });
+                  try {
+                    await updateIssue.mutateAsync({ status: e.target.value as IssueStatus });
+                  } catch (err) {
+                    if (isRuleViolationError(err)) {
+                      setRuleViolation(extractApiErrorMessage(err));
+                    }
+                  }
                 }}
                 className={selectClass}
               >
@@ -569,6 +578,8 @@ export default function IssueDetailPage({
           onClose={() => setSelectedSession(null)}
         />
       )}
+
+      <RuleViolationDialog message={ruleViolation} onClose={() => setRuleViolation(null)} />
     </div>
   );
 }
