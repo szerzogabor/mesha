@@ -45,6 +45,7 @@ public class AutomationService {
     private final LabelRepository labelRepository;
     private final IssueRepository issueRepository;
     private final ActivityService activityService;
+    private final IssueSseService issueSseService;
     private final TransactionTemplate ruleTransactionTemplate;
     private BlocksSessionService blocksSessionService;
 
@@ -54,6 +55,7 @@ public class AutomationService {
                              LabelRepository labelRepository,
                              IssueRepository issueRepository,
                              ActivityService activityService,
+                             IssueSseService issueSseService,
                              PlatformTransactionManager transactionManager) {
         this.ruleRepository = ruleRepository;
         this.projectRepository = projectRepository;
@@ -61,6 +63,7 @@ public class AutomationService {
         this.labelRepository = labelRepository;
         this.issueRepository = issueRepository;
         this.activityService = activityService;
+        this.issueSseService = issueSseService;
         this.ruleTransactionTemplate = new TransactionTemplate(transactionManager);
         this.ruleTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
@@ -234,6 +237,7 @@ public class AutomationService {
         issue.setStatus(newStatus);
         issueRepository.save(issue);
         activityService.record(issue, null, ActivityEventType.STATUS_CHANGED, oldStatus, newStatus);
+        issueSseService.broadcastUpdate(issue);
         log.info("automation_status_applied ruleId={} issueId={} from={} to={}",
                 rule.getId(), issue.getId(), oldStatus, newStatus);
     }

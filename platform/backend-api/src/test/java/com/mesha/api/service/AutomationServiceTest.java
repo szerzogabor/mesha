@@ -45,6 +45,7 @@ class AutomationServiceTest {
     @Mock private LabelRepository labelRepository;
     @Mock private IssueRepository issueRepository;
     @Mock private ActivityService activityService;
+    @Mock private IssueSseService issueSseService;
     @Mock private PlatformTransactionManager transactionManager;
 
     private AutomationService service;
@@ -58,7 +59,7 @@ class AutomationServiceTest {
     void setUp() {
         mocks = MockitoAnnotations.openMocks(this);
         service = new AutomationService(ruleRepository, projectRepository, projectStatusRepository,
-                labelRepository, issueRepository, activityService, transactionManager);
+                labelRepository, issueRepository, activityService, issueSseService, transactionManager);
 
         projectId = UUID.randomUUID();
         Workspace workspace = new Workspace();
