@@ -17,6 +17,8 @@ import { ListView } from "@/components/issues/ListView";
 import { KanbanView } from "@/components/issues/KanbanView";
 import { IssueStatus, IssuePriority } from "@/types";
 import Link from "next/link";
+import { RuleViolationDialog } from "@/components/ui/RuleViolationDialog";
+import { extractApiErrorMessage, isRuleViolationError } from "@/lib/error-utils";
 
 const VIEW_STORAGE_KEY = "mesha-view-mode";
 
@@ -36,6 +38,7 @@ export default function ProjectPage({
   const [createWithStatus, setCreateWithStatus] = useState<string | undefined>(undefined);
   const [showAIDraft, setShowAIDraft] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [ruleViolation, setRuleViolation] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -201,7 +204,16 @@ export default function ProjectPage({
             workspaceId={workspaceId}
             projectId={projectId}
             onUpdateStatus={(issueId, newStatus) =>
-              updateIssue.mutate({ issueId, data: { status: newStatus } })
+              updateIssue.mutate(
+                { issueId, data: { status: newStatus } },
+                {
+                  onError: (err) => {
+                    if (isRuleViolationError(err)) {
+                      setRuleViolation(extractApiErrorMessage(err));
+                    }
+                  },
+                }
+              )
             }
             onReorderStatuses={(statusIds) => reorderStatuses.mutate(statusIds)}
             onCreateIssueForStatus={(s) => {
@@ -232,6 +244,8 @@ export default function ProjectPage({
         projectId={projectId}
         onClose={() => setShowAIDraft(false)}
       />
+
+      <RuleViolationDialog message={ruleViolation} onClose={() => setRuleViolation(null)} />
     </div>
   );
 }

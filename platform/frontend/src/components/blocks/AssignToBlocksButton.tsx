@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { BlocksActivityFeed } from "./BlocksActivityFeed";
 import { useActiveBlocksSession, useAssignToBlocks, useCancelBlocksSession } from "@/hooks/useBlocksSessions";
 import { useBlocksConfig } from "@/hooks/useBlocksConfig";
+import { RuleViolationDialog } from "@/components/ui/RuleViolationDialog";
+import { extractApiErrorMessage, isRuleViolationError } from "@/lib/error-utils";
 
 interface Props {
   workspaceId: string;
@@ -17,6 +20,7 @@ export function AssignToBlocksPanel({ workspaceId, projectId, issueId, hasActive
   const { data: blocksConfig, isLoading: configLoading } = useBlocksConfig(workspaceId);
   const assignMutation = useAssignToBlocks(projectId, issueId);
   const cancelMutation = useCancelBlocksSession(projectId, issueId);
+  const [ruleViolation, setRuleViolation] = useState<string | null>(null);
 
   const isConnected = !!blocksConfig;
 
@@ -79,7 +83,15 @@ export function AssignToBlocksPanel({ workspaceId, projectId, issueId, hasActive
         </p>
       </div>
       <button
-        onClick={() => assignMutation.mutate(undefined)}
+        onClick={() => {
+          assignMutation.mutate(undefined, {
+            onError: (err) => {
+              if (isRuleViolationError(err)) {
+                setRuleViolation(extractApiErrorMessage(err));
+              }
+            },
+          });
+        }}
         disabled={assignMutation.isPending}
         className="w-full flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white hover:bg-accent-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
       >
@@ -100,11 +112,12 @@ export function AssignToBlocksPanel({ workspaceId, projectId, issueId, hasActive
           </>
         )}
       </button>
-      {assignMutation.isError && (
+      {assignMutation.isError && !isRuleViolationError(assignMutation.error) && (
         <p className="text-xs text-red-500">
           {(assignMutation.error as Error)?.message ?? "Failed to assign to Blocks"}
         </p>
       )}
+      <RuleViolationDialog message={ruleViolation} onClose={() => setRuleViolation(null)} />
     </div>
   );
 }
