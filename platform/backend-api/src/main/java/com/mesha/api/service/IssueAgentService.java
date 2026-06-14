@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@Transactional(readOnly = true)
 public class IssueAgentService {
 
     private static final Logger log = LoggerFactory.getLogger(IssueAgentService.class);
@@ -47,6 +48,10 @@ public class IssueAgentService {
 
         AgentDefinition agent = agentDefinitionRepository.findById(agentDefinitionId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Agent definition not found"));
+
+        if (!agent.getWorkspace().getId().equals(issue.getProject().getWorkspace().getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Agent does not belong to this workspace");
+        }
 
         if (!agent.isActive()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot assign an inactive agent");

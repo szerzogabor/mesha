@@ -5,6 +5,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -43,7 +44,7 @@ public class AgentDefinition {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "provider_parameters", nullable = false, columnDefinition = "jsonb")
-    private Map<String, Object> providerParameters = Map.of();
+    private Map<String, Object> providerParameters = new HashMap<>();
 
     @Column(nullable = false)
     private boolean active = true;

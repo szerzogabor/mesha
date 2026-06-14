@@ -142,7 +142,7 @@ function AgentForm({
   const [title, setTitle] = useState(initial?.title ?? "");
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
-  const [providerType, setProviderType] = useState(initial?.providerType ?? "BLOCKS");
+  const [providerType, setProviderType] = useState<string>(initial?.providerType ?? "BLOCKS");
   const [systemPrompt, setSystemPrompt] = useState(initial?.systemPrompt ?? "");
   const [startupCommands, setStartupCommands] = useState(
     ((initial?.providerParameters?.startupCommands as string[]) ?? []).join("\n")

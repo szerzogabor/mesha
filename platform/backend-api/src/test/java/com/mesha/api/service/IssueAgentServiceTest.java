@@ -26,11 +26,32 @@ class IssueAgentServiceTest {
     @Mock private AgentDefinitionRepository agentDefinitionRepository;
 
     private IssueAgentService service;
+    private Workspace workspace;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
         service = new IssueAgentService(issueAgentRepository, issueRepository, agentDefinitionRepository);
+        workspace = new Workspace();
+        ReflectionTestUtils.setField(workspace, "id", UUID.randomUUID());
+    }
+
+    private Issue issueInWorkspace(UUID issueId) {
+        Project project = new Project();
+        ReflectionTestUtils.setField(project, "id", UUID.randomUUID());
+        project.setWorkspace(workspace);
+        Issue issue = new Issue();
+        ReflectionTestUtils.setField(issue, "id", issueId);
+        issue.setProject(project);
+        return issue;
+    }
+
+    private AgentDefinition agentInWorkspace(UUID agentId, boolean active) {
+        AgentDefinition agent = new AgentDefinition();
+        ReflectionTestUtils.setField(agent, "id", agentId);
+        agent.setWorkspace(workspace);
+        agent.setActive(active);
+        return agent;
     }
 
     @Test
@@ -38,12 +59,8 @@ class IssueAgentServiceTest {
         UUID issueId = UUID.randomUUID();
         UUID agentId = UUID.randomUUID();
 
-        Issue issue = new Issue();
-        ReflectionTestUtils.setField(issue, "id", issueId);
-
-        AgentDefinition agent = new AgentDefinition();
-        ReflectionTestUtils.setField(agent, "id", agentId);
-        agent.setActive(true);
+        Issue issue = issueInWorkspace(issueId);
+        AgentDefinition agent = agentInWorkspace(agentId, true);
 
         User user = new User();
         ReflectionTestUtils.setField(user, "id", UUID.randomUUID());
@@ -69,12 +86,8 @@ class IssueAgentServiceTest {
         UUID issueId = UUID.randomUUID();
         UUID agentId = UUID.randomUUID();
 
-        Issue issue = new Issue();
-        ReflectionTestUtils.setField(issue, "id", issueId);
-
-        AgentDefinition agent = new AgentDefinition();
-        ReflectionTestUtils.setField(agent, "id", agentId);
-        agent.setActive(false);
+        Issue issue = issueInWorkspace(issueId);
+        AgentDefinition agent = agentInWorkspace(agentId, false);
 
         when(issueRepository.findById(issueId)).thenReturn(Optional.of(issue));
         when(agentDefinitionRepository.findById(agentId)).thenReturn(Optional.of(agent));
@@ -89,12 +102,8 @@ class IssueAgentServiceTest {
         UUID issueId = UUID.randomUUID();
         UUID agentId = UUID.randomUUID();
 
-        Issue issue = new Issue();
-        ReflectionTestUtils.setField(issue, "id", issueId);
-
-        AgentDefinition agent = new AgentDefinition();
-        ReflectionTestUtils.setField(agent, "id", agentId);
-        agent.setActive(true);
+        Issue issue = issueInWorkspace(issueId);
+        AgentDefinition agent = agentInWorkspace(agentId, true);
 
         when(issueRepository.findById(issueId)).thenReturn(Optional.of(issue));
         when(agentDefinitionRepository.findById(agentId)).thenReturn(Optional.of(agent));
@@ -103,6 +112,28 @@ class IssueAgentServiceTest {
         assertThatThrownBy(() -> service.assign(issueId, agentId, new User()))
             .isInstanceOf(ResponseStatusException.class)
             .hasMessageContaining("already assigned");
+    }
+
+    @Test
+    void assign_crossWorkspace_throws() {
+        UUID issueId = UUID.randomUUID();
+        UUID agentId = UUID.randomUUID();
+
+        Issue issue = issueInWorkspace(issueId);
+
+        Workspace otherWorkspace = new Workspace();
+        ReflectionTestUtils.setField(otherWorkspace, "id", UUID.randomUUID());
+        AgentDefinition agent = new AgentDefinition();
+        ReflectionTestUtils.setField(agent, "id", agentId);
+        agent.setWorkspace(otherWorkspace);
+        agent.setActive(true);
+
+        when(issueRepository.findById(issueId)).thenReturn(Optional.of(issue));
+        when(agentDefinitionRepository.findById(agentId)).thenReturn(Optional.of(agent));
+
+        assertThatThrownBy(() -> service.assign(issueId, agentId, new User()))
+            .isInstanceOf(ResponseStatusException.class)
+            .hasMessageContaining("does not belong");
     }
 
     @Test

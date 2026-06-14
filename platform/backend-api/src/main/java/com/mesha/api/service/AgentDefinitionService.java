@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
+@Transactional(readOnly = true)
 public class AgentDefinitionService {
 
     private static final Logger log = LoggerFactory.getLogger(AgentDefinitionService.class);
@@ -42,9 +43,13 @@ public class AgentDefinitionService {
         return agentDefinitionRepository.findAllByWorkspaceIdAndActiveTrueOrderByTitleAsc(workspaceId);
     }
 
-    public AgentDefinition getById(UUID agentId) {
-        return agentDefinitionRepository.findById(agentId)
+    public AgentDefinition getById(UUID workspaceId, UUID agentId) {
+        AgentDefinition agent = agentDefinitionRepository.findById(agentId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Agent definition not found"));
+        if (!agent.getWorkspace().getId().equals(workspaceId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Agent definition not found");
+        }
+        return agent;
     }
 
     @Transactional
@@ -75,10 +80,7 @@ public class AgentDefinitionService {
     @Transactional
     public AgentDefinition update(UUID workspaceId, UUID agentId, UpdateAgentDefinitionRequest req) {
         log.debug("Updating agent definition agentId={} workspaceId={}", agentId, workspaceId);
-        AgentDefinition agent = getById(agentId);
-        if (!agent.getWorkspace().getId().equals(workspaceId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Agent definition not found");
-        }
+        AgentDefinition agent = getById(workspaceId, agentId);
 
         if (req.name() != null && !req.name().equals(agent.getName())) {
             if (agentDefinitionRepository.existsByWorkspaceIdAndName(workspaceId, req.name())) {
@@ -101,10 +103,7 @@ public class AgentDefinitionService {
     @Transactional
     public void delete(UUID workspaceId, UUID agentId) {
         log.debug("Deleting agent definition agentId={} workspaceId={}", agentId, workspaceId);
-        AgentDefinition agent = getById(agentId);
-        if (!agent.getWorkspace().getId().equals(workspaceId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Agent definition not found");
-        }
+        AgentDefinition agent = getById(workspaceId, agentId);
         agentDefinitionRepository.delete(agent);
         log.info("Agent definition deleted agentId={} workspaceId={}", agentId, workspaceId);
     }

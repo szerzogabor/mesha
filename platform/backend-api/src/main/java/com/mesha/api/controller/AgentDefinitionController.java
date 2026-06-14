@@ -45,7 +45,7 @@ public class AgentDefinitionController {
     @PreAuthorize("@workspaceSecurity.isMember(authentication, #workspaceId)")
     public ResponseEntity<AgentDefinitionDto> get(@PathVariable String workspaceId,
                                                    @PathVariable UUID agentId) {
-        return ResponseEntity.ok(AgentDefinitionDto.from(agentDefinitionService.getById(agentId)));
+        return ResponseEntity.ok(AgentDefinitionDto.from(agentDefinitionService.getById(UUID.fromString(workspaceId), agentId)));
     }
 
     @PostMapping

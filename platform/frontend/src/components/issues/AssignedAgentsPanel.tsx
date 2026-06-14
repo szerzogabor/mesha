@@ -57,8 +57,9 @@ export function AssignedAgentsPanel({ workspaceId, projectId, issueId }: Assigne
                 </span>
               </div>
               <button
-                onClick={() => unassignAgent.mutate(assignment.agentDefinitionId)}
-                className="text-xs text-text-tertiary hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
+                onClick={() => !unassignAgent.isPending && unassignAgent.mutate(assignment.agentDefinitionId)}
+                disabled={unassignAgent.isPending}
+                className="text-xs text-text-tertiary hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
               >
                 ×
               </button>

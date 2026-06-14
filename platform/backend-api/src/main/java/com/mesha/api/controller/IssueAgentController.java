@@ -9,7 +9,6 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,7 +25,6 @@ public class IssueAgentController {
     }
 
     @GetMapping
-    @Transactional(readOnly = true)
     @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
     public ResponseEntity<List<IssueAgentDto>> list(@PathVariable UUID projectId,
                                                      @PathVariable UUID issueId) {
