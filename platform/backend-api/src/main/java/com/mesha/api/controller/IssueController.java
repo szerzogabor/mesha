@@ -49,10 +49,11 @@ public class IssueController {
             @RequestParam(required = false) IssuePriority priority,
             @RequestParam(required = false) UUID assigneeId,
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) List<UUID> labelIds,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int size) {
 
-        Page<Issue> result = issueService.list(projectId, status, priority, assigneeId, search, page, size);
+        Page<Issue> result = issueService.list(projectId, status, priority, assigneeId, search, labelIds, page, size);
         List<UUID> issueIds = result.getContent().stream().map(Issue::getId).toList();
         Map<UUID, GitHubPullRequest> lastPrByIssueId = issueIds.isEmpty()
                 ? Map.of()

@@ -108,13 +108,14 @@ public class IssueService {
     }
 
     public Page<Issue> list(UUID projectId, String status, IssuePriority priority,
-                             UUID assigneeId, String search, int page, int size) {
+                             UUID assigneeId, String search, List<UUID> labelIds, int page, int size) {
         long startMs = System.currentTimeMillis();
         Pageable pageable = PageRequest.of(page, size);
         String normalizedSearch = search != null ? "%" + search.toLowerCase() + "%" : null;
-        Page<Issue> result = issueRepository.findByProjectFiltered(projectId, status, priority, assigneeId, normalizedSearch, pageable);
-        log.info("Listed issues projectId={} status={} priority={} count={} totalElements={} durationMs={}",
-                projectId, status, priority, result.getNumberOfElements(), result.getTotalElements(), System.currentTimeMillis() - startMs);
+        List<UUID> effectiveLabelIds = (labelIds == null || labelIds.isEmpty()) ? null : labelIds;
+        Page<Issue> result = issueRepository.findByProjectFiltered(projectId, status, priority, assigneeId, normalizedSearch, effectiveLabelIds, pageable);
+        log.info("Listed issues projectId={} status={} priority={} labelIds={} count={} totalElements={} durationMs={}",
+                projectId, status, priority, labelIds, result.getNumberOfElements(), result.getTotalElements(), System.currentTimeMillis() - startMs);
         return result;
     }
 

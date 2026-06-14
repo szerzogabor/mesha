@@ -33,6 +33,7 @@ export default function ProjectPage({
   const [status, setStatus] = useState<IssueStatus | undefined>();
   const [priority, setPriority] = useState<IssuePriority | undefined>();
   const [search, setSearch] = useState("");
+  const [labelIds, setLabelIds] = useState<string[]>([]);
   const [page, setPage] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
   const [createWithStatus, setCreateWithStatus] = useState<string | undefined>(undefined);
@@ -75,6 +76,10 @@ export default function ProjectPage({
     setSearch(s);
     handleFilterChange();
   };
+  const handleLabelIdsChange = (ids: string[]) => {
+    setLabelIds(ids);
+    handleFilterChange();
+  };
 
   useIssueEvents(projectId);
 
@@ -82,13 +87,14 @@ export default function ProjectPage({
     status,
     priority,
     search: search || undefined,
+    labelIds: labelIds.length ? labelIds : undefined,
     page,
     size: 25,
   });
 
   const kanbanQuery = useAllIssues(
     projectId,
-    { priority, search: search || undefined },
+    { priority, search: search || undefined, labelIds: labelIds.length ? labelIds : undefined },
     { enabled: view === "kanban" }
   );
 
@@ -170,9 +176,12 @@ export default function ProjectPage({
           priority={priority}
           search={search}
           projectStatuses={statusesQuery.data}
+          workspaceId={workspaceId}
+          selectedLabelIds={labelIds}
           onStatusChange={handleStatusChange}
           onPriorityChange={handlePriorityChange}
           onSearchChange={handleSearchChange}
+          onLabelIdsChange={handleLabelIdsChange}
           hideStatusFilter={view === "kanban"}
         />
       </div>
