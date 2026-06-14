@@ -504,6 +504,7 @@ export default function IssueDetailPage({
           <IssueLinksPanel
             issueId={issueId}
             projectId={projectId}
+            workspaceId={workspaceId}
           />
 
           <AISessionsPanel

@@ -283,6 +283,7 @@ export type IssueLinkType =
 
 export interface LinkedIssueSummary {
   id: string;
+  projectId?: string;
   identifier?: string;
   title: string;
   status: string;

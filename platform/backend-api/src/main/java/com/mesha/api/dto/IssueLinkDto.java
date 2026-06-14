@@ -12,12 +12,13 @@ public record IssueLinkDto(
     LinkedIssueDto targetIssue,
     Instant createdAt
 ) {
-    public record LinkedIssueDto(UUID id, String identifier, String title, String status) {
+    public record LinkedIssueDto(UUID id, UUID projectId, String identifier, String title, String status) {
         public static LinkedIssueDto from(com.mesha.api.model.Issue issue) {
             String key = issue.getProject() != null ? issue.getProject().getKey() : null;
             Integer number = issue.getNumber();
             String identifier = (key != null && number != null) ? key + "-" + number : null;
-            return new LinkedIssueDto(issue.getId(), identifier, issue.getTitle(), issue.getStatus());
+            UUID projectId = issue.getProject() != null ? issue.getProject().getId() : null;
+            return new LinkedIssueDto(issue.getId(), projectId, identifier, issue.getTitle(), issue.getStatus());
         }
     }
 
