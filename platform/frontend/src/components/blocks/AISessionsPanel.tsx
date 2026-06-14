@@ -367,9 +367,10 @@ interface Props {
   projectId: string;
   issueId: string;
   agentLlm?: string;
+  agentSystemPrompt?: string;
 }
 
-export function AISessionsPanel({ workspaceId, projectId, issueId, agentLlm }: Props) {
+export function AISessionsPanel({ workspaceId, projectId, issueId, agentLlm, agentSystemPrompt }: Props) {
   const { data: sessions = [], isLoading } = useBlocksSessions(projectId, issueId);
   const { data: blocksConfig, isLoading: configLoading } = useBlocksConfig(workspaceId);
   const assignMutation = useAssignToBlocks(projectId, issueId);
@@ -382,7 +383,11 @@ export function AISessionsPanel({ workspaceId, projectId, issueId, agentLlm }: P
   const pastSessions = sessions.filter((s) => isTerminal(s.executionState));
 
   const handleStartSession = () => {
-    assignMutation.mutate(instructions || undefined, {
+    const parts: string[] = [];
+    if (agentSystemPrompt) parts.push(agentSystemPrompt);
+    if (instructions.trim()) parts.push(instructions.trim());
+    const combined = parts.join("\n\n") || undefined;
+    assignMutation.mutate(combined, {
       onSuccess: () => {
         setShowInstructions(false);
         setInstructions("");

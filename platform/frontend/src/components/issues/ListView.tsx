@@ -230,10 +230,10 @@ export function ListView({
                 assignee={issue.assignee}
                 members={members}
                 compact
-                onAssign={(userId) =>
+                onSelect={(sel) =>
                   updateIssue({
                     issueId: issue.id,
-                    data: userId ? { assigneeId: userId } : { clearAssignee: true },
+                    data: sel.type === "human" ? { assigneeId: sel.userId } : { clearAssignee: true },
                   })
                 }
               />
