@@ -13,6 +13,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { AISessionsPanel } from "@/components/blocks/AISessionsPanel";
 import { ResourcesPanel } from "@/components/blocks/ResourcesPanel";
 import { IssueLinksPanel } from "@/components/issues/IssueLinksPanel";
+import { AssignedAgentsPanel } from "@/components/issues/AssignedAgentsPanel";
 import { SessionsActivityList } from "@/components/blocks/SessionsActivityList";
 import { SessionChatDrawer } from "@/components/blocks/SessionChatDrawer";
 import { IssueStatus, IssuePriority, BlocksSession, AgentLlm } from "@/types";
@@ -509,6 +510,12 @@ export default function IssueDetailPage({
               )}
             </div>
           </div>
+
+          <AssignedAgentsPanel
+            workspaceId={workspaceId}
+            projectId={projectId}
+            issueId={issueId}
+          />
 
           <IssueLinksPanel
             issueId={issueId}

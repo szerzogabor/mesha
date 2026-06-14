@@ -91,6 +91,34 @@ export interface Label {
 export type AgentType = "BLOCKS";
 export type AgentLlm = "claude" | "codex";
 
+export type AgentProviderType = "BLOCKS";
+
+export interface AgentDefinition {
+  id: string;
+  workspaceId: string;
+  name: string;
+  title: string;
+  description?: string;
+  providerType: AgentProviderType;
+  systemPrompt: string;
+  providerParameters: Record<string, unknown>;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IssueAgentAssignment {
+  id: string;
+  issueId: string;
+  agentDefinitionId: string;
+  agentTitle: string;
+  agentName: string;
+  providerType: AgentProviderType;
+  agentActive: boolean;
+  assignedAt: string;
+  assignedBy?: string;
+}
+
 export interface Issue {
   id: string;
   projectId: string;
