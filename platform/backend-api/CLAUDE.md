@@ -106,9 +106,10 @@ mesha:
 
 **ProviderAdapter interface:**
 ```java
+String providerName();
 SessionResult createSession(SessionRequest request);
-SessionResult pollSession(String providerSessionId, String apiKey);
-List<ProviderMessage> getMessages(String providerSessionId, int offset, String apiKey);
+SessionResult pollSession(String providerSessionId);
+void cancelSession(String providerSessionId); // default no-op
 ```
 
 `BlocksAdapter` is the current implementation. Add new providers by implementing this interface and wiring in `config/`.

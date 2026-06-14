@@ -85,7 +85,7 @@ const { data: issues, isLoading } = useIssues(projectId);
 export function useUpdateIssue() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload) => apiClient.patch(`/api/issues/${payload.id}`, payload),
+    mutationFn: (payload) => apiClient.patch(`/api/projects/${payload.projectId}/issues/${payload.id}`, payload),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['issues', variables.projectId] });
     },
