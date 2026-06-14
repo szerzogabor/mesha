@@ -316,24 +316,34 @@ export default function IssueDetailPage({
                 activeAgents={activeAgents}
                 disabled={updateIssue.isPending || assignAgent.isPending || unassignAgent.isPending}
                 onSelect={async (selection) => {
-                  if (selection.type === "none") {
-                    for (const a of agentAssignments) {
-                      await unassignAgent.mutateAsync(a.agentDefinitionId);
+                  if (updateIssue.isPending || assignAgent.isPending || unassignAgent.isPending) return;
+                  try {
+                    if (selection.type === "none") {
+                      if (!issue.assignee && agentAssignments.length === 0) return;
+                      for (const a of agentAssignments) {
+                        await unassignAgent.mutateAsync(a.agentDefinitionId);
+                      }
+                      await updateIssue.mutateAsync({ clearAssignee: true, clearAgentAssignee: true });
+                    } else if (selection.type === "human") {
+                      if (issue.assignee?.id === selection.userId && agentAssignments.length === 0) return;
+                      for (const a of agentAssignments) {
+                        await unassignAgent.mutateAsync(a.agentDefinitionId);
+                      }
+                      await updateIssue.mutateAsync({ assigneeId: selection.userId, clearAgentAssignee: true });
+                    } else if (selection.type === "agent") {
+                      if (currentAgent?.agentDefinitionId === selection.agentId) return;
+                      const agent = activeAgents.find((a) => a.id === selection.agentId);
+                      const agentLlm = (agent?.providerParameters?.agentLlm as string) || "claude";
+                      for (const a of agentAssignments) {
+                        await unassignAgent.mutateAsync(a.agentDefinitionId);
+                      }
+                      await updateIssue.mutateAsync({ clearAssignee: true, agentType: "BLOCKS", agentLlm });
+                      await assignAgent.mutateAsync(selection.agentId);
                     }
-                    updateIssue.mutate({ clearAssignee: true, clearAgentAssignee: true });
-                  } else if (selection.type === "human") {
-                    for (const a of agentAssignments) {
-                      await unassignAgent.mutateAsync(a.agentDefinitionId);
+                  } catch (err) {
+                    if (isRuleViolationError(err)) {
+                      setRuleViolation(extractApiErrorMessage(err));
                     }
-                    updateIssue.mutate({ assigneeId: selection.userId, clearAgentAssignee: true });
-                  } else if (selection.type === "agent") {
-                    const agent = activeAgents.find((a) => a.id === selection.agentId);
-                    const agentLlm = (agent?.providerParameters?.agentLlm as string) || "claude";
-                    for (const a of agentAssignments) {
-                      await unassignAgent.mutateAsync(a.agentDefinitionId);
-                    }
-                    await updateIssue.mutateAsync({ clearAssignee: true, agentType: "BLOCKS", agentLlm });
-                    await assignAgent.mutateAsync(selection.agentId);
                   }
                 }}
               />
