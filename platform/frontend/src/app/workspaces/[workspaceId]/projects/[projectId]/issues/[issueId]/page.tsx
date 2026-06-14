@@ -13,14 +13,15 @@ import { Spinner } from "@/components/ui/Spinner";
 import { AISessionsPanel } from "@/components/blocks/AISessionsPanel";
 import { ResourcesPanel } from "@/components/blocks/ResourcesPanel";
 import { IssueLinksPanel } from "@/components/issues/IssueLinksPanel";
-import { AssignedAgentsPanel } from "@/components/issues/AssignedAgentsPanel";
 import { SessionsActivityList } from "@/components/blocks/SessionsActivityList";
 import { SessionChatDrawer } from "@/components/blocks/SessionChatDrawer";
-import { IssueStatus, IssuePriority, BlocksSession, AgentLlm } from "@/types";
+import { IssueStatus, IssuePriority, BlocksSession } from "@/types";
 import { useLabels, useCreateLabel } from "@/hooks/useLabels";
 import { useIssueEvents } from "@/hooks/useIssueEvents";
 import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers";
 import { AssigneeSelector } from "@/components/issues/AssigneeSelector";
+import { useActiveAgentDefinitions } from "@/hooks/useAgentDefinitions";
+import { useIssueAgents, useAssignAgent, useUnassignAgent } from "@/hooks/useIssueAgents";
 import { formatRelativeTime, statusLabel } from "@/lib/utils";
 import { RuleViolationDialog } from "@/components/ui/RuleViolationDialog";
 import { extractApiErrorMessage, isRuleViolationError } from "@/lib/error-utils";
@@ -56,6 +57,10 @@ export default function IssueDetailPage({
   const { data: availableLabels = [] } = useLabels(workspaceId);
   const createLabel = useCreateLabel(workspaceId);
   const { data: workspaceMembers = [] } = useWorkspaceMembers(workspaceId);
+  const { data: activeAgents = [] } = useActiveAgentDefinitions(workspaceId);
+  const { data: agentAssignments = [] } = useIssueAgents(projectId, issueId);
+  const assignAgent = useAssignAgent(projectId, issueId);
+  const unassignAgent = useUnassignAgent(projectId, issueId);
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -69,9 +74,12 @@ export default function IssueDetailPage({
   const [activeTab, setActiveTab] = useState<"comments" | "activity">("comments");
   const [selectedSession, setSelectedSession] = useState<{ session: BlocksSession; index: number } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [showAgentPicker, setShowAgentPicker] = useState(false);
-  const [pendingAgentLlm, setPendingAgentLlm] = useState<AgentLlm>("claude");
   const [ruleViolation, setRuleViolation] = useState<string | null>(null);
+
+  const currentAgent = agentAssignments.length > 0 ? agentAssignments[0] : undefined;
+  const assignedAgentDef = currentAgent
+    ? activeAgents.find((a) => a.id === currentAgent.agentDefinitionId)
+    : undefined;
 
   if (isLoading || !issue) {
     return (
@@ -303,78 +311,32 @@ export default function IssueDetailPage({
               </label>
               <AssigneeSelector
                 assignee={issue.assignee}
+                assignedAgent={currentAgent}
                 members={workspaceMembers}
-                disabled={updateIssue.isPending}
-                onAssign={(userId) => {
-                  if (userId === null) {
-                    updateIssue.mutate({ clearAssignee: true });
-                  } else {
-                    updateIssue.mutate({ assigneeId: userId });
+                activeAgents={activeAgents}
+                disabled={updateIssue.isPending || assignAgent.isPending || unassignAgent.isPending}
+                onSelect={async (selection) => {
+                  if (selection.type === "none") {
+                    for (const a of agentAssignments) {
+                      await unassignAgent.mutateAsync(a.agentDefinitionId);
+                    }
+                    updateIssue.mutate({ clearAssignee: true, clearAgentAssignee: true });
+                  } else if (selection.type === "human") {
+                    for (const a of agentAssignments) {
+                      await unassignAgent.mutateAsync(a.agentDefinitionId);
+                    }
+                    updateIssue.mutate({ assigneeId: selection.userId, clearAgentAssignee: true });
+                  } else if (selection.type === "agent") {
+                    const agent = activeAgents.find((a) => a.id === selection.agentId);
+                    const agentLlm = (agent?.providerParameters?.agentLlm as string) || "claude";
+                    for (const a of agentAssignments) {
+                      await unassignAgent.mutateAsync(a.agentDefinitionId);
+                    }
+                    await updateIssue.mutateAsync({ clearAssignee: true, agentType: "BLOCKS", agentLlm });
+                    await assignAgent.mutateAsync(selection.agentId);
                   }
                 }}
               />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-text-tertiary uppercase tracking-wide mb-1">
-                AI Agent
-              </label>
-              {issue.agentType === "BLOCKS" ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                      <svg className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                    </div>
-                    <span className="text-sm text-text-primary">
-                      Blocks <span className="text-text-tertiary">/{issue.agentLlm ?? "claude"}</span>
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => updateIssue.mutate({ clearAgentAssignee: true })}
-                    className="text-xs text-text-tertiary hover:text-destructive transition-colors"
-                  >
-                    ×
-                  </button>
-                </div>
-              ) : showAgentPicker ? (
-                <div className="space-y-2">
-                  <select
-                    value={pendingAgentLlm}
-                    onChange={(e) => setPendingAgentLlm(e.target.value as AgentLlm)}
-                    className={selectClass}
-                  >
-                    <option value="claude">/claude</option>
-                    <option value="codex">/codex</option>
-                  </select>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={async () => {
-                        await updateIssue.mutateAsync({ agentType: "BLOCKS", agentLlm: pendingAgentLlm });
-                        setShowAgentPicker(false);
-                      }}
-                      disabled={updateIssue.isPending}
-                      className="flex-1 px-2 py-1 text-xs bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50"
-                    >
-                      Assign
-                    </button>
-                    <button
-                      onClick={() => setShowAgentPicker(false)}
-                      className="flex-1 px-2 py-1 text-xs border border-border-default rounded-lg text-text-secondary hover:bg-bg-surface-hover transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowAgentPicker(true)}
-                  className="text-sm text-text-tertiary hover:text-text-primary transition-colors"
-                >
-                  + Assign Blocks AI
-                </button>
-              )}
             </div>
 
             <div className="relative">
@@ -511,12 +473,6 @@ export default function IssueDetailPage({
             </div>
           </div>
 
-          <AssignedAgentsPanel
-            workspaceId={workspaceId}
-            projectId={projectId}
-            issueId={issueId}
-          />
-
           <IssueLinksPanel
             issueId={issueId}
             projectId={projectId}
@@ -528,6 +484,7 @@ export default function IssueDetailPage({
             projectId={projectId}
             issueId={issueId}
             agentLlm={issue.agentLlm}
+            agentSystemPrompt={assignedAgentDef?.systemPrompt}
           />
 
           <ResourcesPanel

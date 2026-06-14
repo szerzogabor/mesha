@@ -91,10 +91,10 @@ export function KanbanCard({ issue, workspaceId, projectId, overlay = false }: K
               assignee={issue.assignee}
               members={members}
               compact
-              onAssign={(userId) =>
+              onSelect={(sel) =>
                 updateIssue({
                   issueId: issue.id,
-                  data: userId ? { assigneeId: userId } : { clearAssignee: true },
+                  data: sel.type === "human" ? { assigneeId: sel.userId } : { clearAssignee: true },
                 })
               }
             />
