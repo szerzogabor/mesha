@@ -4,21 +4,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
-## Git Development Branch Requirements
+## Git Branching Rules
 
-You are working on the following feature branches:
+**At the start of every coding session, create a fresh branch from the latest `main`:**
 
-- **szerzogabor/mesha**: Develop on branch `claude/copy-mesh-config-files-PaGSp`
+```bash
+git fetch origin main
+git checkout -b <branch-name> origin/main
+```
 
-### Important Instructions:
+### Branch Naming Convention
 
-1. **DEVELOP** all your changes on the designated branch above
-2. **COMMIT** your work with clear, descriptive commit messages
-3. **PUSH** to the specified branch when your changes are complete
-4. **CREATE** the branch locally if it doesn't exist yet
-5. **NEVER** push to a different branch without explicit permission
+| Type | Pattern | Example |
+|------|---------|---------|
+| Feature / new work | `feature/<ticket-id>` | `feature/TP-42` |
+| Bug fix | `fix/<ticket-id>` | `fix/TP-39` |
+| No ticket | `feature/<short-description>` | `feature/improve-error-messages` |
 
-Remember: All development and final pushes should go to the branches specified above.
+### Important Instructions
+
+1. **NEVER** commit directly to `main` or reuse an existing branch from a prior session
+2. **ALWAYS** branch from the latest `main` — never from another feature branch
+3. **COMMIT** your work with clear, descriptive commit messages
+4. **PUSH** your branch and open a pull request when complete
+5. **NEVER** push to a branch you did not create in the current session without explicit permission
 
 ---
 
