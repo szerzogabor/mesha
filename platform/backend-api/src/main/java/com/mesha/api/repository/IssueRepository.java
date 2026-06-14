@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.util.List;
 import java.util.UUID;
 
 public interface IssueRepository extends JpaRepository<Issue, UUID> {
@@ -20,6 +21,9 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
                  AND (:priority IS NULL OR i.priority = :priority)
                  AND (:assigneeId IS NULL OR i.assignee.id = :assigneeId)
                  AND (:search IS NULL OR LOWER(i.title) LIKE :search)
+                 AND (:#{#labelIds == null || #labelIds.isEmpty()} = true OR EXISTS (
+                   SELECT l FROM i.labels l WHERE l.id IN :labelIds
+                 ))
                ORDER BY i.createdAt DESC
                """,
         countQuery = """
@@ -29,6 +33,9 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
                  AND (:priority IS NULL OR i.priority = :priority)
                  AND (:assigneeId IS NULL OR i.assignee.id = :assigneeId)
                  AND (:search IS NULL OR LOWER(i.title) LIKE :search)
+                 AND (:#{#labelIds == null || #labelIds.isEmpty()} = true OR EXISTS (
+                   SELECT l FROM i.labels l WHERE l.id IN :labelIds
+                 ))
                """
     )
     Page<Issue> findByProjectFiltered(
@@ -37,6 +44,7 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
         @Param("priority") IssuePriority priority,
         @Param("assigneeId") UUID assigneeId,
         @Param("search") String search,
+        @Param("labelIds") List<UUID> labelIds,
         Pageable pageable
     );
 

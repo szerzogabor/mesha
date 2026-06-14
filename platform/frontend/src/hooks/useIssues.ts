@@ -9,6 +9,7 @@ interface IssueFilters {
   priority?: IssuePriority;
   assigneeId?: string;
   search?: string;
+  labelIds?: string[];
   page?: number;
   size?: number;
 }
@@ -19,6 +20,9 @@ function buildQuery(filters: IssueFilters): string {
   if (filters.priority) params.set("priority", filters.priority);
   if (filters.assigneeId) params.set("assigneeId", filters.assigneeId);
   if (filters.search) params.set("search", filters.search);
+  if (filters.labelIds?.length) {
+    filters.labelIds.forEach((id) => params.append("labelIds", id));
+  }
   if (filters.page !== undefined) params.set("page", String(filters.page));
   if (filters.size !== undefined) params.set("size", String(filters.size));
   const q = params.toString();
