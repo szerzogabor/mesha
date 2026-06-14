@@ -32,6 +32,7 @@ public class BlocksSessionService {
     private final GitHubPullRequestRepository gitHubPullRequestRepository;
     private final AutomationService automationService;
     private final TicketRuleService ticketRuleService;
+    private final IssueSseService issueSseService;
 
     public BlocksSessionService(BlocksSessionRepository blocksSessionRepository,
                                 IssueRepository issueRepository,
@@ -41,7 +42,8 @@ public class BlocksSessionService {
                                 BlocksAdapter blocksAdapter,
                                 GitHubPullRequestRepository gitHubPullRequestRepository,
                                 AutomationService automationService,
-                                TicketRuleService ticketRuleService) {
+                                TicketRuleService ticketRuleService,
+                                IssueSseService issueSseService) {
         this.blocksSessionRepository = blocksSessionRepository;
         this.issueRepository = issueRepository;
         this.activityService = activityService;
@@ -51,6 +53,7 @@ public class BlocksSessionService {
         this.gitHubPullRequestRepository = gitHubPullRequestRepository;
         this.automationService = automationService;
         this.ticketRuleService = ticketRuleService;
+        this.issueSseService = issueSseService;
     }
 
     @Transactional
@@ -76,6 +79,7 @@ public class BlocksSessionService {
 
         issue.setAiAssignmentState("CREATED");
         issueRepository.save(issue);
+        issueSseService.broadcastUpdate(issue);
 
         activityService.record(issue, actor, ActivityEventType.AI_ASSIGNED, null, session.getId().toString());
         automationService.executeFor(AutomationTriggerType.BLOCKS_SESSION_STARTED, issue);
@@ -132,6 +136,7 @@ public class BlocksSessionService {
         Issue issue = session.getIssue();
         issue.setAiAssignmentState(session.getExecutionState().name());
         issueRepository.save(issue);
+        issueSseService.broadcastUpdate(issue);
 
         ActivityEventType eventType = resolveActivityEventType(session.getExecutionState());
         String newValue = session.getExecutionState() == AIExecutionState.PR_OPENED && session.getPrUrl() != null
@@ -164,6 +169,7 @@ public class BlocksSessionService {
         Issue issue = session.getIssue();
         issue.setAiAssignmentState("CANCELED");
         issueRepository.save(issue);
+        issueSseService.broadcastUpdate(issue);
 
         activityService.record(issue, actor, ActivityEventType.AI_CANCELED, oldState, "CANCELED");
         log.info("blocks_session_canceled session_id={} provider_session_id={}", sessionId,
@@ -248,6 +254,7 @@ public class BlocksSessionService {
         Issue issue = session.getIssue();
         issue.setAiAssignmentState(session.getExecutionState().name());
         issueRepository.save(issue);
+        issueSseService.broadcastUpdate(issue);
 
         ActivityEventType eventType = resolveActivityEventType(session.getExecutionState());
         String newValue = session.getExecutionState() == AIExecutionState.PR_OPENED && session.getPrUrl() != null
