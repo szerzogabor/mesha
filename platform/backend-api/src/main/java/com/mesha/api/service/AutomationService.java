@@ -236,6 +236,7 @@ public class AutomationService {
         }
         issue.setStatus(newStatus);
         issueRepository.save(issue);
+        issueSseService.broadcastUpdate(issue);
         activityService.record(issue, null, ActivityEventType.STATUS_CHANGED, oldStatus, newStatus);
         issueSseService.broadcastUpdate(issue);
         log.info("automation_status_applied ruleId={} issueId={} from={} to={}",
@@ -261,6 +262,7 @@ public class AutomationService {
         }
         issue.getLabels().add(label.get());
         issueRepository.save(issue);
+        issueSseService.broadcastUpdate(issue);
         activityService.record(issue, null, ActivityEventType.LABEL_ADDED, null, label.get().getName());
         log.info("automation_label_applied ruleId={} issueId={} labelId={}", rule.getId(), issue.getId(), labelId);
     }
