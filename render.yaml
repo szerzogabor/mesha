@@ -1,89 +1,134 @@
-databases:
-  - name: mesha-db
-    databaseName: mesha
-    user: mesha
-    plan: free
+spring:
+  application:
+    name: mesha-api
+  profiles:
+    active: ${APP_ENV:local}
 
-services:
-  - type: redis
-    name: mesha-redis
-    plan: free
-    maxmemoryPolicy: allkeys-lru
-    ipAllowList:
-      - source: 0.0.0.0/0
-        description: everywhere
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:mesha}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: mesha-api-hikari
+      maximum-pool-size: ${DB_POOL_SIZE:5}
+      leak-detection-threshold: ${DB_LEAK_DETECTION_THRESHOLD_MS:60000}
 
-  - type: web
-    name: mesha-backend-api
-    env: docker
-    plan: free
-    rootDir: platform/backend-api
-    branch: main
-    autoDeploy: true
-    healthCheckPath: /actuator/health
-    buildFilter:
-      paths:
-        - render.yaml
-        - platform/backend-api/**
-    envVars:
-      - key: PORT
-        value: "10000"
-      - key: SERVER_PORT
-        value: "10000"
-      - key: DB_HOST
-        fromDatabase:
-          name: mesha-db
-          property: host
-      - key: DB_PORT
-        fromDatabase:
-          name: mesha-db
-          property: port
-      - key: DB_NAME
-        fromDatabase:
-          name: mesha-db
-          property: database
-      - key: DB_USER
-        fromDatabase:
-          name: mesha-db
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: mesha-db
-          property: password
-      - key: REDIS_URL
-        fromService:
-          name: mesha-redis
-          type: redis
-          property: connectionString
-      - key: CORS_ALLOWED_ORIGINS
-        sync: false
-      - key: CLERK_JWKS_URI
-        sync: false
-      - key: APP_ENV
-        value: production
-      # OpenTelemetry — Grafana Cloud OTLP gateway (prod-eu-central-0)
-      # Logs and traces are shipped via the OTel Java Agent; Loki4j is disabled in production.
-      - key: OTEL_EXPORTER_OTLP_ENDPOINT
-        value: "https://otlp-gateway-prod-eu-central-0.grafana.net/otlp"
-      - key: OTEL_EXPORTER_OTLP_PROTOCOL
-        value: "http/protobuf"
-      - key: OTEL_SERVICE_NAME
-        value: "mesha-api"
-      - key: OTEL_TRACES_EXPORTER
-        value: "otlp"
-      - key: OTEL_LOGS_EXPORTER
-        value: "otlp"
-      - key: OTEL_METRICS_EXPORTER
-        value: "none"
-      - key: OTEL_PROPAGATORS
-        value: "tracecontext,baggage"
-      # Write-only Grafana Cloud ingestion token — same credential as NEXT_PUBLIC_OTEL_EXPORTER_OTLP_AUTH
-      - key: OTEL_EXPORTER_OTLP_HEADERS
-        value: "Authorization=Basic MTY0OTc2ODpnbGNfZXlKdklqb2lNVGMzTVRRek9TSXNJbTRpT2lKdFpYTm9ZU0lzSW1zaU9pSndOV1J0TXpWcVYzRTBWVTFPTkRoWWRqWTRkalV5VUd3aUxDSnRJanA3SW5JaU9pSndjbTlrTFdWMUxXTmxiblJ5WVd3dE1DSjlmUT09"
-      # Worker responsibilities — session polling runs inside backend-api
-      - key: BLOCKS_API_URL
-        sync: false
-      - key: BLOCKS_API_KEY
-        sync: false
-      - key: BLOCKS_ENCRYPTION_SECRET
-        sync: false
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${CLERK_JWKS_URI:https://your-clerk-instance.clerk.accounts.dev/.well-known/jwks.json}
+
+clerk:
+  jwks-uri: ${CLERK_JWKS_URI:https://your-clerk-instance.clerk.accounts.dev/.well-known/jwks.json}
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+
+server:
+  port: ${PORT:8080}
+  tomcat:
+    threads:
+      max: ${TOMCAT_MAX_THREADS:20}
+      min-spare: ${TOMCAT_MIN_SPARE_THREADS:5}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+ai:
+  anthropic:
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: ${ANTHROPIC_MODEL:claude-haiku-4-5-20251001}
+    base-url: https://api.anthropic.com
+
+blocks:
+  webhook:
+    secret: ${BLOCKS_WEBHOOK_SECRET:}
+  encryption:
+    secret: ${BLOCKS_ENCRYPTION_SECRET:}
+
+# Worker responsibilities executed inline within backend-api.
+# Set BLOCKS_API_URL and BLOCKS_API_KEY to enable session dispatch and polling.
+# When absent, the scheduler runs but sessions remain in CREATED state and
+# dispatch attempts fail gracefully with logged errors.
+mesha:
+  blocks:
+    api-url: ${BLOCKS_API_URL:}
+    api-key: ${BLOCKS_API_KEY:}
+    agent-name: ${BLOCKS_AGENT_NAME:claude}
+    dashboard-url: ${BLOCKS_DASHBOARD_URL:https://www.blocks.team}
+  polling:
+    interval-ms: 5000
+    max-session-age-hours: 24
+    backoff:
+      base-ms: 5000
+      max-ms: 300000
+      multiplier: 2.0
+
+github:
+  app:
+    app-id: ${GITHUB_APP_ID:0}
+    client-id: ${GITHUB_APP_CLIENT_ID:}
+    client-secret: ${GITHUB_APP_CLIENT_SECRET:}
+    private-key: ${GITHUB_APP_PRIVATE_KEY:}
+    webhook-secret: ${GITHUB_APP_WEBHOOK_SECRET:}
+    app-name: ${GITHUB_APP_NAME:mesha-github-app}
+
+# Structured JSON logging — format handled by logback-spring.xml
+logging:
+  level:
+    root: INFO
+    com.mesha: DEBUG
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+
+# OpenTelemetry Java Agent configuration — mirrors the frontend Grafana Cloud setup.
+# The agent ships traces (Tempo) and logs (Loki) via the same OTLP gateway the
+# frontend uses; credentials are identical to the frontend's NEXT_PUBLIC_OTEL_* vars.
+#
+# Required environment variables in production:
+#   OTEL_EXPORTER_OTLP_ENDPOINT   Same URL as frontend NEXT_PUBLIC_OTEL_EXPORTER_OTLP_ENDPOINT
+#                                  e.g. https://otlp-gateway-prod-eu-central-0.grafana.net/otlp
+#   OTEL_EXPORTER_OTLP_HEADERS    Authorization=Basic <base64>
+#                                  where <base64> is the SAME value as the frontend's
+#                                  NEXT_PUBLIC_OTEL_EXPORTER_OTLP_AUTH
+#                                  i.e. base64("<instanceId>:<apiToken>")
+#   OTEL_EXPORTER_OTLP_PROTOCOL   http/protobuf  (Grafana Cloud gateway is HTTP, not gRPC)
+#   OTEL_TRACES_EXPORTER          otlp           (traces → Tempo via /v1/traces)
+#   OTEL_LOGS_EXPORTER            otlp           (logs   → Loki  via /v1/logs)
+#   OTEL_METRICS_EXPORTER         none           (metrics handled by Actuator)
+#   OTEL_PROPAGATORS              tracecontext,baggage
+#   OTEL_INSTRUMENTATION_LOGBACK_MDC_ADD_BAGGAGE  true  (inject trace_id/span_id into MDC)
+#
+# Local development (docker-compose.dev.yml stack):
+#   OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4318   (local Tempo HTTP/protobuf receiver)
+#   OTEL_EXPORTER_OTLP_HEADERS=                     (no auth for local Tempo)
+#   Optionally set LOKI_URL=http://loki:3100 to also enable the Loki4j appender
+
+# Loki4j Logback appender (optional, local development only):
+#   LOKI_URL=http://loki:3100  — enables direct Loki push alongside OTLP log export.
+#   Leave unset in production; OTLP log export via the agent replaces it.
