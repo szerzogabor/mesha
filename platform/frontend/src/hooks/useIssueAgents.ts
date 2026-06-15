@@ -28,6 +28,9 @@ export function useAssignAgent(projectId: string, issueId: string) {
       // invalidation cannot overwrite the setQueryData we apply in onSuccess.
       await qc.cancelQueries({ queryKey: ["issueAgents", issueId] });
     },
+    onError: () => {
+      qc.invalidateQueries({ queryKey: ["issueAgents", issueId] });
+    },
     onSuccess: (data) => {
       qc.setQueryData<IssueAgentAssignment[]>(["issueAgents", issueId], (old) => {
         const existing = old ?? [];
