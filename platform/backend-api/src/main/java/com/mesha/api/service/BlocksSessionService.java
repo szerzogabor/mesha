@@ -16,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -62,6 +63,12 @@ public class BlocksSessionService {
         if (!blocksConfigService.isConnected(workspaceId)) {
             throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED,
                 "Blocks is not connected for this workspace. Configure it in Workspace Settings → Integrations → Blocks.");
+        }
+
+        Optional<BlocksSession> existing = blocksSessionRepository.findActiveByIssueId(issueId);
+        if (existing.isPresent()) {
+            log.warn("blocks_session_duplicate_prevented issueId={} existingSessionId={}", issueId, existing.get().getId());
+            return existing.get();
         }
 
         ticketRuleService.validateCanStartAiSession(issue);
