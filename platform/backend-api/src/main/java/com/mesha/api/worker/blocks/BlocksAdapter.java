@@ -71,6 +71,12 @@ public class BlocksAdapter implements ProviderAdapter {
                     : (request.agentLlm() != null && !request.agentLlm().isBlank())
                         ? request.agentLlm()
                         : agentName;
+            // Strip leading slash so users can enter "/codex" or "codex" interchangeably
+            if (effectiveAgentName.startsWith("/")) {
+                effectiveAgentName = effectiveAgentName.substring(1);
+            }
+            log.info("session_create_agent_name provider={} issue_id={} session_id={} agent_name={}",
+                    providerName(), request.issueId(), localSessionId, effectiveAgentName);
             var body = new CreateSessionRequest(effectiveAgentName, message);
 
             var response = restClient.post()
