@@ -355,7 +355,7 @@ public class BlocksAdapter implements ProviderAdapter {
                 }
             }
             if (!prefix.isEmpty()) {
-                return prefix.toString() + "\n" + bodyContent;
+                return prefix.append("\n").append(bodyContent).toString();
             }
         }
 
