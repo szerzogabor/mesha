@@ -63,12 +63,9 @@ Design principles:
 │  API Service (backend-api)                             │
 │  - REST API + WebSocket                                │
 │  - Ticket CRUD, PR APIs, AI Draft APIs                 │
-│                                                        │
-│  AI Worker Service (backend-worker)                    │
-│  - Blocks orchestration                                │
+│  - Blocks orchestration (embedded worker)              │
 │  - GitHub webhook processing                           │
 │  - Session polling + retry                             │
-│  - Context loading + embeddings                        │
 │                                                        │
 └───────────────┬─────────────────────┬──────────────────┘
                 │                     │

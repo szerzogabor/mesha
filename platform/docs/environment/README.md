@@ -10,7 +10,6 @@ This document describes how environment variables and secrets are managed across
 |---------|---------------|------------|
 | Frontend | `platform/frontend/.env.local` | Vercel environment variables |
 | Backend API | `platform/backend-api/.env` | Render environment variables |
-| Backend Worker | `platform/backend-worker/.env` | Render environment variables |
 | Docker full-stack | `platform/infrastructure/.env` | N/A (local only) |
 
 ---
@@ -70,23 +69,7 @@ The database and Redis values default to the Docker Compose service so no change
 
 > **GitHub App Setup URL:** In your GitHub App settings (GitHub → Settings → Developer settings → GitHub Apps → your app → General), set the **Setup URL** to `{FRONTEND_URL}/github/callback` (e.g. `http://localhost:3000/github/callback` for local dev). This is required for the installation redirect flow to work — GitHub uses this URL to send users back to the app after installing, passing `installation_id` and `state` as query parameters.
 
-### Step 3 — Configure backend-worker
-
-```bash
-cp platform/backend-worker/.env.example platform/backend-worker/.env
-```
-
-Edit `platform/backend-worker/.env` and set:
-
-- `BLOCKS_API_KEY` — from the Blocks dashboard
-- `GITHUB_APP_ID` — from GitHub → Settings → Developer settings → GitHub Apps → your app
-- `GITHUB_APP_PRIVATE_KEY` — download the `.pem` from the GitHub App page, then flatten to one line:
-  ```bash
-  awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' path/to/private-key.pem
-  ```
-- `GITHUB_WEBHOOK_SECRET` — the secret you configured in GitHub App settings → Webhook secret
-
-### Step 4 — Configure frontend
+### Step 3 — Configure frontend
 
 ```bash
 cp platform/frontend/.env.example platform/frontend/.env.local
@@ -99,14 +82,9 @@ Edit `platform/frontend/.env.local` and set:
 - `NEXT_PUBLIC_OTEL_EXPORTER_OTLP_ENDPOINT` — Grafana Cloud OTLP gateway URL (optional for local dev)
 - `NEXT_PUBLIC_OTEL_EXPORTER_OTLP_AUTH` — base64-encoded Grafana Cloud credentials (optional for local dev)
 
-### Step 5 — Run services
+### Step 4 — Run services
 
 Backend API (from `platform/backend-api/`):
-```bash
-./mvnw spring-boot:run
-```
-
-Backend Worker (from `platform/backend-worker/`):
 ```bash
 ./mvnw spring-boot:run
 ```
@@ -134,7 +112,6 @@ Services will be available at:
 
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8080
-- Backend Worker: http://localhost:8081
 
 ---
 
@@ -167,23 +144,16 @@ The following variables must be set manually in the Render dashboard under each 
 - `CORS_ALLOWED_ORIGINS` — your Vercel frontend URL (e.g. `https://mesha.vercel.app`)
 - `CLERK_JWKS_URI` — from Clerk dashboard → API Keys → JWKS URL
 
-**mesha-backend-worker:**
-- `BLOCKS_API_URL`
-- `BLOCKS_API_KEY`
-- `GITHUB_APP_ID`
-- `GITHUB_APP_PRIVATE_KEY`
-- `GITHUB_WEBHOOK_SECRET`
-
 ---
 
 ## Environment Isolation
 
-| Environment | Frontend | Backend API | Backend Worker |
-|-------------|----------|-------------|----------------|
-| Local | `.env.local` | `.env` | `.env` |
-| Preview | Vercel preview env vars | Render preview (manual) | Render preview (manual) |
-| Staging | Vercel staging env vars | Render staging | Render staging |
-| Production | Vercel production env vars | Render production | Render production |
+| Environment | Frontend | Backend API |
+|-------------|----------|-------------|
+| Local | `.env.local` | `.env` |
+| Preview | Vercel preview env vars | Render preview (manual) |
+| Staging | Vercel staging env vars | Render staging |
+| Production | Vercel production env vars | Render production |
 
 Use separate Clerk applications (or Clerk environments) for production vs. non-production to prevent test data leaking into production auth.
 
@@ -192,7 +162,7 @@ Use separate Clerk applications (or Clerk environments) for production vs. non-p
 ## Security Requirements
 
 - **No secrets in the repository.** The `.gitignore` excludes all `.env` and `.env.*` files except `.env.example` files.
-- **Webhook payloads must be validated.** The backend-worker verifies every GitHub webhook using HMAC-SHA256 with `GITHUB_WEBHOOK_SECRET`.
+- **Webhook payloads must be validated.** The backend-api verifies every GitHub webhook using HMAC-SHA256 with `GITHUB_WEBHOOK_SECRET`.
 - **Principle of least exposure.** Secrets are scoped to the service that needs them. The frontend never receives `INTERNAL_` or `WEBHOOK_` variables.
 - **Rotate secrets immediately** if they are accidentally committed or exposed. See [Secret Rotation](#secret-rotation) below.
 

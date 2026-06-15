@@ -6,7 +6,6 @@ Java 21 / Spring Boot 3.3 REST API service. Also contains the **active worker** 
 
 ## Critical Rules
 
-- **DO NOT touch `platform/backend-worker/`** — it is a reference implementation, not active code.
 - **All worker changes go in `src/main/java/com/mesha/api/worker/`** within this module.
 - **Never modify existing Flyway migrations** — add a new `V{n+1}__*.sql` file.
 - **No auto-merge logic** — AI creates PRs; humans merge.

@@ -63,27 +63,6 @@ services:
       redis:
         condition: service_healthy
 
-  backend-worker:
-    build:
-      context: ../backend-worker
-      dockerfile: Dockerfile
-    ports:
-      - "8081:8081"
-    environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: mesha
-      DB_USER: mesha
-      DB_PASSWORD: mesha
-      REDIS_URL: redis://redis:6379
-    env_file:
-      - .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
   frontend:
     build:
       context: ../frontend
