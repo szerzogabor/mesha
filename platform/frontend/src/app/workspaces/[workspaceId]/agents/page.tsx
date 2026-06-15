@@ -172,7 +172,7 @@ function AgentForm({
         providerType,
         systemPrompt: systemPrompt.trim(),
         providerParameters: commands.length > 0 ? { startupCommands: commands } : {},
-        blocksAgentName: blocksAgentName.trim() || undefined,
+        blocksAgentName: blocksAgentName.trim(),
         active,
       });
     } catch (err) {

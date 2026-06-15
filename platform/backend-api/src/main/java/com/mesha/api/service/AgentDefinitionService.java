@@ -94,7 +94,7 @@ public class AgentDefinitionService {
         if (req.providerType() != null) agent.setProviderType(req.providerType());
         if (req.systemPrompt() != null) agent.setSystemPrompt(req.systemPrompt());
         if (req.providerParameters() != null) agent.setProviderParameters(req.providerParameters());
-        if (req.blocksAgentName() != null) agent.setBlocksAgentName(req.blocksAgentName());
+        if (req.blocksAgentName() != null) agent.setBlocksAgentName(req.blocksAgentName().isBlank() ? null : req.blocksAgentName());
         if (req.active() != null) agent.setActive(req.active());
 
         agent = agentDefinitionRepository.save(agent);
