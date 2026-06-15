@@ -86,7 +86,8 @@ class SessionPollTransactions {
                 session.getExecutionState(),
                 session.getCreatedAt(),
                 session.getSessionUrl(),
-                session.getApiMessageOffset()
+                session.getApiMessageOffset(),
+                session.getUpdatedAt()
         );
     }
 
@@ -206,11 +207,34 @@ class SessionPollTransactions {
         }
     }
 
+    /**
+     * Atomically transitions execution_state from CREATED to DISPATCHING.
+     * Returns true only when exactly one row is updated — i.e., this worker won the claim.
+     * Any other concurrent worker that calls this for the same session will get false and must skip.
+     */
+    @Transactional
+    boolean claimForDispatch(UUID sessionId) {
+        return sessionRepo.claimForDispatch(sessionId) == 1;
+    }
+
+    /**
+     * Reverts a stale DISPATCHING session back to CREATED for pod-crash recovery.
+     * The next poll cycle will re-attempt the claim and dispatch.
+     */
+    @Transactional
+    void revertStaleDispatch(UUID sessionId) {
+        int reverted = sessionRepo.revertDispatchClaim(sessionId);
+        if (reverted > 0) {
+            log.warn("stale_dispatch_reverted session_id={}", sessionId);
+        }
+    }
+
     @Transactional
     void saveDispatchResult(UUID sessionId, String providerSessionId, String sessionUrl) {
         sessionRepo.findById(sessionId).ifPresent(session -> {
             session.setProviderSessionId(providerSessionId);
             session.setSessionUrl(sessionUrl);
+            session.setExecutionState(AIExecutionState.PLANNING);
             sessionRepo.save(session);
         });
     }
@@ -219,6 +243,7 @@ class SessionPollTransactions {
     void saveDispatchRetry(UUID sessionId) {
         sessionRepo.findById(sessionId).ifPresent(session -> {
             session.setRetryCount(session.getRetryCount() + 1);
+            session.setExecutionState(AIExecutionState.CREATED);
             sessionRepo.save(session);
         });
     }
@@ -385,7 +410,8 @@ class SessionPollTransactions {
             AIExecutionState executionState,
             Instant createdAt,
             String sessionUrl,
-            int apiMessageOffset
+            int apiMessageOffset,
+            Instant updatedAt
     ) {}
 
     /** All data needed to build a Blocks API session creation request. */

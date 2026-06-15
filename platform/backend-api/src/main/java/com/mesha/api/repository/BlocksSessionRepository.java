@@ -3,6 +3,7 @@ package com.mesha.api.repository;
 import com.mesha.api.model.AIExecutionState;
 import com.mesha.api.model.BlocksSession;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -54,4 +55,21 @@ public interface BlocksSessionRepository extends JpaRepository<BlocksSession, UU
             @Param("workspaceId") UUID workspaceId,
             @Param("projectKey") String projectKey,
             @Param("issueNumber") Integer issueNumber);
+
+    /**
+     * Atomically claims a session for dispatch by transitioning execution_state from CREATED to
+     * DISPATCHING. Returns 1 if the claim succeeded (this worker owns the dispatch), 0 if another
+     * worker already claimed or dispatched the session.
+     */
+    @Modifying
+    @Query(value = "UPDATE blocks_sessions SET execution_state = 'DISPATCHING', updated_at = NOW() WHERE id = :sessionId AND execution_state = 'CREATED'", nativeQuery = true)
+    int claimForDispatch(@Param("sessionId") UUID sessionId);
+
+    /**
+     * Reverts a stale DISPATCHING claim back to CREATED so the next poll cycle can retry.
+     * Used for pod-crash recovery when a session is stuck in DISPATCHING with no provider_session_id.
+     */
+    @Modifying
+    @Query(value = "UPDATE blocks_sessions SET execution_state = 'CREATED', updated_at = NOW() WHERE id = :sessionId AND execution_state = 'DISPATCHING'", nativeQuery = true)
+    int revertDispatchClaim(@Param("sessionId") UUID sessionId);
 }

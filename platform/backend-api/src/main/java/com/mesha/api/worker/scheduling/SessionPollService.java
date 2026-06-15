@@ -71,7 +71,20 @@ class SessionPollService {
         }
 
         if (snapshot.providerSessionId() == null) {
+            if (snapshot.executionState() == AIExecutionState.DISPATCHING) {
+                // Pod-crash recovery: session is stuck in DISPATCHING with no provider ID.
+                // Revert to CREATED once the claim is considered stale so the next cycle can retry.
+                if (isDispatchingStale(snapshot)) {
+                    txns.revertStaleDispatch(sessionId);
+                }
+                return;
+            }
+            // State is CREATED — atomically claim it before touching the Blocks API.
             if (snapshot.retryCount() > 0 && !acquireBackoffLock(snapshot)) return;
+            if (!txns.claimForDispatch(sessionId)) {
+                log.debug("session_dispatch_claim_lost session_id={} — another worker claimed it", sessionId);
+                return;
+            }
             dispatchSession(sessionId);
             return;
         }
@@ -190,6 +203,10 @@ class SessionPollService {
                 >= props.maxSessionAgeHours();
     }
 
+    private boolean isDispatchingStale(SessionSnapshot snapshot) {
+        return Duration.between(snapshot.updatedAt(), Instant.now()).toMinutes() >= 5;
+    }
+
     /**
      * Uses Redis setIfAbsent as a combined distributed lock and backoff gate.
      * The TTL equals the computed backoff interval, so the session cannot be
@@ -249,7 +266,8 @@ class SessionPollService {
      */
     AIExecutionState mapToExecutionState(SessionResult.SessionStatus status, AIExecutionState current) {
         return switch (status) {
-            case PENDING -> current == AIExecutionState.CREATED ? AIExecutionState.PLANNING : current;
+            case PENDING -> (current == AIExecutionState.CREATED || current == AIExecutionState.DISPATCHING)
+                    ? AIExecutionState.PLANNING : current;
             case RUNNING -> AIExecutionState.EXECUTING;
             case COMPLETED -> AIExecutionState.DONE;
             case FAILED -> AIExecutionState.FAILED;
