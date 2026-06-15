@@ -82,9 +82,6 @@ export default function IssueDetailPage({
   } | null>(null);
 
   const currentAgent = agentAssignments.length > 0 ? agentAssignments[0] : undefined;
-  const assignedAgentDef = currentAgent
-    ? activeAgents.find((a) => a.id === currentAgent.agentDefinitionId)
-    : undefined;
 
   // While an agent assignment is in flight, show the target agent immediately
   // to avoid the "Unassigned" flash that occurs during sequential unassign→assign.
@@ -520,8 +517,6 @@ export default function IssueDetailPage({
             workspaceId={workspaceId}
             projectId={projectId}
             issueId={issueId}
-            agentLlm={issue.agentLlm}
-            agentSystemPrompt={assignedAgentDef?.systemPrompt}
           />
 
           <ResourcesPanel
