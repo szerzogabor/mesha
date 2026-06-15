@@ -41,6 +41,7 @@ export function useCreateAgentDefinition(workspaceId: string) {
       providerType: string;
       systemPrompt: string;
       providerParameters?: Record<string, unknown>;
+      blocksAgentName?: string;
       active?: boolean;
     }) =>
       apiClient.post<AgentDefinition>(`/api/workspaces/${workspaceId}/agents`, data),
@@ -64,6 +65,7 @@ export function useUpdateAgentDefinition(workspaceId: string) {
       providerType?: string;
       systemPrompt?: string;
       providerParameters?: Record<string, unknown>;
+      blocksAgentName?: string;
       active?: boolean;
     }) =>
       apiClient.put<AgentDefinition>(`/api/workspaces/${workspaceId}/agents/${agentId}`, data),

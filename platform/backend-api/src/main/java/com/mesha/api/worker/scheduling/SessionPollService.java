@@ -116,6 +116,7 @@ class SessionPollService {
                     inputs.apiKey(),
                     inputs.instructions(),
                     inputs.agentLlm(),
+                    inputs.blocksAgentName(),
                     inputs.agentSystemPrompt(),
                     inputs.agentStartupCommands()
             );

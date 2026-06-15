@@ -15,5 +15,6 @@ public record CreateAgentDefinitionRequest(
     @NotNull AgentProviderType providerType,
     @NotBlank String systemPrompt,
     Map<String, Object> providerParameters,
+    @Size(max = 100) String blocksAgentName,
     Boolean active
 ) {}

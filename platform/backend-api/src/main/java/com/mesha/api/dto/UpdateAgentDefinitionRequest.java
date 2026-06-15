@@ -13,5 +13,6 @@ public record UpdateAgentDefinitionRequest(
     AgentProviderType providerType,
     String systemPrompt,
     Map<String, Object> providerParameters,
+    @Size(max = 100) String blocksAgentName,
     Boolean active
 ) {}

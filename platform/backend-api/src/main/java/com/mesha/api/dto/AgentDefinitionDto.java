@@ -16,6 +16,7 @@ public record AgentDefinitionDto(
     AgentProviderType providerType,
     String systemPrompt,
     Map<String, Object> providerParameters,
+    String blocksAgentName,
     boolean active,
     Instant createdAt,
     Instant updatedAt
@@ -30,6 +31,7 @@ public record AgentDefinitionDto(
             a.getProviderType(),
             a.getSystemPrompt(),
             a.getProviderParameters(),
+            a.getBlocksAgentName(),
             a.isActive(),
             a.getCreatedAt(),
             a.getUpdatedAt()

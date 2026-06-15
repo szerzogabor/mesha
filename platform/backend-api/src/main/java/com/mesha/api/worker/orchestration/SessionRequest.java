@@ -22,6 +22,7 @@ public record SessionRequest(
         String apiKey,
         String instructions,
         String agentLlm,
+        String blocksAgentName,
         String agentSystemPrompt,
         List<String> agentStartupCommands
 ) {}
