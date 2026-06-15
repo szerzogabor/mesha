@@ -349,14 +349,18 @@ public class BlocksAdapter implements ProviderAdapter {
         // so Blocks can parse it for model selection and other configuration.
         var header = new StringBuilder("Startup Commands\n\n");
         List<String> cmds = request.agentStartupCommands();
+        boolean hasCommands = false;
         if (cmds != null) {
             for (String cmd : cmds) {
                 if (cmd != null && !cmd.isBlank()) {
                     header.append(cmd.trim()).append("\n");
+                    hasCommands = true;
                 }
             }
         }
-        header.append("\n");
+        if (hasCommands) {
+            header.append("\n");
+        }
         return header.append(bodyContent).toString();
     }
 
