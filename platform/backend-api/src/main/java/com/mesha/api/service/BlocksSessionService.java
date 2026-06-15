@@ -9,6 +9,7 @@ import com.mesha.api.repository.IssueRepository;
 import com.mesha.api.worker.blocks.BlocksAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -32,6 +34,7 @@ public class BlocksSessionService {
     private final GitHubPullRequestRepository gitHubPullRequestRepository;
     private final AutomationService automationService;
     private final TicketRuleService ticketRuleService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public BlocksSessionService(BlocksSessionRepository blocksSessionRepository,
                                 IssueRepository issueRepository,
@@ -41,7 +44,8 @@ public class BlocksSessionService {
                                 BlocksAdapter blocksAdapter,
                                 GitHubPullRequestRepository gitHubPullRequestRepository,
                                 AutomationService automationService,
-                                TicketRuleService ticketRuleService) {
+                                TicketRuleService ticketRuleService,
+                                ApplicationEventPublisher eventPublisher) {
         this.blocksSessionRepository = blocksSessionRepository;
         this.issueRepository = issueRepository;
         this.activityService = activityService;
@@ -51,6 +55,7 @@ public class BlocksSessionService {
         this.gitHubPullRequestRepository = gitHubPullRequestRepository;
         this.automationService = automationService;
         this.ticketRuleService = ticketRuleService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -62,6 +67,12 @@ public class BlocksSessionService {
         if (!blocksConfigService.isConnected(workspaceId)) {
             throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED,
                 "Blocks is not connected for this workspace. Configure it in Workspace Settings → Integrations → Blocks.");
+        }
+
+        Optional<BlocksSession> existing = blocksSessionRepository.findActiveByIssueId(issueId);
+        if (existing.isPresent()) {
+            log.warn("blocks_session_duplicate_prevented issueId={} existingSessionId={}", issueId, existing.get().getId());
+            return existing.get();
         }
 
         ticketRuleService.validateCanStartAiSession(issue);
@@ -78,7 +89,7 @@ public class BlocksSessionService {
         issueRepository.save(issue);
 
         activityService.record(issue, actor, ActivityEventType.AI_ASSIGNED, null, session.getId().toString());
-        automationService.executeFor(AutomationTriggerType.BLOCKS_SESSION_STARTED, issue);
+        eventPublisher.publishEvent(new BlocksSessionStartedEvent(issue));
 
         BlocksMessage startMsg = new BlocksMessage();
         startMsg.setSession(session);

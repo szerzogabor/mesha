@@ -25,6 +25,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -71,6 +73,16 @@ public class AutomationService {
     @Autowired
     public void setBlocksSessionService(@Lazy BlocksSessionService blocksSessionService) {
         this.blocksSessionService = blocksSessionService;
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public void onBlocksSessionStarted(BlocksSessionStartedEvent event) {
+        try {
+            executeFor(AutomationTriggerType.BLOCKS_SESSION_STARTED, event.issue());
+        } catch (Exception e) {
+            log.warn("automation_session_started_failed issueId={} error={}", event.issue().getId(), e.getMessage());
+        }
     }
 
     public List<AutomationRule> list(UUID projectId) {

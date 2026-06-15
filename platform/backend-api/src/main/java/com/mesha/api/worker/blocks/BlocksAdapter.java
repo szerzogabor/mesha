@@ -346,11 +346,12 @@ public class BlocksAdapter implements ProviderAdapter {
         String bodyContent = sb.toString();
 
         // Startup commands must be the very first text: "<cmd> <body>"
+        // Only entries starting with "/" are valid slash commands; others are skipped.
         List<String> cmds = request.agentStartupCommands();
         if (cmds != null && !cmds.isEmpty()) {
             var prefix = new StringBuilder();
             for (String cmd : cmds) {
-                if (cmd != null && !cmd.isBlank()) {
+                if (cmd != null && !cmd.isBlank() && cmd.trim().startsWith("/")) {
                     prefix.append(cmd.trim()).append(" ");
                 }
             }
