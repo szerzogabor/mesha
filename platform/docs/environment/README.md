@@ -162,7 +162,7 @@ Use separate Clerk applications (or Clerk environments) for production vs. non-p
 ## Security Requirements
 
 - **No secrets in the repository.** The `.gitignore` excludes all `.env` and `.env.*` files except `.env.example` files.
-- **Webhook payloads must be validated.** The backend-api verifies every GitHub webhook using HMAC-SHA256 with `GITHUB_WEBHOOK_SECRET`.
+- **Webhook payloads must be validated.** The backend-api verifies every GitHub webhook using HMAC-SHA256 with `GITHUB_APP_WEBHOOK_SECRET`.
 - **Principle of least exposure.** Secrets are scoped to the service that needs them. The frontend never receives `INTERNAL_` or `WEBHOOK_` variables.
 - **Rotate secrets immediately** if they are accidentally committed or exposed. See [Secret Rotation](#secret-rotation) below.
 
