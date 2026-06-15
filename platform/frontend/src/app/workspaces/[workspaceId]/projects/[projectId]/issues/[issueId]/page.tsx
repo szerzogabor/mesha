@@ -75,6 +75,7 @@ export default function IssueDetailPage({
   const [selectedSession, setSelectedSession] = useState<{ session: BlocksSession; index: number } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [ruleViolation, setRuleViolation] = useState<string | null>(null);
+  const [assignError, setAssignError] = useState<string | null>(null);
 
   const currentAgent = agentAssignments.length > 0 ? agentAssignments[0] : undefined;
   const assignedAgentDef = currentAgent
@@ -317,6 +318,7 @@ export default function IssueDetailPage({
                 disabled={updateIssue.isPending || assignAgent.isPending || unassignAgent.isPending}
                 onSelect={async (selection) => {
                   if (updateIssue.isPending || assignAgent.isPending || unassignAgent.isPending) return;
+                  setAssignError(null);
                   try {
                     if (selection.type === "none") {
                       if (!issue.assignee && agentAssignments.length === 0) return;
@@ -343,10 +345,15 @@ export default function IssueDetailPage({
                   } catch (err) {
                     if (isRuleViolationError(err)) {
                       setRuleViolation(extractApiErrorMessage(err));
+                    } else {
+                      setAssignError(extractApiErrorMessage(err));
                     }
                   }
                 }}
               />
+              {assignError && (
+                <p className="mt-1 text-xs text-destructive">{assignError}</p>
+              )}
             </div>
 
             <div className="relative">

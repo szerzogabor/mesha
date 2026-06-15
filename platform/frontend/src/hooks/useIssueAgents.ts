@@ -23,6 +23,11 @@ export function useAssignAgent(projectId: string, issueId: string) {
         `/api/projects/${projectId}/issues/${issueId}/agents`,
         { agentDefinitionId }
       ),
+    onMutate: async () => {
+      // Cancel any in-flight refetches so a stale GET from a preceding unassign
+      // invalidation cannot overwrite the setQueryData we apply in onSuccess.
+      await qc.cancelQueries({ queryKey: ["issueAgents", issueId] });
+    },
     onSuccess: (data) => {
       qc.setQueryData<IssueAgentAssignment[]>(["issueAgents", issueId], (old) => {
         const existing = old ?? [];
