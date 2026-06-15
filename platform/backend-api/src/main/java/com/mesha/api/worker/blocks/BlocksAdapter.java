@@ -281,10 +281,6 @@ public class BlocksAdapter implements ProviderAdapter {
     private String buildMessage(SessionRequest request) {
         var sb = new StringBuilder();
 
-        if (request.agentSystemPrompt() != null && !request.agentSystemPrompt().isBlank()) {
-            sb.append(request.agentSystemPrompt().trim()).append("\n\n");
-        }
-
         if (request.agentStartupCommands() != null && !request.agentStartupCommands().isEmpty()) {
             sb.append("Startup Commands\n\n");
             for (String cmd : request.agentStartupCommands()) {
@@ -293,6 +289,10 @@ public class BlocksAdapter implements ProviderAdapter {
                 }
             }
             sb.append("\n");
+        }
+
+        if (request.agentSystemPrompt() != null && !request.agentSystemPrompt().isBlank()) {
+            sb.append(request.agentSystemPrompt().trim()).append("\n\n");
         }
 
         sb.append("You have been delegated Mesh Issue\n\n");
