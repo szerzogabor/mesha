@@ -75,11 +75,25 @@ export default function IssueDetailPage({
   const [selectedSession, setSelectedSession] = useState<{ session: BlocksSession; index: number } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [ruleViolation, setRuleViolation] = useState<string | null>(null);
+  const [assignError, setAssignError] = useState<string | null>(null);
+  const [pendingSelection, setPendingSelection] = useState<{
+    type: "none" | "human" | "agent";
+    id?: string;
+  } | null>(null);
 
   const currentAgent = agentAssignments.length > 0 ? agentAssignments[0] : undefined;
   const assignedAgentDef = currentAgent
     ? activeAgents.find((a) => a.id === currentAgent.agentDefinitionId)
     : undefined;
+
+  // While an agent assignment is in flight, show the target agent immediately
+  // to avoid the "Unassigned" flash that occurs during sequential unassign→assign.
+  const pendingAgentDef = pendingSelection?.type === "agent"
+    ? activeAgents.find((a) => a.id === pendingSelection.id)
+    : undefined;
+  const displayedAgent = pendingAgentDef
+    ? { agentDefinitionId: pendingAgentDef.id, agentTitle: pendingAgentDef.title } as typeof currentAgent
+    : (pendingSelection?.type === "none" ? undefined : currentAgent);
 
   if (isLoading || !issue) {
     return (
@@ -311,12 +325,18 @@ export default function IssueDetailPage({
               </label>
               <AssigneeSelector
                 assignee={issue.assignee}
-                assignedAgent={currentAgent}
+                assignedAgent={displayedAgent}
                 members={workspaceMembers}
                 activeAgents={activeAgents}
                 disabled={updateIssue.isPending || assignAgent.isPending || unassignAgent.isPending}
                 onSelect={async (selection) => {
                   if (updateIssue.isPending || assignAgent.isPending || unassignAgent.isPending) return;
+                  setAssignError(null);
+                  setPendingSelection(
+                    selection.type === "none" ? { type: "none" }
+                    : selection.type === "human" ? { type: "human", id: selection.userId }
+                    : { type: "agent", id: selection.agentId }
+                  );
                   try {
                     if (selection.type === "none") {
                       if (!issue.assignee && agentAssignments.length === 0) return;
@@ -343,10 +363,17 @@ export default function IssueDetailPage({
                   } catch (err) {
                     if (isRuleViolationError(err)) {
                       setRuleViolation(extractApiErrorMessage(err));
+                    } else {
+                      setAssignError(extractApiErrorMessage(err));
                     }
+                  } finally {
+                    setPendingSelection(null);
                   }
                 }}
               />
+              {assignError && (
+                <p className="mt-1 text-xs text-destructive">{assignError}</p>
+              )}
             </div>
 
             <div className="relative">
