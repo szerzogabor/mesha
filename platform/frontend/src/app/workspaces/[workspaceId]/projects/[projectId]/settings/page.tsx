@@ -281,7 +281,7 @@ export default function ProjectSettingsPage({
         </div>
       </div>
 
-      <div className="p-6 max-w-2xl">
+      <div className="p-6 max-w-2xl mx-auto">
         <div className="mb-6">
           <h3 className="text-base font-semibold text-text-primary mb-1">Statuses</h3>
           <p className="text-sm text-text-tertiary mb-4">
