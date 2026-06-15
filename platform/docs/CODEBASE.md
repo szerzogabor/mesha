@@ -117,7 +117,7 @@ All endpoints require `Authorization: Bearer <clerk-jwt>` **except** `/api/webho
 
 ## Worker System
 
-Worker logic is embedded in `backend-api`, **not** in `backend-worker`.
+Worker logic is embedded in `backend-api`.
 
 **Path:** `platform/backend-api/src/main/java/com/mesha/api/worker/`
 

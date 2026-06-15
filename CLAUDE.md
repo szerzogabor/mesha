@@ -70,9 +70,7 @@ All AI agents (Claude Code, Codex, Gemini, etc.) working on this repository MUST
 
 ---
 
-## Worker Code Location — CRITICAL
-
-**IMPORTANT:** The `platform/backend-worker` module is **NOT** the active worker implementation and must remain untouched.
+## Worker Code Location
 
 All worker-related changes (session polling, Blocks adapter, scheduling, orchestration) must be made exclusively under:
 
@@ -80,7 +78,7 @@ All worker-related changes (session polling, Blocks adapter, scheduling, orchest
 platform/backend-api/src/main/java/com/mesha/api/worker/
 ```
 
-The worker logic lives inside the `backend-api` Spring Boot service and uses the full JPA entity model directly. Never create separate projection classes or modify files under `platform/backend-worker/` for worker tasks.
+The worker logic lives inside the `backend-api` Spring Boot service and uses the full JPA entity model directly.
 
 ---
 
@@ -97,8 +95,7 @@ Mesha is an **AI-native project management platform** where users create tickets
 ```
 mesha/
 ├── platform/
-│   ├── backend-api/        # Active REST API + embedded worker (Java 21, Spring Boot)
-│   ├── backend-worker/     # Reference only — DO NOT modify
+│   ├── backend-api/        # REST API + embedded worker (Java 21, Spring Boot)
 │   ├── frontend/           # Next.js 15 web app (TypeScript)
 │   ├── infrastructure/     # Docker Compose files
 │   ├── docs/               # Architecture documentation
@@ -124,7 +121,7 @@ For deeper module-specific context, read these before making changes:
 
 ## Key Architectural Constraints
 
-1. **Worker code lives in `backend-api`** — not in `backend-worker` (which is a reference impl)
+1. **Worker code lives in `backend-api`** — embedded under `src/main/java/com/mesha/api/worker/`
 2. **Authentication via Clerk** — JWT tokens, all API endpoints require `Authorization: Bearer <token>` except webhooks
 3. **Database migrations via Flyway** — never modify existing migration files; always add a new `V{n+1}__*.sql`
 4. **AI provider abstraction** — use `ProviderAdapter` interface; don't call Blocks API directly from business logic

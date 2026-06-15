@@ -12,7 +12,7 @@ ProviderAdapter Interface
 BlocksAdapter | OpenAIAdapter | ClaudeAdapter
 ```
 
-The `AIOrchestrator` in `backend-worker` calls `ProviderAdapter`, which is implemented by `BlocksAdapter` for current use and can be swapped without changing business logic.
+The `AIOrchestrator` in `backend-api` calls `ProviderAdapter`, which is implemented by `BlocksAdapter` for current use and can be swapped without changing business logic.
 
 ---
 

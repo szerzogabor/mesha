@@ -14,7 +14,6 @@ jobs:
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend-api: ${{ steps.filter.outputs.backend-api }}
-      backend-worker: ${{ steps.filter.outputs.backend-worker }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: dorny/paths-filter@v3
@@ -25,8 +24,6 @@ jobs:
               - 'platform/frontend/**'
             backend-api:
               - 'platform/backend-api/**'
-            backend-worker:
-              - 'platform/backend-worker/**'
 
   validate-frontend:
     needs: changes
@@ -70,21 +67,6 @@ jobs:
         env:
           SENTRY_SKIP_SOURCE_BUNDLE: "true"
 
-  validate-backend-worker:
-    needs: changes
-    if: needs.changes.outputs.backend-worker == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - name: Setup Java
-        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
-        with:
-          distribution: temurin
-          java-version: 21
-      - name: Compile and test
-        working-directory: ./platform/backend-worker
-        run: mvn clean test
-
   quality:
     runs-on: ubuntu-latest
     permissions:
@@ -114,7 +96,7 @@ jobs:
   # Aggregator — always runs so branch protection check "ci" is always satisfied.
   # Fails if any validation failed; passes (or skips) when no relevant paths changed.
   ci:
-    needs: [validate-frontend, validate-backend-api, validate-backend-worker, quality]
+    needs: [validate-frontend, validate-backend-api, quality]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -123,7 +105,6 @@ jobs:
           results=(
             "${{ needs.validate-frontend.result }}"
             "${{ needs.validate-backend-api.result }}"
-            "${{ needs.validate-backend-worker.result }}"
             "${{ needs.quality.result }}"
           )
           for result in "${results[@]}"; do

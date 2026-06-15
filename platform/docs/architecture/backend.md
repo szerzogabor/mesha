@@ -13,19 +13,6 @@ Responsibilities:
 - Authentication & authorization
 - CRUD operations (tickets, PRs, comments)
 
-### AI Worker Service (`backend-worker`)
-
-**Platform:** Render (worker dyno)
-**Technology:** Java 21, Spring Boot 3, scheduled jobs / consumers
-
-Responsibilities:
-- Blocks session orchestration
-- Session polling and retry handling
-- GitHub webhook processing
-- Embedding generation
-- Context loading
-- Workflow execution
-
 ---
 
 ## 2. Recommended Module Structure
@@ -37,14 +24,8 @@ backend-api/
  ├── comment-module
  ├── ai-module
  ├── github-module
+ ├── worker-module   (session polling, Blocks orchestration)
  └── websocket-module
-
-backend-worker/
- ├── orchestration-module
- ├── blocks-module
- ├── github-webhook-module
- ├── indexing-module
- └── retry-module
 ```
 
 ---
@@ -146,7 +127,7 @@ Issue Approved
     ↓
 Workflow Event Published
     ↓
-AI Worker Consumes Event
+backend-api Worker (embedded scheduler) Picks Up Session
     ↓
 Context Loader → Blocks Session Created
     ↓

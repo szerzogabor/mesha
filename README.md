@@ -26,8 +26,7 @@ Full architecture documentation lives in [`platform/docs/architecture/`](./platf
 ```
 platform/
  ├── frontend/          # Next.js 15 + TypeScript + TailwindCSS
- ├── backend-api/       # Spring Boot 3 REST API + WebSocket
- ├── backend-worker/    # Spring Boot 3 AI Worker (Blocks orchestration)
+ ├── backend-api/       # Spring Boot 3 REST API + WebSocket + embedded AI worker
  ├── shared/            # Shared types and utilities (future)
  ├── infrastructure/    # Docker Compose, infrastructure config
  ├── docs/
@@ -63,10 +62,6 @@ bash scripts/start-dev.sh
 
 # Backend API
 cd platform/backend-api
-mvn spring-boot:run
-
-# Backend Worker
-cd platform/backend-worker
 mvn spring-boot:run
 
 # Frontend

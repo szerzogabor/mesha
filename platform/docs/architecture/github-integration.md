@@ -42,7 +42,7 @@ All webhooks must be signed and verified by the backend before processing.
 ```
 GitHub
    ↓ webhook
-backend-worker (github-webhook-module)
+backend-api (github webhook handler)
    ↓
 PR Metadata Persisted
    ↓

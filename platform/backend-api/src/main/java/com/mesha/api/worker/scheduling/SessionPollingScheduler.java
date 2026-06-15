@@ -21,8 +21,6 @@ import java.util.UUID;
  * backoff interval, so no two workers can poll the same session before that
  * interval elapses.
  *
- * <p>This scheduler runs within the backend-api process. The backend-worker module
- * retains an equivalent implementation for future extraction back into a standalone service.
  */
 @Component
 public class SessionPollingScheduler {
