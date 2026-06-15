@@ -55,7 +55,7 @@ class AgentDefinitionServiceTest {
 
         var req = new CreateAgentDefinitionRequest(
             "Senior Developer", "senior-dev", "A senior dev",
-            AgentProviderType.BLOCKS, "You are a senior dev.", Map.of("startupCommands", List.of("/sonnet")), true
+            AgentProviderType.BLOCKS, "You are a senior dev.", Map.of("startupCommands", List.of("/sonnet")), null, true
         );
         AgentDefinition result = service.create(workspaceId, req);
 
@@ -76,7 +76,7 @@ class AgentDefinitionServiceTest {
 
         var req = new CreateAgentDefinitionRequest(
             "Senior Developer", "senior-dev", null,
-            AgentProviderType.BLOCKS, "prompt", null, null
+            AgentProviderType.BLOCKS, "prompt", null, null, null
         );
 
         assertThatThrownBy(() -> service.create(workspaceId, req))
@@ -90,7 +90,7 @@ class AgentDefinitionServiceTest {
 
         var req = new CreateAgentDefinitionRequest(
             "Dev", "dev", null,
-            AgentProviderType.BLOCKS, "prompt", null, null
+            AgentProviderType.BLOCKS, "prompt", null, null, null
         );
 
         assertThatThrownBy(() -> service.create(workspaceId, req))
@@ -115,7 +115,7 @@ class AgentDefinitionServiceTest {
 
         var req = new UpdateAgentDefinitionRequest(
             "New Title", "new-name", "new desc",
-            null, "new prompt", null, false
+            null, "new prompt", null, null, false
         );
         AgentDefinition result = service.update(workspaceId, agentId, req);
 
@@ -138,7 +138,7 @@ class AgentDefinitionServiceTest {
 
         when(agentDefinitionRepository.findById(agentId)).thenReturn(Optional.of(existing));
 
-        var req = new UpdateAgentDefinitionRequest(null, null, null, null, null, null, null);
+        var req = new UpdateAgentDefinitionRequest(null, null, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> service.update(workspaceId, agentId, req))
             .isInstanceOf(ResponseStatusException.class)

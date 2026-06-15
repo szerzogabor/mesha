@@ -204,7 +204,7 @@ class BlocksAdapterTest {
                 null, null, null, null, null,
                 List.of(),
                 "test-key",
-                null, null, null,
+                null, null, null, null,
                 List.of("/claude-haiku")
         );
         adapter.createSession(request);
@@ -226,7 +226,7 @@ class BlocksAdapterTest {
                 null, null, null, null, null,
                 List.of(),
                 "test-key",
-                null, null, null,
+                null, null, null, null,
                 List.of("/claude-haiku", "/ultrathink")
         );
         adapter.createSession(request);
@@ -248,7 +248,7 @@ class BlocksAdapterTest {
                 null, null, null, null, null,
                 List.of(),
                 "test-key",
-                null, null, "System prompt here",
+                null, null, null, "System prompt here",
                 List.of("/claude-haiku")
         );
         adapter.createSession(request);
@@ -351,6 +351,7 @@ class BlocksAdapterTest {
                 null, null, null, null, null,
                 List.of(),
                 "test-key",
+                null,
                 null,
                 null,
                 null,
