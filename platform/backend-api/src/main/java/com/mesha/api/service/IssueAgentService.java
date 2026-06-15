@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -57,8 +58,9 @@ public class IssueAgentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot assign an inactive agent");
         }
 
-        if (issueAgentRepository.existsByIssueIdAndAgentDefinitionId(issueId, agentDefinitionId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Agent is already assigned to this issue");
+        Optional<IssueAgent> existing = issueAgentRepository.findByIssueIdAndAgentDefinitionId(issueId, agentDefinitionId);
+        if (existing.isPresent()) {
+            return existing.get();
         }
 
         IssueAgent issueAgent = new IssueAgent();
