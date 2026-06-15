@@ -23,7 +23,12 @@ export function useAssignAgent(projectId: string, issueId: string) {
         `/api/projects/${projectId}/issues/${issueId}/agents`,
         { agentDefinitionId }
       ),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      qc.setQueryData<IssueAgentAssignment[]>(["issueAgents", issueId], (old) => {
+        const existing = old ?? [];
+        const withoutDup = existing.filter((a) => a.agentDefinitionId !== data.agentDefinitionId);
+        return [data, ...withoutDup];
+      });
       qc.invalidateQueries({ queryKey: ["issueAgents", issueId] });
     },
   });
@@ -36,7 +41,10 @@ export function useUnassignAgent(projectId: string, issueId: string) {
       apiClient.delete(
         `/api/projects/${projectId}/issues/${issueId}/agents/${agentDefinitionId}`
       ),
-    onSuccess: () => {
+    onSuccess: (_, agentDefinitionId) => {
+      qc.setQueryData<IssueAgentAssignment[]>(["issueAgents", issueId], (old) =>
+        (old ?? []).filter((a) => a.agentDefinitionId !== agentDefinitionId)
+      );
       qc.invalidateQueries({ queryKey: ["issueAgents", issueId] });
     },
   });

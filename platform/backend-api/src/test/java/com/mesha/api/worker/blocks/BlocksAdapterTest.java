@@ -284,7 +284,9 @@ class BlocksAdapterTest {
                 List.of(),
                 "test-key",
                 null,
-                null
+                null,
+                null,
+                List.of()
         );
     }
 }

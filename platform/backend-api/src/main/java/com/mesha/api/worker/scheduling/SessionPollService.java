@@ -115,7 +115,9 @@ class SessionPollService {
                     inputs.comments(),
                     inputs.apiKey(),
                     inputs.instructions(),
-                    inputs.agentLlm()
+                    inputs.agentLlm(),
+                    inputs.agentSystemPrompt(),
+                    inputs.agentStartupCommands()
             );
             // HTTP call — no DB connection held
             SessionResult result = blocksAdapter.createSession(request);
