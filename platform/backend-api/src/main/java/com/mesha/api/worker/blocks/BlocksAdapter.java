@@ -345,21 +345,19 @@ public class BlocksAdapter implements ProviderAdapter {
 
         String bodyContent = sb.toString();
 
-        // Startup commands must be the very first text: "<cmd> <body>"
+        // "Startup Commands" section must be the very first thing in the message
+        // so Blocks can parse it for model selection and other configuration.
+        var header = new StringBuilder("Startup Commands\n\n");
         List<String> cmds = request.agentStartupCommands();
-        if (cmds != null && !cmds.isEmpty()) {
-            var prefix = new StringBuilder();
+        if (cmds != null) {
             for (String cmd : cmds) {
                 if (cmd != null && !cmd.isBlank()) {
-                    prefix.append(cmd.trim()).append(" ");
+                    header.append(cmd.trim()).append("\n");
                 }
             }
-            if (!prefix.isEmpty()) {
-                return prefix.append(bodyContent).toString();
-            }
         }
-
-        return bodyContent;
+        header.append("\n");
+        return header.append(bodyContent).toString();
     }
 
     private void appendField(StringBuilder sb, String label, String value) {
