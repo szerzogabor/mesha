@@ -267,7 +267,7 @@ public class AutomationService {
 
     private void applyStartAiSession(AutomationRule rule, Issue issue) {
         try {
-            blocksSessionService.assignToBlocks(issue.getId(), null, null);
+            blocksSessionService.assignToBlocksFromAutomation(issue.getId());
             log.info("automation_ai_session_started ruleId={} issueId={}", rule.getId(), issue.getId());
         } catch (Exception e) {
             log.warn("automation_ai_session_failed ruleId={} issueId={} error={}", rule.getId(), issue.getId(), e.getMessage());

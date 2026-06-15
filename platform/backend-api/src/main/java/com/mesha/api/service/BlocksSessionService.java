@@ -55,6 +55,15 @@ public class BlocksSessionService {
 
     @Transactional
     public BlocksSession assignToBlocks(UUID issueId, User actor, String instructions) {
+        return createSession(issueId, actor, instructions, true);
+    }
+
+    @Transactional
+    public BlocksSession assignToBlocksFromAutomation(UUID issueId) {
+        return createSession(issueId, null, null, false);
+    }
+
+    private BlocksSession createSession(UUID issueId, User actor, String instructions, boolean fireAutomation) {
         Issue issue = issueRepository.findById(issueId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found"));
 
@@ -78,7 +87,9 @@ public class BlocksSessionService {
         issueRepository.save(issue);
 
         activityService.record(issue, actor, ActivityEventType.AI_ASSIGNED, null, session.getId().toString());
-        automationService.executeFor(AutomationTriggerType.BLOCKS_SESSION_STARTED, issue);
+        if (fireAutomation) {
+            automationService.executeFor(AutomationTriggerType.BLOCKS_SESSION_STARTED, issue);
+        }
 
         BlocksMessage startMsg = new BlocksMessage();
         startMsg.setSession(session);
@@ -86,7 +97,8 @@ public class BlocksSessionService {
         startMsg.setRole("SYSTEM");
         blocksMessageRepository.save(startMsg);
 
-        log.info("Blocks session created issueId={} sessionId={}", issueId, session.getId());
+        log.info("Blocks session created{} issueId={} sessionId={}",
+            fireAutomation ? "" : " via automation", issueId, session.getId());
         return session;
     }
 
