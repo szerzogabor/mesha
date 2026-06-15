@@ -288,7 +288,9 @@ public class BlocksAdapter implements ProviderAdapter {
         if (request.agentStartupCommands() != null && !request.agentStartupCommands().isEmpty()) {
             sb.append("Startup Commands\n\n");
             for (String cmd : request.agentStartupCommands()) {
-                sb.append(cmd).append("\n");
+                if (cmd != null && !cmd.isBlank()) {
+                    sb.append(cmd).append("\n");
+                }
             }
             sb.append("\n");
         }
