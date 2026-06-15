@@ -59,6 +59,11 @@ function AgentCard({
         </p>
         <p className="text-sm text-text-secondary">
           {agent.providerType === "BLOCKS" ? "Blocks Agent" : agent.providerType}
+          {agent.blocksAgentName && (
+            <span className="ml-2 inline-flex items-center rounded-md bg-bg-surface-hover px-2 py-0.5 text-xs font-mono text-text-secondary">
+              {agent.blocksAgentName}
+            </span>
+          )}
         </p>
       </div>
 
@@ -134,6 +139,7 @@ function AgentForm({
     providerType: string;
     systemPrompt: string;
     providerParameters: Record<string, unknown>;
+    blocksAgentName?: string;
     active: boolean;
   }) => Promise<void>;
   onCancel: () => void;
@@ -147,6 +153,7 @@ function AgentForm({
   const [startupCommands, setStartupCommands] = useState(
     ((initial?.providerParameters?.startupCommands as string[]) ?? []).join("\n")
   );
+  const [blocksAgentName, setBlocksAgentName] = useState(initial?.blocksAgentName ?? "");
   const [active, setActive] = useState(initial?.active ?? true);
   const [error, setError] = useState<string | null>(null);
 
@@ -165,6 +172,7 @@ function AgentForm({
         providerType,
         systemPrompt: systemPrompt.trim(),
         providerParameters: commands.length > 0 ? { startupCommands: commands } : {},
+        blocksAgentName: blocksAgentName.trim() || undefined,
         active,
       });
     } catch (err) {
@@ -254,6 +262,22 @@ function AgentForm({
           >
             <option value="BLOCKS">Blocks</option>
           </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-text-secondary mb-1">
+            Blocks Agent Name
+          </label>
+          <input
+            type="text"
+            value={blocksAgentName}
+            onChange={(e) => setBlocksAgentName(e.target.value)}
+            placeholder="e.g. claude, codex"
+            maxLength={100}
+            className={inputClass}
+          />
+          <p className="text-xs text-text-tertiary mt-1">
+            The Blocks agent to use for sessions. Leave blank to use the workspace default.
+          </p>
         </div>
       </div>
 

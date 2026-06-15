@@ -66,9 +66,11 @@ public class BlocksAdapter implements ProviderAdapter {
                 request.repositoryUrl() != null ? request.repositoryUrl() : "none");
 
         try {
-            String effectiveAgentName = (request.agentLlm() != null && !request.agentLlm().isBlank())
-                    ? request.agentLlm()
-                    : agentName;
+            String effectiveAgentName = (request.blocksAgentName() != null && !request.blocksAgentName().isBlank())
+                    ? request.blocksAgentName()
+                    : (request.agentLlm() != null && !request.agentLlm().isBlank())
+                        ? request.agentLlm()
+                        : agentName;
             var body = new CreateSessionRequest(effectiveAgentName, message);
 
             var response = restClient.post()

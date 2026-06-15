@@ -147,11 +147,13 @@ class SessionPollTransactions {
         }
 
         String agentSystemPrompt = null;
+        String blocksAgentName = null;
         List<String> agentStartupCommands = List.of();
         List<IssueAgent> issueAgents = issueAgentRepo.findAllByIssueIdOrderByAssignedAtDesc(issue.getId());
         if (!issueAgents.isEmpty()) {
             AgentDefinition agentDef = issueAgents.get(0).getAgentDefinition();
             agentSystemPrompt = agentDef.getSystemPrompt();
+            blocksAgentName = agentDef.getBlocksAgentName();
             Object rawCommands = agentDef.getProviderParameters().get("startupCommands");
             if (rawCommands instanceof List<?> list) {
                 agentStartupCommands = list.stream()
@@ -182,6 +184,7 @@ class SessionPollTransactions {
                 apiKey,
                 session.getInstructions(),
                 issue.getAgentLlm(),
+                blocksAgentName,
                 agentSystemPrompt,
                 agentStartupCommands
         );
@@ -407,6 +410,7 @@ class SessionPollTransactions {
             String apiKey,
             String instructions,
             String agentLlm,
+            String blocksAgentName,
             String agentSystemPrompt,
             List<String> agentStartupCommands
     ) {}

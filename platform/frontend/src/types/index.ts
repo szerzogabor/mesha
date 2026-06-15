@@ -102,6 +102,7 @@ export interface AgentDefinition {
   providerType: AgentProviderType;
   systemPrompt: string;
   providerParameters: Record<string, unknown>;
+  blocksAgentName?: string;
   active: boolean;
   createdAt: string;
   updatedAt: string;

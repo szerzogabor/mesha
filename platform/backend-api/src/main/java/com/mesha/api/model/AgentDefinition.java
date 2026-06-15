@@ -46,6 +46,9 @@ public class AgentDefinition {
     @Column(name = "provider_parameters", nullable = false, columnDefinition = "jsonb")
     private Map<String, Object> providerParameters = new HashMap<>();
 
+    @Column(name = "blocks_agent_name", length = 100)
+    private String blocksAgentName;
+
     @Column(nullable = false)
     private boolean active = true;
 
@@ -75,6 +78,8 @@ public class AgentDefinition {
     public void setSystemPrompt(String systemPrompt) { this.systemPrompt = systemPrompt; }
     public Map<String, Object> getProviderParameters() { return providerParameters; }
     public void setProviderParameters(Map<String, Object> providerParameters) { this.providerParameters = providerParameters; }
+    public String getBlocksAgentName() { return blocksAgentName; }
+    public void setBlocksAgentName(String blocksAgentName) { this.blocksAgentName = blocksAgentName; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
     public Instant getCreatedAt() { return createdAt; }

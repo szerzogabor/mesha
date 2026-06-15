@@ -70,6 +70,7 @@ public class AgentDefinitionService {
         agent.setProviderType(req.providerType());
         agent.setSystemPrompt(req.systemPrompt());
         agent.setProviderParameters(req.providerParameters() != null ? req.providerParameters() : Map.of());
+        agent.setBlocksAgentName(req.blocksAgentName());
         agent.setActive(req.active() != null ? req.active() : true);
 
         agent = agentDefinitionRepository.save(agent);
@@ -93,6 +94,7 @@ public class AgentDefinitionService {
         if (req.providerType() != null) agent.setProviderType(req.providerType());
         if (req.systemPrompt() != null) agent.setSystemPrompt(req.systemPrompt());
         if (req.providerParameters() != null) agent.setProviderParameters(req.providerParameters());
+        if (req.blocksAgentName() != null) agent.setBlocksAgentName(req.blocksAgentName());
         if (req.active() != null) agent.setActive(req.active());
 
         agent = agentDefinitionRepository.save(agent);
