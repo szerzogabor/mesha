@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useIssue, useUpdateIssue, useDeleteIssue } from "@/hooks/useIssues";
@@ -58,7 +58,7 @@ export default function IssueDetailPage({
   const createLabel = useCreateLabel(workspaceId);
   const { data: workspaceMembers = [] } = useWorkspaceMembers(workspaceId);
   const { data: activeAgents = [] } = useActiveAgentDefinitions(workspaceId);
-  const { data: agentAssignments = [] } = useIssueAgents(projectId, issueId);
+  const { data: agentAssignments = [], isLoading: agentsLoading } = useIssueAgents(projectId, issueId);
   const assignAgent = useAssignAgent(projectId, issueId);
   const unassignAgent = useUnassignAgent(projectId, issueId);
 
@@ -82,6 +82,13 @@ export default function IssueDetailPage({
   } | null>(null);
 
   const currentAgent = agentAssignments.length > 0 ? agentAssignments[0] : undefined;
+
+  // Once fresh assignment data arrives, a stale "already assigned" error is no longer relevant.
+  useEffect(() => {
+    if (!agentsLoading && agentAssignments.length > 0) {
+      setAssignError(null);
+    }
+  }, [agentsLoading, agentAssignments]);
 
   // While an agent assignment is in flight, show the target agent immediately
   // to avoid the "Unassigned" flash that occurs during sequential unassign→assign.
@@ -325,7 +332,7 @@ export default function IssueDetailPage({
                 assignedAgent={displayedAgent}
                 members={workspaceMembers}
                 activeAgents={activeAgents}
-                disabled={updateIssue.isPending || assignAgent.isPending || unassignAgent.isPending}
+                disabled={agentsLoading || updateIssue.isPending || assignAgent.isPending || unassignAgent.isPending}
                 onSelect={async (selection) => {
                   if (updateIssue.isPending || assignAgent.isPending || unassignAgent.isPending) return;
                   setAssignError(null);
