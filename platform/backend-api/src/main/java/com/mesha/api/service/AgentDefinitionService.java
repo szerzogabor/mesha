@@ -74,7 +74,9 @@ public class AgentDefinitionService {
         agent.setActive(req.active() != null ? req.active() : true);
 
         agent = agentDefinitionRepository.save(agent);
-        log.info("Agent definition created agentId={} workspaceId={} name={}", agent.getId(), workspaceId, req.name());
+        log.info("Agent definition created agentId={} workspaceId={} name={} blocksAgentName={}",
+                agent.getId(), workspaceId, req.name(),
+                agent.getBlocksAgentName() != null ? agent.getBlocksAgentName() : "none");
         return agent;
     }
 
@@ -98,7 +100,9 @@ public class AgentDefinitionService {
         if (req.active() != null) agent.setActive(req.active());
 
         agent = agentDefinitionRepository.save(agent);
-        log.info("Agent definition updated agentId={} workspaceId={}", agentId, workspaceId);
+        log.info("Agent definition updated agentId={} workspaceId={} blocksAgentName={}",
+                agentId, workspaceId,
+                agent.getBlocksAgentName() != null ? agent.getBlocksAgentName() : "none");
         return agent;
     }
 

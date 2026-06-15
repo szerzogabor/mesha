@@ -100,13 +100,15 @@ class SessionPollService {
             return;
         }
 
-        log.info("session_dispatch_context session_id={} issue_id={} workspace={} project={} repo={} comment_count={} label_count={}",
+        log.info("session_dispatch_context session_id={} issue_id={} workspace={} project={} repo={} comment_count={} label_count={} blocks_agent_name={} agent_llm={}",
                 sessionId, inputs.issueId(),
                 inputs.workspaceName() != null ? inputs.workspaceName() : "none",
                 inputs.projectName() != null ? inputs.projectName() : "none",
                 inputs.repoHtmlUrl() != null ? inputs.repoHtmlUrl() : "none",
                 inputs.comments().size(),
-                inputs.labelNames().size());
+                inputs.labelNames().size(),
+                inputs.blocksAgentName() != null ? inputs.blocksAgentName() : "none",
+                inputs.agentLlm() != null ? inputs.agentLlm() : "none");
 
         try {
             SessionRequest request = new SessionRequest(
