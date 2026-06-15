@@ -1,16 +1,19 @@
 package com.mesha.api.worker.scheduling;
 
 import com.mesha.api.model.AIExecutionState;
+import com.mesha.api.model.AgentDefinition;
 import com.mesha.api.model.AutomationTriggerType;
 import com.mesha.api.model.BlocksMessage;
 import com.mesha.api.model.BlocksSession;
 import com.mesha.api.model.Comment;
 import com.mesha.api.model.GitHubRepository;
 import com.mesha.api.model.Issue;
+import com.mesha.api.model.IssueAgent;
 import com.mesha.api.repository.BlocksMessageRepository;
 import com.mesha.api.repository.BlocksSessionRepository;
 import com.mesha.api.repository.CommentRepository;
 import com.mesha.api.repository.GitHubRepositoryRepository;
+import com.mesha.api.repository.IssueAgentRepository;
 import com.mesha.api.repository.IssueRepository;
 import com.mesha.api.repository.WorkspaceBlocksConfigRepository;
 import com.mesha.api.service.AutomationService;
@@ -43,6 +46,7 @@ class SessionPollTransactions {
     private final WorkspaceBlocksConfigRepository configRepo;
     private final BlocksApiKeyService apiKeyService;
     private final AutomationService automationService;
+    private final IssueAgentRepository issueAgentRepo;
 
     SessionPollTransactions(BlocksSessionRepository sessionRepo,
                             IssueRepository issueRepo,
@@ -51,7 +55,8 @@ class SessionPollTransactions {
                             BlocksMessageRepository messageRepo,
                             WorkspaceBlocksConfigRepository configRepo,
                             BlocksApiKeyService apiKeyService,
-                            AutomationService automationService) {
+                            AutomationService automationService,
+                            IssueAgentRepository issueAgentRepo) {
         this.sessionRepo = sessionRepo;
         this.issueRepo = issueRepo;
         this.commentRepo = commentRepo;
@@ -60,6 +65,7 @@ class SessionPollTransactions {
         this.configRepo = configRepo;
         this.apiKeyService = apiKeyService;
         this.automationService = automationService;
+        this.issueAgentRepo = issueAgentRepo;
     }
 
     /**
@@ -140,6 +146,21 @@ class SessionPollTransactions {
             }
         }
 
+        String agentSystemPrompt = null;
+        List<String> agentStartupCommands = List.of();
+        List<IssueAgent> issueAgents = issueAgentRepo.findAllByIssueIdOrderByAssignedAtDesc(issue.getId());
+        if (!issueAgents.isEmpty()) {
+            AgentDefinition agentDef = issueAgents.get(0).getAgentDefinition();
+            agentSystemPrompt = agentDef.getSystemPrompt();
+            Object rawCommands = agentDef.getProviderParameters().get("startupCommands");
+            if (rawCommands instanceof List<?> list) {
+                agentStartupCommands = list.stream()
+                        .filter(c -> c instanceof String)
+                        .map(c -> (String) c)
+                        .collect(Collectors.toList());
+            }
+        }
+
         return new DispatchInputs(
                 issue.getId(),
                 issueIdentifier,
@@ -160,7 +181,9 @@ class SessionPollTransactions {
                 comments,
                 apiKey,
                 session.getInstructions(),
-                issue.getAgentLlm()
+                issue.getAgentLlm(),
+                agentSystemPrompt,
+                agentStartupCommands
         );
     }
 
@@ -333,7 +356,7 @@ class SessionPollTransactions {
             + "|maximum number of tokens allowed|input token count"
             // Gemini quota/rate errors: "RESOURCE_EXHAUSTED", "Resource has been exhausted",
             // "Quota exceeded for quota metric"
-            + "|resource.exhausted|quota.exceeded|resource_exhausted"
+            + "|resource.{0,20}exhausted|quota.exceeded|resource_exhausted"
             // GitHub Copilot (ghagpt): "prompt token count of X exceeds the limit of Y"
             + "|prompt token count"
             // OpenAI/ChatGPT: "insufficient_quota", "exceeded your current quota"
@@ -383,6 +406,8 @@ class SessionPollTransactions {
             List<String> comments,
             String apiKey,
             String instructions,
-            String agentLlm
+            String agentLlm,
+            String agentSystemPrompt,
+            List<String> agentStartupCommands
     ) {}
 }

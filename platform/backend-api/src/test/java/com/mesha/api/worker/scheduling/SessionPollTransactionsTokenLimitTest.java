@@ -4,6 +4,7 @@ import com.mesha.api.repository.BlocksMessageRepository;
 import com.mesha.api.repository.BlocksSessionRepository;
 import com.mesha.api.repository.CommentRepository;
 import com.mesha.api.repository.GitHubRepositoryRepository;
+import com.mesha.api.repository.IssueAgentRepository;
 import com.mesha.api.repository.IssueRepository;
 import com.mesha.api.repository.WorkspaceBlocksConfigRepository;
 import com.mesha.api.service.AutomationService;
@@ -29,6 +30,7 @@ class SessionPollTransactionsTokenLimitTest {
     @Mock private WorkspaceBlocksConfigRepository configRepo;
     @Mock private BlocksApiKeyService apiKeyService;
     @Mock private AutomationService automationService;
+    @Mock private IssueAgentRepository issueAgentRepo;
 
     private SessionPollTransactions txns;
     private AutoCloseable mocks;
@@ -37,7 +39,7 @@ class SessionPollTransactionsTokenLimitTest {
     void setUp() {
         mocks = MockitoAnnotations.openMocks(this);
         txns = new SessionPollTransactions(sessionRepo, issueRepo, commentRepo,
-                gitHubRepoRepo, messageRepo, configRepo, apiKeyService, automationService);
+                gitHubRepoRepo, messageRepo, configRepo, apiKeyService, automationService, issueAgentRepo);
     }
 
     @AfterEach
