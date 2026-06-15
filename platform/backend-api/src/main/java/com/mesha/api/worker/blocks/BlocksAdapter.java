@@ -279,23 +279,16 @@ public class BlocksAdapter implements ProviderAdapter {
     }
 
     private String buildMessage(SessionRequest request) {
-        var sb = new StringBuilder();
-
-        if (request.agentStartupCommands() != null && !request.agentStartupCommands().isEmpty()) {
-            sb.append("Startup Commands\n\n");
-            for (String cmd : request.agentStartupCommands()) {
-                if (cmd != null && !cmd.isBlank()) {
-                    sb.append(cmd).append("\n");
-                }
-            }
-            sb.append("\n");
-        }
+        var body = new StringBuilder();
 
         if (request.agentSystemPrompt() != null && !request.agentSystemPrompt().isBlank()) {
-            sb.append(request.agentSystemPrompt().trim()).append("\n\n");
+            body.append(request.agentSystemPrompt().trim()).append("\n\n");
         }
 
-        sb.append("You have been delegated Mesh Issue\n\n");
+        body.append("You have been delegated Mesh Issue\n\n");
+
+        // build the rest of the body via the shared builder reference
+        var sb = body;
 
         sb.append("Issue\n\n");
         appendField(sb, "ID", request.issueId());
@@ -350,7 +343,23 @@ public class BlocksAdapter implements ProviderAdapter {
             sb.append("If no ticket ID is available, use a descriptive title without a prefix.\n");
         }
 
-        return sb.toString();
+        String bodyContent = body.toString();
+
+        // Startup commands must be the very first text: "<cmd> <body>"
+        List<String> cmds = request.agentStartupCommands();
+        if (cmds != null && !cmds.isEmpty()) {
+            var prefix = new StringBuilder();
+            for (String cmd : cmds) {
+                if (cmd != null && !cmd.isBlank()) {
+                    prefix.append(cmd.trim()).append(" ");
+                }
+            }
+            if (!prefix.isEmpty()) {
+                return prefix + bodyContent;
+            }
+        }
+
+        return bodyContent;
     }
 
     private void appendField(StringBuilder sb, String label, String value) {
