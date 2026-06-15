@@ -343,7 +343,7 @@ public class BlocksAdapter implements ProviderAdapter {
             sb.append("If no ticket ID is available, use a descriptive title without a prefix.\n");
         }
 
-        String bodyContent = body.toString();
+        String bodyContent = sb.toString();
 
         // Startup commands must be the very first text: "<cmd> <body>"
         List<String> cmds = request.agentStartupCommands();
@@ -355,7 +355,7 @@ public class BlocksAdapter implements ProviderAdapter {
                 }
             }
             if (!prefix.isEmpty()) {
-                return prefix + bodyContent;
+                return prefix.append(bodyContent).toString();
             }
         }
 
