@@ -52,6 +52,9 @@ public class Issue {
     @Column(name = "number")
     private Integer number;
 
+    @Column(name = "position", nullable = false)
+    private int position = 0;
+
     @Column(name = "ai_assignment_state", length = 30)
     private String aiAssignmentState;
 
@@ -89,6 +92,8 @@ public class Issue {
     public void setLabels(List<Label> labels) { this.labels = labels; }
     public Integer getNumber() { return number; }
     public void setNumber(Integer number) { this.number = number; }
+    public int getPosition() { return position; }
+    public void setPosition(int position) { this.position = position; }
     public String getAiAssignmentState() { return aiAssignmentState; }
     public void setAiAssignmentState(String aiAssignmentState) { this.aiAssignmentState = aiAssignmentState; }
     public String getAgentType() { return agentType; }

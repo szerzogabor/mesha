@@ -6,6 +6,7 @@ import {
   useCreateIssue,
   useAllIssues,
   useUpdateIssueInProject,
+  useReorderIssues,
 } from "@/hooks/useIssues";
 import { useProjectStatuses, useReorderProjectStatuses } from "@/hooks/useProjectStatuses";
 import { useIssueEvents } from "@/hooks/useIssueEvents";
@@ -100,6 +101,7 @@ export default function ProjectPage({
 
   const createIssue = useCreateIssue(projectId);
   const updateIssue = useUpdateIssueInProject(projectId);
+  const reorderIssues = useReorderIssues(projectId);
   const statusesQuery = useProjectStatuses(projectId);
   const reorderStatuses = useReorderProjectStatuses(projectId);
 
@@ -224,6 +226,7 @@ export default function ProjectPage({
                 }
               )
             }
+            onReorderIssues={(status, issueIds) => reorderIssues.mutate({ status, issueIds })}
             onReorderStatuses={(statusIds) => reorderStatuses.mutate(statusIds)}
             onCreateIssueForStatus={(s) => {
               setCreateWithStatus(s);

@@ -1,6 +1,7 @@
 package com.mesha.api.service;
 
 import com.mesha.api.dto.CreateIssueRequest;
+import com.mesha.api.dto.ReorderIssuesRequest;
 import com.mesha.api.dto.UpdateIssueRequest;
 import com.mesha.api.model.*;
 import com.mesha.api.repository.*;
@@ -17,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -101,6 +103,11 @@ public class IssueService {
         }
 
         issue.setNumber(issueRepository.nextNumberForProject(projectId));
+
+        String issueStatus = issue.getStatus().toUpperCase();
+        int nextPosition = issueRepository.maxPositionForProjectAndStatus(projectId, issueStatus) + 1;
+        issue.setPosition(nextPosition);
+
         issue = issueRepository.save(issue);
         activityService.record(issue, actor, ActivityEventType.ISSUE_CREATED, null, issue.getTitle());
         log.info("Issue created issueId={} projectId={} actorId={}", issue.getId(), projectId, actor.getId());
@@ -153,6 +160,8 @@ public class IssueService {
             ticketRuleService.validateCanMoveToStatus(issue, newStatus);
             String old = issue.getStatus();
             issue.setStatus(newStatus);
+            int nextPosition = issueRepository.maxPositionForProjectAndStatus(projectId, newStatus) + 1;
+            issue.setPosition(nextPosition);
             activityService.record(issue, actor, ActivityEventType.STATUS_CHANGED, old, newStatus);
             log.debug("Issue status changed issueId={} from={} to={}", issueId, old, newStatus);
             statusChangedTo = newStatus;
@@ -215,6 +224,22 @@ public class IssueService {
         }
 
         return saved;
+    }
+
+    @Transactional
+    public void reorder(UUID projectId, ReorderIssuesRequest req) {
+        log.debug("Reordering issues projectId={} status={} count={}", projectId, req.status(), req.issueIds().size());
+        String status = req.status().toUpperCase();
+        List<Issue> issues = issueRepository.findByProjectIdAndIdIn(projectId, req.issueIds());
+        Map<UUID, Issue> issueMap = issues.stream().collect(Collectors.toMap(Issue::getId, i -> i));
+
+        for (int i = 0; i < req.issueIds().size(); i++) {
+            UUID issueId = req.issueIds().get(i);
+            Issue issue = issueMap.get(issueId);
+            if (issue == null || !issue.getStatus().equalsIgnoreCase(status)) continue;
+            issueRepository.updatePosition(issueId, i);
+        }
+        log.info("Reordered {} issues in status={} projectId={}", issues.size(), status, projectId);
     }
 
     @Transactional

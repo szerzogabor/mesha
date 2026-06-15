@@ -57,6 +57,7 @@ interface KanbanViewProps {
   workspaceId: string;
   projectId: string;
   onUpdateStatus: (issueId: string, status: string) => void;
+  onReorderIssues: (status: string, issueIds: string[]) => void;
   onReorderStatuses: (statusIds: string[]) => void;
   onCreateIssueForStatus?: (status: string) => void;
 }
@@ -69,6 +70,7 @@ export function KanbanView({
   workspaceId,
   projectId,
   onUpdateStatus,
+  onReorderIssues,
   onReorderStatuses,
   onCreateIssueForStatus,
 }: KanbanViewProps) {
@@ -117,19 +119,35 @@ export function KanbanView({
     // Column reordering — handled in handleDragEnd
     if (String(active.id).startsWith("col-")) return;
 
-    const targetStatus = resolveTargetStatus(String(over.id), localStatusesRef.current, localIssuesRef);
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    const targetStatus = resolveTargetStatus(overId, localStatusesRef.current, localIssuesRef);
     if (!targetStatus) return;
 
-    const activeId = String(active.id);
-    setLocalIssues((prev) =>
-      prev.map((issue) => {
-        if (issue.id === activeId && issue.status !== targetStatus) {
-          logger.kanban.optimisticUpdate(issue.id, targetStatus);
-          return { ...issue, status: targetStatus };
-        }
-        return issue;
-      })
-    );
+    const activeIssueItem = localIssuesRef.current.find((i) => i.id === activeId);
+    if (!activeIssueItem) return;
+
+    if (activeIssueItem.status === targetStatus) {
+      // Same column — reorder cards within the column for visual feedback
+      if (activeId === overId) return;
+      const oldIndex = localIssuesRef.current.findIndex((i) => i.id === activeId);
+      const newIndex = localIssuesRef.current.findIndex((i) => i.id === overId);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        setLocalIssues((prev) => arrayMove(prev, oldIndex, newIndex));
+      }
+    } else {
+      // Different column — optimistically move issue to new status
+      setLocalIssues((prev) =>
+        prev.map((issue) => {
+          if (issue.id === activeId) {
+            logger.kanban.optimisticUpdate(issue.id, targetStatus);
+            return { ...issue, status: targetStatus };
+          }
+          return issue;
+        })
+      );
+    }
   }, []);
 
   const handleDragEnd = useCallback(
@@ -171,12 +189,17 @@ export function KanbanView({
       logger.kanban.dragEnded(activeId, originalIssue.status, targetStatus);
 
       if (originalIssue.status !== targetStatus) {
+        // Card moved to a different column — update its status
         onUpdateStatus(activeId, targetStatus);
       } else {
-        setLocalIssues(issues);
+        // Card reordered within the same column — persist new order
+        const columnIssueIds = localIssuesRef.current
+          .filter((i) => i.status === targetStatus)
+          .map((i) => i.id);
+        onReorderIssues(targetStatus, columnIssueIds);
       }
     },
-    [issues, onUpdateStatus, onReorderStatuses]
+    [issues, onUpdateStatus, onReorderIssues, onReorderStatuses]
   );
 
   const handleDragCancel = useCallback(() => {

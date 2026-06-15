@@ -20,6 +20,7 @@ public record IssueDto(
     String aiAssignmentState,
     String agentType,
     String agentLlm,
+    int position,
     Instant createdAt,
     Instant updatedAt,
     GitHubPullRequestDto lastPullRequest
@@ -45,6 +46,7 @@ public record IssueDto(
             i.getAiAssignmentState(),
             i.getAgentType(),
             i.getAgentLlm(),
+            i.getPosition(),
             i.getCreatedAt(),
             i.getUpdatedAt(),
             lastPr != null ? GitHubPullRequestDto.from(lastPr) : null

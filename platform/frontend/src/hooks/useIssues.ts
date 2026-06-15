@@ -122,6 +122,17 @@ export function useAllIssues(
   });
 }
 
+export function useReorderIssues(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ status, issueIds }: { status: string; issueIds: string[] }) =>
+      apiClient.put(`/api/projects/${projectId}/issues/reorder`, { status, issueIds }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["issues-all", projectId] });
+    },
+  });
+}
+
 export function useUpdateIssueInProject(projectId: string) {
   const qc = useQueryClient();
   return useMutation({

@@ -5,6 +5,7 @@ import com.mesha.api.model.IssuePriority;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
@@ -24,7 +25,7 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
                  AND (:#{#labelIds == null || #labelIds.isEmpty()} = true OR EXISTS (
                    SELECT l FROM i.labels l WHERE l.id IN :labelIds
                  ))
-               ORDER BY i.createdAt DESC
+               ORDER BY i.position ASC, i.createdAt ASC
                """,
         countQuery = """
                SELECT COUNT(i) FROM Issue i
@@ -52,4 +53,14 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
 
     @Query("SELECT COALESCE(MAX(i.number), 0) + 1 FROM Issue i WHERE i.project.id = :projectId")
     Integer nextNumberForProject(@Param("projectId") UUID projectId);
+
+    @Query("SELECT COALESCE(MAX(i.position), -1) FROM Issue i WHERE i.project.id = :projectId AND i.status = :status")
+    Integer maxPositionForProjectAndStatus(@Param("projectId") UUID projectId, @Param("status") String status);
+
+    @Query("SELECT i FROM Issue i WHERE i.project.id = :projectId AND i.id IN :issueIds ORDER BY i.position ASC")
+    List<Issue> findByProjectIdAndIdIn(@Param("projectId") UUID projectId, @Param("issueIds") List<UUID> issueIds);
+
+    @Modifying
+    @Query("UPDATE Issue i SET i.position = :position WHERE i.id = :issueId")
+    void updatePosition(@Param("issueId") UUID issueId, @Param("position") int position);
 }

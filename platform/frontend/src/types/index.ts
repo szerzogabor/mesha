@@ -132,6 +132,7 @@ export interface Issue {
   aiAssignmentState?: AIAssignmentState;
   agentType?: AgentType;
   agentLlm?: AgentLlm;
+  position: number;
   createdAt: string;
   updatedAt: string;
   lastPullRequest?: LinkedPullRequest;

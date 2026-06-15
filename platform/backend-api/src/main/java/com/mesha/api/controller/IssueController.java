@@ -97,6 +97,14 @@ public class IssueController {
         return ResponseEntity.ok(IssueDto.from(updated));
     }
 
+    @PutMapping("/reorder")
+    @PreAuthorize("@workspaceSecurity.isProjectMember(authentication, #projectId.toString())")
+    public ResponseEntity<Void> reorder(@PathVariable UUID projectId,
+                                         @Valid @RequestBody ReorderIssuesRequest req) {
+        issueService.reorder(projectId, req);
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping("/{issueId}")
     @PreAuthorize("@workspaceSecurity.isProjectAdminOrAbove(authentication, #projectId.toString())")
     public ResponseEntity<Void> delete(@PathVariable UUID projectId,
