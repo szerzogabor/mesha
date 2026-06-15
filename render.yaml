@@ -80,6 +80,13 @@ services:
       # Write-only Grafana Cloud ingestion token — same credential as NEXT_PUBLIC_OTEL_EXPORTER_OTLP_AUTH
       - key: OTEL_EXPORTER_OTLP_HEADERS
         value: "Authorization=Basic MTY0OTc2ODpnbGNfZXlKdklqb2lNVGMzTVRRek9TSXNJbTRpT2lKdFpYTm9ZU0lzSW1zaU9pSndOV1J0TXpWcVYzRTBWVTFPTkRoWWRqWTRkalV5VUd3aUxDSnRJanA3SW5JaU9pSndjbTlrTFdWMUxXTmxiblJ5WVd3dE1DSjlmUT09"
+      # Pool and thread sizing — tuned for single-user 512 MB deployment
+      - key: DB_POOL_SIZE
+        value: "5"
+      - key: TOMCAT_MAX_THREADS
+        value: "20"
+      - key: TOMCAT_MIN_SPARE_THREADS
+        value: "5"
       # Worker responsibilities — session polling runs inside backend-api
       - key: BLOCKS_API_URL
         sync: false
