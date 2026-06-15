@@ -189,6 +189,74 @@ class BlocksAdapterTest {
         assertThat(captured.message()).doesNotContain("PR Title Convention");
     }
 
+    // ---- buildMessage / startupCommands ----
+
+    @Test
+    void buildMessage_singleStartupCommandIsFirstLineOfMessage() {
+        doReturn(new BlocksAdapter.CreateSessionResponse("sess-id", "pending", null))
+                .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
+        doReturn(requestBodySpec).when(requestBodySpec).body(bodyCaptor.capture());
+
+        var request = new SessionRequest(
+                "uuid-1", null, "My Issue", "Description",
+                null, null, null, List.of(),
+                null, null,
+                null, null, null, null, null,
+                List.of(),
+                "test-key",
+                null, null, null,
+                List.of("/claude-haiku")
+        );
+        adapter.createSession(request);
+
+        String message = ((BlocksAdapter.CreateSessionRequest) bodyCaptor.getValue()).message();
+        assertThat(message).startsWith("/claude-haiku\n");
+    }
+
+    @Test
+    void buildMessage_multipleStartupCommandsEachOnOwnLine() {
+        doReturn(new BlocksAdapter.CreateSessionResponse("sess-id", "pending", null))
+                .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
+        doReturn(requestBodySpec).when(requestBodySpec).body(bodyCaptor.capture());
+
+        var request = new SessionRequest(
+                "uuid-1", null, "My Issue", "Description",
+                null, null, null, List.of(),
+                null, null,
+                null, null, null, null, null,
+                List.of(),
+                "test-key",
+                null, null, null,
+                List.of("/claude-haiku", "/ultrathink")
+        );
+        adapter.createSession(request);
+
+        String message = ((BlocksAdapter.CreateSessionRequest) bodyCaptor.getValue()).message();
+        assertThat(message).startsWith("/claude-haiku\n/ultrathink\n\n");
+    }
+
+    @Test
+    void buildMessage_startupCommandsSeparatedFromBodyByBlankLine() {
+        doReturn(new BlocksAdapter.CreateSessionResponse("sess-id", "pending", null))
+                .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
+        doReturn(requestBodySpec).when(requestBodySpec).body(bodyCaptor.capture());
+
+        var request = new SessionRequest(
+                "uuid-1", null, "My Issue", "Description",
+                null, null, null, List.of(),
+                null, null,
+                null, null, null, null, null,
+                List.of(),
+                "test-key",
+                null, null, "System prompt here",
+                List.of("/claude-haiku")
+        );
+        adapter.createSession(request);
+
+        String message = ((BlocksAdapter.CreateSessionRequest) bodyCaptor.getValue()).message();
+        assertThat(message).startsWith("/claude-haiku\n\nSystem prompt here");
+    }
+
     // ---- pollSession ----
 
     @Test

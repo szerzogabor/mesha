@@ -345,17 +345,17 @@ public class BlocksAdapter implements ProviderAdapter {
 
         String bodyContent = sb.toString();
 
-        // Startup commands must be the very first text: "<cmd> <body>"
+        // Startup commands must be the very first text, each on its own line
         List<String> cmds = request.agentStartupCommands();
         if (cmds != null && !cmds.isEmpty()) {
             var prefix = new StringBuilder();
             for (String cmd : cmds) {
                 if (cmd != null && !cmd.isBlank()) {
-                    prefix.append(cmd.trim()).append(" ");
+                    prefix.append(cmd.trim()).append("\n");
                 }
             }
             if (!prefix.isEmpty()) {
-                return prefix.append(bodyContent).toString();
+                return prefix.toString() + "\n" + bodyContent;
             }
         }
 

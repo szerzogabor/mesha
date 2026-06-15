@@ -91,6 +91,39 @@ public class BlocksSessionService {
     }
 
     @Transactional
+    BlocksSession assignToBlocksFromAutomation(UUID issueId) {
+        Issue issue = issueRepository.findById(issueId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found"));
+
+        UUID workspaceId = issue.getProject().getWorkspace().getId();
+        if (!blocksConfigService.isConnected(workspaceId)) {
+            throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED,
+                "Blocks is not connected for this workspace.");
+        }
+
+        ticketRuleService.validateCanStartAiSession(issue);
+
+        BlocksSession session = new BlocksSession();
+        session.setIssue(issue);
+        session.setExecutionState(AIExecutionState.CREATED);
+        session = blocksSessionRepository.save(session);
+
+        issue.setAiAssignmentState("CREATED");
+        issueRepository.save(issue);
+
+        activityService.record(issue, null, ActivityEventType.AI_ASSIGNED, null, session.getId().toString());
+
+        BlocksMessage startMsg = new BlocksMessage();
+        startMsg.setSession(session);
+        startMsg.setMessage("Session started");
+        startMsg.setRole("SYSTEM");
+        blocksMessageRepository.save(startMsg);
+
+        log.info("Blocks session created via automation issueId={} sessionId={}", issueId, session.getId());
+        return session;
+    }
+
+    @Transactional
     public BlocksSession updateSession(UUID sessionId, UpdateBlocksSessionRequest req, User actor) {
         BlocksSession session = blocksSessionRepository.findById(sessionId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blocks session not found"));
