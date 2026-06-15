@@ -214,7 +214,7 @@ class SessionPollTransactions {
      */
     @Transactional
     boolean claimForDispatch(UUID sessionId) {
-        return sessionRepo.claimForDispatch(sessionId) == 1;
+        return sessionRepo.claimForDispatch(sessionId, Instant.now()) == 1;
     }
 
     /**
@@ -223,7 +223,7 @@ class SessionPollTransactions {
      */
     @Transactional
     void revertStaleDispatch(UUID sessionId) {
-        int reverted = sessionRepo.revertDispatchClaim(sessionId);
+        int reverted = sessionRepo.revertDispatchClaim(sessionId, Instant.now());
         if (reverted > 0) {
             log.warn("stale_dispatch_reverted session_id={}", sessionId);
         }
@@ -236,6 +236,9 @@ class SessionPollTransactions {
             session.setSessionUrl(sessionUrl);
             session.setExecutionState(AIExecutionState.PLANNING);
             sessionRepo.save(session);
+            // Emit the PLANNING status message here: the next poll will see PLANNING→PLANNING
+            // (no state change) and will never trigger it through savePollResult.
+            saveStateMessage(session, AIExecutionState.PLANNING, null);
         });
     }
 

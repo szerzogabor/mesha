@@ -60,16 +60,20 @@ public interface BlocksSessionRepository extends JpaRepository<BlocksSession, UU
      * Atomically claims a session for dispatch by transitioning execution_state from CREATED to
      * DISPATCHING. Returns 1 if the claim succeeded (this worker owns the dispatch), 0 if another
      * worker already claimed or dispatched the session.
+     * Pass {@code Instant.now()} from the application to keep updated_at on the application clock,
+     * consistent with @PreUpdate and the isDispatchingStale comparison.
      */
     @Modifying
-    @Query(value = "UPDATE blocks_sessions SET execution_state = 'DISPATCHING', updated_at = NOW() WHERE id = :sessionId AND execution_state = 'CREATED'", nativeQuery = true)
-    int claimForDispatch(@Param("sessionId") UUID sessionId);
+    @Query(value = "UPDATE blocks_sessions SET execution_state = 'DISPATCHING', updated_at = :now WHERE id = :sessionId AND execution_state = 'CREATED'", nativeQuery = true)
+    int claimForDispatch(@Param("sessionId") UUID sessionId, @Param("now") java.time.Instant now);
 
     /**
      * Reverts a stale DISPATCHING claim back to CREATED so the next poll cycle can retry.
      * Used for pod-crash recovery when a session is stuck in DISPATCHING with no provider_session_id.
+     * Pass {@code Instant.now()} from the application to keep updated_at on the application clock,
+     * consistent with @PreUpdate and the isDispatchingStale comparison.
      */
     @Modifying
-    @Query(value = "UPDATE blocks_sessions SET execution_state = 'CREATED', updated_at = NOW() WHERE id = :sessionId AND execution_state = 'DISPATCHING'", nativeQuery = true)
-    int revertDispatchClaim(@Param("sessionId") UUID sessionId);
+    @Query(value = "UPDATE blocks_sessions SET execution_state = 'CREATED', updated_at = :now WHERE id = :sessionId AND execution_state = 'DISPATCHING'", nativeQuery = true)
+    int revertDispatchClaim(@Param("sessionId") UUID sessionId, @Param("now") java.time.Instant now);
 }
