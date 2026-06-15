@@ -381,6 +381,7 @@ export function AISessionsPanel({ workspaceId, projectId, issueId }: Props) {
   const pastSessions = sessions.filter((s) => isTerminal(s.executionState));
 
   const handleStartSession = () => {
+    if (assignMutation.isPending) return;
     const trimmed = instructions.trim() || undefined;
     assignMutation.mutate(trimmed, {
       onSuccess: () => {
