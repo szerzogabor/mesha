@@ -4,6 +4,10 @@ spring:
   profiles:
     active: ${APP_ENV:local}
 
+app:
+  worker:
+    enabled: ${APP_WORKER_ENABLED:false}
+
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:mesha}
     username: ${DB_USER:postgres}

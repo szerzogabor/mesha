@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- JSON console appender — all MDC fields (correlationId, requestId, traceId, userId, etc.) are included automatically -->
+    <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <!-- Correlation IDs -->
+            <includeMdcKeyName>correlationId</includeMdcKeyName>
+            <includeMdcKeyName>requestId</includeMdcKeyName>
+            <includeMdcKeyName>workflowId</includeMdcKeyName>
+            <!-- OTel trace context (populated automatically by the OpenTelemetry Java Agent) -->
+            <includeMdcKeyName>trace_id</includeMdcKeyName>
+            <includeMdcKeyName>span_id</includeMdcKeyName>
+            <includeMdcKeyName>trace_flags</includeMdcKeyName>
+            <!-- User / workspace context -->
+            <includeMdcKeyName>userId</includeMdcKeyName>
+            <includeMdcKeyName>workspaceId</includeMdcKeyName>
+            <!-- HTTP request metadata -->
+            <includeMdcKeyName>requestMethod</includeMdcKeyName>
+            <includeMdcKeyName>requestUri</includeMdcKeyName>
+            <includeMdcKeyName>userAgent</includeMdcKeyName>
+            <fieldNames>
+                <timestamp>timestamp</timestamp>
+                <version>[ignore]</version>
+                <levelValue>[ignore]</levelValue>
+            </fieldNames>
+            <shortenedLoggerNameLength>36</shortenedLoggerNameLength>
+        </encoder>
+    </appender>
+
+    <!-- Loki appender — ships structured log events to Loki's push API.
+         Only attached to the root logger when LOKI_URL env var is set (see <if> guards below).
+         When LOKI_URL is absent the appender is defined but never started, so no connection
+         attempts are made and no ConnectException noise appears in the logs. -->
+    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+        <http>
+            <url>${LOKI_URL:-http://localhost:3100}/loki/api/v1/push</url>
+            <connectionTimeoutMs>10000</connectionTimeoutMs>
+            <requestTimeoutMs>10000</requestTimeoutMs>
+            <!-- Grafana Cloud basic auth — leave blank for local Loki -->
+            <auth>
+                <username>${LOKI_USERNAME:-}</username>
+                <password>${LOKI_PASSWORD:-}</password>
+            </auth>
+        </http>
+        <format>
+            <!-- Low-cardinality stream labels for Loki indexing -->
+            <label>
+                <pattern>service=mesha-api,env=${APP_ENV:-local},level=%level,host=${HOSTNAME:-local}</pattern>
+                <sortByKey>true</sortByKey>
+            </label>
+            <!-- Structured log line in logfmt format — Loki can parse with "| logfmt" in LogQL.
+                 %enc (logstash-only conversion) is intentionally avoided here. -->
+            <message>
+                <pattern>level=%level logger=%logger{36} correlationId=%X{correlationId} requestId=%X{requestId} workflowId=%X{workflowId} traceId=%X{trace_id} spanId=%X{span_id} userId=%X{userId} workspaceId=%X{workspaceId} method=%X{requestMethod} uri=%X{requestUri} msg=%message%n%ex</pattern>
+            </message>
+            <sortByTime>true</sortByTime>
+        </format>
+        <batchMaxItems>1000</batchMaxItems>
+        <batchTimeoutMs>5000</batchTimeoutMs>
+        <!-- 40 MB send queue — drops oldest batches under sustained backpressure -->
+        <sendQueueMaxBytes>41943040</sendQueueMaxBytes>
+        <verbose>false</verbose>
+    </appender>
+
+    <springProfile name="local">
+        <!-- Human-readable console for local development -->
+        <appender name="READABLE_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{correlationId}] [trace=%X{trace_id}] - %msg%n</pattern>
+            </encoder>
+        </appender>
+        <root level="DEBUG">
+            <appender-ref ref="READABLE_CONSOLE"/>
+            <!-- Only activate Loki shipping when LOKI_URL is explicitly set -->
+            <if condition='System.getenv("LOKI_URL") != null &amp;&amp; !System.getenv("LOKI_URL").isEmpty()'>
+                <then>
+                    <appender-ref ref="LOKI"/>
+                </then>
+            </if>
+        </root>
+        <logger name="com.mesha" level="DEBUG"/>
+        <logger name="org.springframework.security" level="INFO"/>
+        <logger name="org.hibernate.SQL" level="DEBUG"/>
+        <logger name="com.github.loki4j" level="WARN"/>
+    </springProfile>
+
+    <springProfile name="!local">
+        <root level="INFO">
+            <appender-ref ref="JSON_CONSOLE"/>
+            <!-- Logs are shipped to Grafana Cloud via the OTel Java Agent (OTEL_LOGS_EXPORTER=otlp).
+                 Loki4j direct-push is intentionally omitted here to avoid duplicate ingestion and
+                 spurious 401 errors when only OTLP credentials are configured. -->
+        </root>
+        <logger name="com.mesha" level="DEBUG"/>
+        <logger name="org.springframework.security" level="WARN"/>
+        <logger name="org.hibernate.SQL" level="WARN"/>
+        <logger name="com.github.loki4j" level="WARN"/>
+    </springProfile>
+</configuration>
