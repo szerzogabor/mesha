@@ -266,8 +266,6 @@ public class AutomationService {
                 }
                 yield issue.getLabels().stream().anyMatch(l -> l.getId().equals(labelId));
             }
-            case ASSIGNED_TO_AGENT -> issue.getAiAssignmentState() != null && !issue.getAiAssignmentState().isBlank();
-            case ASSIGNED_TO_HUMAN -> issue.getAssignee() != null;
         };
     }
 
@@ -410,14 +408,11 @@ public class AutomationService {
             return;
         }
         for (AutomationActionConditionRequest condition : action.conditions()) {
-            TicketRuleConditionType type = condition.conditionType();
             String value = condition.conditionValue();
-            boolean valueRequired = type != TicketRuleConditionType.ASSIGNED_TO_AGENT
-                    && type != TicketRuleConditionType.ASSIGNED_TO_HUMAN;
-            if (valueRequired && (value == null || value.isBlank())) {
+            if (value == null || value.isBlank()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Action condition value is required");
             }
-            switch (type) {
+            switch (condition.conditionType()) {
                 case HAS_STATUS -> {
                     String normalized = value.trim().toUpperCase();
                     if (!projectStatusRepository.existsByProjectIdAndName(project.getId(), normalized)) {
@@ -442,7 +437,6 @@ public class AutomationService {
                             "Unknown label for this workspace: " + value);
                     }
                 }
-                case ASSIGNED_TO_AGENT, ASSIGNED_TO_HUMAN -> { /* no value needed */ }
             }
         }
     }
