@@ -3,40 +3,35 @@ spring:
     name: mesha-api
   profiles:
     active: ${APP_ENV:local}
-
-app:
-  worker:
-    enabled: ${APP_WORKER_ENABLED:false}
-
-datasource:
-  url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:mesha}
-  username: ${DB_USER:postgres}
-  password: ${DB_PASSWORD:postgres}
-  driver-class-name: org.postgresql.Driver
-  hikari:
-    pool-name: mesha-api-hikari
-    maximum-pool-size: ${DB_POOL_SIZE:5}
-    leak-detection-threshold: ${DB_LEAK_DETECTION_THRESHOLD_MS:60000}
-
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:mesha}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: mesha-api-hikari
+      maximum-pool-size: ${DB_POOL_SIZE:5}
+      leak-detection-threshold: ${DB_LEAK_DETECTION_THRESHOLD_MS:60000}
   jpa:
     open-in-view: false
     hibernate:
       ddl-auto: validate
     show-sql: false
-
   flyway:
     enabled: true
     locations: classpath:db/migration
-
   data:
     redis:
       url: ${REDIS_URL:redis://localhost:6379}
-
   security:
     oauth2:
       resourceserver:
         jwt:
           jwk-set-uri: ${CLERK_JWKS_URI:https://your-clerk-instance.clerk.accounts.dev/.well-known/jwks.json}
+
+app:
+  worker:
+    enabled: ${APP_WORKER_ENABLED:false}
 
 clerk:
   jwks-uri: ${CLERK_JWKS_URI:https://your-clerk-instance.clerk.accounts.dev/.well-known/jwks.json}
