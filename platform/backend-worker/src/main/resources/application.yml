@@ -1,0 +1,92 @@
+spring:
+  application:
+    name: mesha-worker
+  profiles:
+    active: ${APP_ENV:local}
+
+  main:
+    web-application-type: none
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:mesha}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: mesha-worker-hikari
+      maximum-pool-size: ${DB_POOL_SIZE:3}
+      leak-detection-threshold: ${DB_LEAK_DETECTION_THRESHOLD_MS:60000}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+  flyway:
+    enabled: false
+
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
+
+app:
+  worker:
+    enabled: ${APP_WORKER_ENABLED:true}
+
+mesha:
+  blocks:
+    api-url: ${BLOCKS_API_URL:}
+    api-key: ${BLOCKS_API_KEY:}
+    agent-name: ${BLOCKS_AGENT_NAME:claude}
+    dashboard-url: ${BLOCKS_DASHBOARD_URL:https://www.blocks.team}
+  polling:
+    interval-ms: 5000
+    max-session-age-hours: 24
+    backoff:
+      base-ms: 5000
+      max-ms: 300000
+      multiplier: 2.0
+
+blocks:
+  webhook:
+    secret: ${BLOCKS_WEBHOOK_SECRET:}
+  encryption:
+    secret: ${BLOCKS_ENCRYPTION_SECRET:}
+
+ai:
+  anthropic:
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: ${ANTHROPIC_MODEL:claude-haiku-4-5-20251001}
+    base-url: https://api.anthropic.com
+
+github:
+  app:
+    app-id: ${GITHUB_APP_ID:0}
+    client-id: ${GITHUB_APP_CLIENT_ID:}
+    client-secret: ${GITHUB_APP_CLIENT_SECRET:}
+    private-key: ${GITHUB_APP_PRIVATE_KEY:}
+    webhook-secret: ${GITHUB_APP_WEBHOOK_SECRET:}
+    app-name: ${GITHUB_APP_NAME:mesha-github-app}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+# OpenTelemetry configuration — same as backend-api, service name differs
+# Required environment variables:
+#   OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_HEADERS, OTEL_EXPORTER_OTLP_PROTOCOL
+#   OTEL_TRACES_EXPORTER=otlp, OTEL_LOGS_EXPORTER=otlp, OTEL_METRICS_EXPORTER=none
+#   OTEL_PROPAGATORS=tracecontext,baggage
+
+logging:
+  level:
+    root: INFO
+    com.mesha: DEBUG
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN

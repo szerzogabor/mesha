@@ -1,0 +1,100 @@
+package com.mesha.api.model;
+
+import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+@Entity
+@Table(name = "issues",
+       indexes = {
+           @Index(name = "idx_issues_project_id", columnList = "project_id"),
+           @Index(name = "idx_issues_assignee_id", columnList = "assignee_id")
+       })
+public class Issue {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "project_id", nullable = false)
+    private Project project;
+
+    @Column(nullable = false)
+    private String title;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(nullable = false, length = 50)
+    private String status = "BACKLOG";
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private IssuePriority priority = IssuePriority.MEDIUM;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assignee_id")
+    private User assignee;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @BatchSize(size = 50)
+    @JoinTable(
+        name = "issue_labels",
+        joinColumns = @JoinColumn(name = "issue_id"),
+        inverseJoinColumns = @JoinColumn(name = "label_id")
+    )
+    private List<Label> labels = new ArrayList<>();
+
+    @Column(name = "number")
+    private Integer number;
+
+    @Column(name = "ai_assignment_state", length = 30)
+    private String aiAssignmentState;
+
+    @Column(name = "agent_type", length = 50)
+    private String agentType;
+
+    @Column(name = "agent_llm", length = 50)
+    private String agentLlm;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt = Instant.now();
+
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt = Instant.now();
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = Instant.now();
+    }
+
+    public UUID getId() { return id; }
+    public Project getProject() { return project; }
+    public void setProject(Project project) { this.project = project; }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public IssuePriority getPriority() { return priority; }
+    public void setPriority(IssuePriority priority) { this.priority = priority; }
+    public User getAssignee() { return assignee; }
+    public void setAssignee(User assignee) { this.assignee = assignee; }
+    public List<Label> getLabels() { return labels; }
+    public void setLabels(List<Label> labels) { this.labels = labels; }
+    public Integer getNumber() { return number; }
+    public void setNumber(Integer number) { this.number = number; }
+    public String getAiAssignmentState() { return aiAssignmentState; }
+    public void setAiAssignmentState(String aiAssignmentState) { this.aiAssignmentState = aiAssignmentState; }
+    public String getAgentType() { return agentType; }
+    public void setAgentType(String agentType) { this.agentType = agentType; }
+    public String getAgentLlm() { return agentLlm; }
+    public void setAgentLlm(String agentLlm) { this.agentLlm = agentLlm; }
+    public Instant getCreatedAt() { return createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
+}

@@ -72,13 +72,16 @@ All AI agents (Claude Code, Codex, Gemini, etc.) working on this repository MUST
 
 ## Worker Code Location
 
-All worker-related changes (session polling, Blocks adapter, scheduling, orchestration) must be made exclusively under:
+Worker-related changes (session polling, Blocks adapter, scheduling, orchestration) live in the dedicated worker service:
 
 ```
-platform/backend-api/src/main/java/com/mesha/api/worker/
+platform/backend-worker/src/main/java/com/mesha/api/worker/
 ```
 
-The worker logic lives inside the `backend-api` Spring Boot service and uses the full JPA entity model directly.
+`backend-api` and `backend-worker` are separate Spring Boot services that both connect to the same database. The `app.worker.enabled` flag controls which service runs scheduled jobs:
+
+- `backend-api`: `APP_WORKER_ENABLED=false` — REST API only, no scheduled jobs
+- `backend-worker`: `APP_WORKER_ENABLED=true` — runs all `@Scheduled` polling jobs
 
 ---
 
@@ -95,7 +98,8 @@ Mesha is an **AI-native project management platform** where users create tickets
 ```
 mesha/
 ├── platform/
-│   ├── backend-api/        # REST API + embedded worker (Java 21, Spring Boot)
+│   ├── backend-api/        # REST API service (Java 21, Spring Boot) — no scheduled jobs
+│   ├── backend-worker/     # Background worker service (Java 21, Spring Boot) — runs schedulers
 │   ├── frontend/           # Next.js 15 web app (TypeScript)
 │   ├── infrastructure/     # Docker Compose files
 │   ├── docs/               # Architecture documentation
@@ -114,6 +118,7 @@ For deeper module-specific context, read these before making changes:
 | Module | Guide |
 |--------|-------|
 | Backend API | [`platform/backend-api/CLAUDE.md`](platform/backend-api/CLAUDE.md) |
+| Backend Worker | [`platform/backend-worker/CLAUDE.md`](platform/backend-worker/CLAUDE.md) |
 | Frontend | [`platform/frontend/CLAUDE.md`](platform/frontend/CLAUDE.md) |
 | Full codebase map | [`platform/docs/CODEBASE.md`](platform/docs/CODEBASE.md) |
 
@@ -121,7 +126,7 @@ For deeper module-specific context, read these before making changes:
 
 ## Key Architectural Constraints
 
-1. **Worker code lives in `backend-api`** — embedded under `src/main/java/com/mesha/api/worker/`
+1. **Worker code lives in `backend-worker`** — under `src/main/java/com/mesha/api/worker/`; `backend-api` must not run any `@Scheduled` jobs
 2. **Authentication via Clerk** — JWT tokens, all API endpoints require `Authorization: Bearer <token>` except webhooks
 3. **Database migrations via Flyway** — never modify existing migration files; always add a new `V{n+1}__*.sql`
 4. **AI provider abstraction** — use `ProviderAdapter` interface; don't call Blocks API directly from business logic
@@ -137,10 +142,13 @@ For deeper module-specific context, read these before making changes:
 # 1. Start local infrastructure (PostgreSQL + Redis)
 bash platform/scripts/start-dev.sh
 
-# 2. Backend API (http://localhost:8080)
+# 2. Backend API (http://localhost:8080) — REST only, no schedulers
 cd platform/backend-api && mvn spring-boot:run
 
-# 3. Frontend (http://localhost:3000)
+# 3. Backend Worker — runs session polling schedulers
+cd platform/backend-worker && APP_WORKER_ENABLED=true mvn spring-boot:run
+
+# 4. Frontend (http://localhost:3000)
 cd platform/frontend && npm install && npm run dev
 ```
 

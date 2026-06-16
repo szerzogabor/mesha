@@ -1,12 +1,13 @@
 # Backend API — Agent Guide
 
-Java 21 / Spring Boot 3.3 REST API service. Also contains the **active worker** (session polling, Blocks orchestration). See root `CLAUDE.md` for git/PR rules.
+Java 21 / Spring Boot 3.3 REST API service. Handles all HTTP traffic (controllers, auth, webhooks). **Does NOT run any scheduled jobs** — all background processing lives in `backend-worker`. See root `CLAUDE.md` for git/PR rules.
 
 ---
 
 ## Critical Rules
 
-- **All worker changes go in `src/main/java/com/mesha/api/worker/`** within this module.
+- **No scheduled jobs here** — `APP_WORKER_ENABLED=false` disables the `SessionPollingScheduler` via `@ConditionalOnProperty`. Do not add `@Scheduled` beans to this module.
+- **Worker changes go in `platform/backend-worker/`** — the `worker/` package here is a kept copy, but scheduling is disabled.
 - **Never modify existing Flyway migrations** — add a new `V{n+1}__*.sql` file.
 - **No auto-merge logic** — AI creates PRs; humans merge.
 
