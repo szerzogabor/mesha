@@ -121,7 +121,8 @@ export function Sidebar({ workspace, projects, onCreateProject, isCollapsed, onT
             <ul className="space-y-0.5 px-2">
               {projects.map((project) => {
                 const href = `/workspaces/${workspace.id}/projects/${project.id}`;
-                const active = pathname.startsWith(href);
+                // Only highlight the project when browsing issues (not settings subpages)
+                const active = pathname.startsWith(href) && !pathname.includes("/settings/");
                 return (
                   <li key={project.id}>
                     <Link
