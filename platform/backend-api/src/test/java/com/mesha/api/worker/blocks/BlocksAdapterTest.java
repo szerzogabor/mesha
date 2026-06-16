@@ -341,6 +341,94 @@ class BlocksAdapterTest {
         assertThat(adapter.mapStatus(null)).isEqualTo(PENDING);
     }
 
+    // ---- fetchAssistantMessages ----
+
+    @Test
+    void fetchAssistantMessages_returnsNullWhenResponseIsEmpty() {
+        doReturn(new BlocksAdapter.GetMessagesResponse(List.of()))
+                .when(responseSpec).body(BlocksAdapter.GetMessagesResponse.class);
+
+        assertThat(adapter.fetchAssistantMessages("sess-1")).isNull();
+    }
+
+    @Test
+    void fetchAssistantMessages_returnsNullOnException() {
+        doThrow(new RuntimeException("network error"))
+                .when(responseSpec).body(BlocksAdapter.GetMessagesResponse.class);
+
+        assertThat(adapter.fetchAssistantMessages("sess-err")).isNull();
+    }
+
+    @Test
+    void fetchAssistantMessages_returnsAssistantMessageMessages() {
+        var items = List.of(
+                new BlocksAdapter.SessionMessage("1", "assistant", "message", "Working on it...", null),
+                new BlocksAdapter.SessionMessage("2", "user", "message", "Please fix it", null)
+        );
+        doReturn(new BlocksAdapter.GetMessagesResponse(items))
+                .when(responseSpec).body(BlocksAdapter.GetMessagesResponse.class);
+
+        assertThat(adapter.fetchAssistantMessages("sess-1"))
+                .containsExactly("Working on it...");
+    }
+
+    @Test
+    void fetchAssistantMessages_includesErrorTypeMessages() {
+        // Error-type messages carry token-limit notices from providers (e.g. rate_limit_error)
+        var items = List.of(
+                new BlocksAdapter.SessionMessage("1", "assistant", "message", "Analyzing the issue...", null),
+                new BlocksAdapter.SessionMessage("2", "assistant", "error", "Rate limit reached for claude-3-5-sonnet", null)
+        );
+        doReturn(new BlocksAdapter.GetMessagesResponse(items))
+                .when(responseSpec).body(BlocksAdapter.GetMessagesResponse.class);
+
+        assertThat(adapter.fetchAssistantMessages("sess-1"))
+                .containsExactly("Analyzing the issue...", "Rate limit reached for claude-3-5-sonnet");
+    }
+
+    @Test
+    void fetchAssistantMessages_includesTextTypeMessages() {
+        // Some Blocks API versions use type="text" as an alias for type="message"
+        var items = List.of(
+                new BlocksAdapter.SessionMessage("1", "assistant", "text", "Implementing fix...", null),
+                new BlocksAdapter.SessionMessage("2", "assistant", "message", "Done.", null)
+        );
+        doReturn(new BlocksAdapter.GetMessagesResponse(items))
+                .when(responseSpec).body(BlocksAdapter.GetMessagesResponse.class);
+
+        assertThat(adapter.fetchAssistantMessages("sess-1"))
+                .containsExactly("Implementing fix...", "Done.");
+    }
+
+    @Test
+    void fetchAssistantMessages_excludesBlankMessages() {
+        var items = List.of(
+                new BlocksAdapter.SessionMessage("1", "assistant", "message", "Good message", null),
+                new BlocksAdapter.SessionMessage("2", "assistant", "message", "   ", null),
+                new BlocksAdapter.SessionMessage("3", "assistant", "message", null, null)
+        );
+        doReturn(new BlocksAdapter.GetMessagesResponse(items))
+                .when(responseSpec).body(BlocksAdapter.GetMessagesResponse.class);
+
+        assertThat(adapter.fetchAssistantMessages("sess-1"))
+                .containsExactly("Good message");
+    }
+
+    @Test
+    void fetchAssistantMessages_excludesToolUseAndToolResultMessages() {
+        // Tool messages should not clutter the session message feed
+        var items = List.of(
+                new BlocksAdapter.SessionMessage("1", "assistant", "message", "Let me check.", null),
+                new BlocksAdapter.SessionMessage("2", "assistant", "tool_use", "{\"name\":\"bash\",\"input\":{}}", null),
+                new BlocksAdapter.SessionMessage("3", "tool", "tool_result", "$ ls\nfile.txt", null)
+        );
+        doReturn(new BlocksAdapter.GetMessagesResponse(items))
+                .when(responseSpec).body(BlocksAdapter.GetMessagesResponse.class);
+
+        assertThat(adapter.fetchAssistantMessages("sess-1"))
+                .containsExactly("Let me check.");
+    }
+
     // ---- helpers ----
 
     private SessionRequest minimalRequest(String issueId, String issueIdentifier, String title, String description) {
