@@ -2,12 +2,10 @@ databases:
   - name: mesha-db
     databaseName: mesha
     user: mesha
-    plan: free
 
 services:
   - type: redis
     name: mesha-redis
-    plan: free
     maxmemoryPolicy: allkeys-lru
     ipAllowList:
       - source: 0.0.0.0/0
@@ -16,7 +14,6 @@ services:
   - type: web
     name: mesha-api
     env: docker
-    plan: free
     rootDir: platform/backend-api
     branch: main
     autoDeploy: true
@@ -96,7 +93,6 @@ services:
   - type: worker
     name: mesha-worker
     env: docker
-    plan: free
     rootDir: platform/backend-worker
     branch: main
     autoDeploy: true
