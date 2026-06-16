@@ -387,13 +387,20 @@ class SessionPollTransactions {
             + "|maximum number of tokens allowed|input token count"
             // Gemini quota/rate errors: "RESOURCE_EXHAUSTED", "Resource has been exhausted",
             // "Quota exceeded for quota metric"
-            + "|resource.{0,20}exhausted|quota.exceeded|resource_exhausted"
+            + "|resource.{0,20}exhausted|quota.{0,5}exceeded|resource_exhausted"
             // GitHub Copilot (ghagpt): "prompt token count of X exceeds the limit of Y"
             + "|prompt token count"
             // OpenAI/ChatGPT: "insufficient_quota", "exceeded your current quota"
-            + "|insufficient.quota"
+            + "|insufficient.quota|exceeded.{0,30}quota"
             // Various providers: "token count exceeds maximum"
-            + "|token count exceeds",
+            + "|token count exceeds"
+            // General usage/daily/monthly limit phrases:
+            // "usage limit", "usage_limit", "your usage limit has been reached"
+            + "|usage.{0,10}limit"
+            // "limit reached", "monthly limit reached", "daily limit reached"
+            + "|limit.{0,10}reached"
+            // Anthropic billing: "Your credit balance is too low to access the Claude API"
+            + "|credit.{0,30}too.{0,10}low",
             java.util.regex.Pattern.CASE_INSENSITIVE);
 
     boolean isTokenLimitMessage(String message) {

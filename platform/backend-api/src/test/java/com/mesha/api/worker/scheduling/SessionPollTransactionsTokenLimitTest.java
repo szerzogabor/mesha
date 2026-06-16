@@ -139,6 +139,31 @@ class SessionPollTransactionsTokenLimitTest {
         assertThat(txns.isTokenLimitMessage(message)).isTrue();
     }
 
+    // General usage/monthly/daily limit phrases — common in AI closing messages
+    // when a session is terminated because a usage quota is exhausted.
+    @ParameterizedTest
+    @ValueSource(strings = {
+            // "usage limit" in various phrasings (Claude/Blocks platform messages)
+            "I was unable to complete the task due to the usage limit.",
+            "Your usage limit has been reached for today.",
+            "usage_limit exceeded",
+            "usage limit reached",
+            // "limit reached" covers daily/monthly/rate limits from any provider
+            "Monthly limit reached for this account.",
+            "Daily limit reached — please try again tomorrow.",
+            "limit reached",
+            // OpenAI / ChatGPT: "exceeded your current quota" — note the reversed word order
+            // compared to "quota exceeded"; the old pattern (quota.exceeded) misses this.
+            "You exceeded your current quota, please check your plan and billing details.",
+            "You have exceeded your quota for this billing period.",
+            // Anthropic billing: credit balance drained
+            "Your credit balance is too low to access the Claude API. Please go to Plans & Billing.",
+            "credit balance too low",
+    })
+    void isTokenLimitMessage_detectsUsageAndBillingLimitMessages(String message) {
+        assertThat(txns.isTokenLimitMessage(message)).isTrue();
+    }
+
     // anyMessageIsTokenLimit — verifies that the token limit is detected even when it is
     // not the last message in the list (the root cause of TP-42: only the final message
     // was checked, so a limit notice followed by a follow-up message was missed).

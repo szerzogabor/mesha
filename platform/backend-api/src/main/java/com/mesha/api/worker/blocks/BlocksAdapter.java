@@ -224,7 +224,9 @@ public class BlocksAdapter implements ProviderAdapter {
 
     /**
      * Fetches assistant messages for a session from the dedicated messages endpoint.
-     * Returns only assistant text messages (type=message or final_message), newest-first
+     * Returns assistant text messages including error-type messages so that token-limit
+     * notifications surfaced by providers (e.g. "rate_limit_error") are captured for
+     * both display and token-limit detection.
      * ordering is forced to asc so the caller's count-based deduplication stays correct.
      * Returns null on any error so the caller can fall back gracefully.
      */
@@ -243,7 +245,7 @@ public class BlocksAdapter implements ProviderAdapter {
 
             List<String> messages = response.items().stream()
                     .filter(m -> "assistant".equals(m.role()))
-                    .filter(m -> "message".equals(m.type()) || "final_message".equals(m.type()))
+                    .filter(m -> !"tool_use".equals(m.type()) && !"tool_result".equals(m.type()))
                     .filter(m -> m.message() != null && !m.message().isBlank())
                     .map(SessionMessage::message)
                     .collect(Collectors.toList());
