@@ -118,6 +118,7 @@ public class GitHubAppService {
                 log.error("GitHub API returned unexpected status for installation token installationId={} httpStatus={} durationMs={} body={}",
                         installationId, response.statusCode(), durationMs, response.body());
                 if (response.statusCode() == 404) {
+                    autoMarkInstallationDeleted(installationId);
                     throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                             "GitHub App installation not found (id=" + installationId
                                     + "). The app may have been uninstalled or the installation ID is stale.");
@@ -349,10 +350,29 @@ public class GitHubAppService {
     public List<GitHubInstallationDto> listInstallations(UUID workspaceId) {
         log.debug("Listing installations workspaceId={}", workspaceId);
         List<GitHubInstallationDto> installations = installationRepo
-                .findAllByWorkspaceIdAndStatus(workspaceId, "active")
+                .findAllByWorkspaceId(workspaceId)
                 .stream().map(GitHubInstallationDto::from).toList();
         log.debug("Listed installations workspaceId={} count={}", workspaceId, installations.size());
         return installations;
+    }
+
+    private void autoMarkInstallationDeleted(Long installationId) {
+        installationRepo.findByInstallationId(installationId).ifPresent(installation -> {
+            if ("deleted".equals(installation.getStatus())) {
+                return;
+            }
+            log.warn("Auto-marking installation as deleted — GitHub returned 404 installationId={}", installationId);
+            installation.setStatus("deleted");
+            installationRepo.save(installation);
+            repositoryRepo.findAllByInstallationId(installation.getId()).forEach(repo -> {
+                if (Boolean.TRUE.equals(repo.getConnected())) {
+                    repo.setConnected(false);
+                    repositoryRepo.save(repo);
+                    auditLogService.log(installation, GitHubAuditLogService.REPOSITORY_DETACHED, repo.getFullName());
+                }
+            });
+            auditLogService.log(installation, GitHubAuditLogService.INSTALLATION_DELETED, "auto-detected stale installation");
+        });
     }
 
     /**
