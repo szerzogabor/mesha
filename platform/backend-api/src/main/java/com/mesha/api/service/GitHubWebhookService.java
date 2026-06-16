@@ -114,7 +114,7 @@ public class GitHubWebhookService {
         long installationId = payload.path("installation").path("id").asLong();
         switch (action) {
             case "created" -> log.info("GitHub App installation created via webhook — workspace linkage handled via redirect callback installationId={}", installationId);
-            case "deleted" -> appService.markInstallationDeleted(installationId);
+            case "deleted" -> appService.deleteInstallation(installationId);
             case "suspend" -> appService.markInstallationSuspended(installationId);
             case "unsuspend" -> appService.markInstallationActive(installationId);
             default -> log.debug("Unhandled installation action: {}", action);
