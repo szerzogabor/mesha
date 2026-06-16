@@ -34,14 +34,6 @@ function InstallationStatusBadge({ status }: { status: string }) {
       </span>
     );
   }
-  if (status === "deleted") {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-        <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-        Uninstalled
-      </span>
-    );
-  }
   return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-bg-subtle text-text-muted">
       {status}
@@ -57,7 +49,6 @@ function InstallationCard({
   workspaceId: string;
 }) {
   const refresh = useRefreshInstallation(workspaceId);
-  const isDeleted = inst.status === "deleted";
 
   return (
     <li className="bg-bg-surface border border-border-subtle rounded-lg px-4 py-3">
@@ -86,71 +77,58 @@ function InstallationCard({
           )}
         </div>
 
-        {/* Action buttons */}
         <div className="flex items-center gap-2 shrink-0">
-          {isDeleted ? (
+          {inst.manageUrl && (
             <a
-              href={`https://github.com/apps/${process.env.NEXT_PUBLIC_GITHUB_APP_NAME ?? "mesha-github-app"}/installations/new?state=${workspaceId}`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors"
+              href={inst.manageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-border-subtle text-text-secondary rounded-lg hover:bg-bg-subtle transition-colors"
             >
-              Reconnect GitHub App
-            </a>
-          ) : (
-            <>
-              {inst.manageUrl && (
-                <a
-                  href={inst.manageUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-border-subtle text-text-secondary rounded-lg hover:bg-bg-subtle transition-colors"
-                >
-                  Manage Installation
-                  <svg
-                    className="w-3 h-3"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                    />
-                  </svg>
-                </a>
-              )}
-              <button
-                onClick={() => refresh.mutate(inst.id)}
-                disabled={refresh.isPending}
-                title="Refresh repositories and installation state from GitHub"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-border-subtle text-text-secondary rounded-lg hover:bg-bg-subtle transition-colors disabled:opacity-50"
+              Manage Installation
+              <svg
+                className="w-3 h-3"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
               >
-                {refresh.isPending ? (
-                  <Spinner size="sm" />
-                ) : (
-                  <svg
-                    className="w-3 h-3"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                    />
-                  </svg>
-                )}
-                {refresh.isPending ? "Refreshing…" : "Refresh Repositories"}
-              </button>
-            </>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                />
+              </svg>
+            </a>
           )}
+          <button
+            onClick={() => refresh.mutate(inst.id)}
+            disabled={refresh.isPending}
+            title="Refresh repositories and installation state from GitHub"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-border-subtle text-text-secondary rounded-lg hover:bg-bg-subtle transition-colors disabled:opacity-50"
+          >
+            {refresh.isPending ? (
+              <Spinner size="sm" />
+            ) : (
+              <svg
+                className="w-3 h-3"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+            )}
+            {refresh.isPending ? "Refreshing…" : "Refresh Repositories"}
+          </button>
         </div>
       </div>
 
-      {/* Suspended warning */}
       {inst.status === "suspended" && (
         <div className="mt-3 flex items-start gap-2 p-2.5 bg-yellow-50 border border-yellow-200 rounded-lg dark:bg-yellow-900/20 dark:border-yellow-800">
           <svg
@@ -173,30 +151,6 @@ function InstallationCard({
         </div>
       )}
 
-      {/* Uninstalled warning with reconnect CTA */}
-      {inst.status === "deleted" && (
-        <div className="mt-3 flex items-start gap-2 p-2.5 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:border-red-800">
-          <svg
-            className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
-          <p className="text-xs text-red-700 dark:text-red-300">
-            The GitHub App was uninstalled from <strong>{inst.accountLogin}</strong>. Click{" "}
-            <strong>Reconnect GitHub App</strong> to reinstall it and restore repository access.
-          </p>
-        </div>
-      )}
-
-      {/* Refresh error */}
       {refresh.isError && (
         <div className="mt-3 p-2.5 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:border-red-800">
           <p className="text-xs text-red-700 dark:text-red-300">

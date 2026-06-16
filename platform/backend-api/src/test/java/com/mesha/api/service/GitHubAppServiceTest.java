@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mesha.api.config.GitHubAppProperties;
 import com.mesha.api.dto.GitHubInstallationDto;
 import com.mesha.api.model.GitHubInstallation;
-import com.mesha.api.model.GitHubRepository;
 import com.mesha.api.model.Workspace;
 import com.mesha.api.repository.GitHubInstallationRepository;
 import com.mesha.api.repository.GitHubRepositoryRepository;
@@ -12,7 +11,6 @@ import com.mesha.api.repository.WorkspaceRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -23,7 +21,6 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class GitHubAppServiceTest {
@@ -59,15 +56,14 @@ class GitHubAppServiceTest {
 
         when(installationRepo.findAllByWorkspaceId(workspaceId)).thenReturn(List.of(
                 installation(42L, "active", workspace),
-                installation(99L, "deleted", workspace),
                 installation(77L, "suspended", workspace)
         ));
 
         List<GitHubInstallationDto> result = service.listInstallations(workspaceId);
 
-        assertThat(result).hasSize(3);
+        assertThat(result).hasSize(2);
         assertThat(result).extracting(GitHubInstallationDto::status)
-                .containsExactlyInAnyOrder("active", "deleted", "suspended");
+                .containsExactlyInAnyOrder("active", "suspended");
     }
 
     @Test
@@ -78,80 +74,62 @@ class GitHubAppServiceTest {
         assertThat(service.listInstallations(workspaceId)).isEmpty();
     }
 
-    // ---- autoMarkInstallationDeleted (private) ----------------------------
+    // ---- deleteInstallation (public) --------------------------------------
 
     @Test
-    void autoMarkInstallationDeletedUpdatesStatusAndDisconnectsConnectedRepos() {
+    void deleteInstallationPhysicallyRemovesTheRecord() {
         Long installationId = 137966267L;
-        UUID installationDbId = UUID.randomUUID();
-
-        GitHubInstallation installation = new GitHubInstallation();
-        ReflectionTestUtils.setField(installation, "id", installationDbId);
-        installation.setInstallationId(installationId);
-        installation.setAccountLogin("szerzogabor");
-        installation.setStatus("active");
-
-        GitHubRepository connectedRepo = new GitHubRepository();
-        connectedRepo.setConnected(true);
-        connectedRepo.setFullName("szerzogabor/mesha");
-
-        GitHubRepository alreadyDisconnected = new GitHubRepository();
-        alreadyDisconnected.setConnected(false);
-        alreadyDisconnected.setFullName("szerzogabor/other");
-
-        when(installationRepo.findByInstallationId(installationId)).thenReturn(Optional.of(installation));
-        when(repositoryRepo.findAllByInstallationId(installationDbId))
-                .thenReturn(List.of(connectedRepo, alreadyDisconnected));
-
-        ReflectionTestUtils.invokeMethod(service, "autoMarkInstallationDeleted", installationId);
-
-        assertThat(installation.getStatus()).isEqualTo("deleted");
-        verify(installationRepo).save(installation);
-
-        // Only the connected repo should be saved (disconnected one is skipped)
-        ArgumentCaptor<GitHubRepository> repoCaptor = ArgumentCaptor.forClass(GitHubRepository.class);
-        verify(repositoryRepo, times(1)).save(repoCaptor.capture());
-        assertThat(repoCaptor.getValue().getConnected()).isFalse();
-        assertThat(repoCaptor.getValue().getFullName()).isEqualTo("szerzogabor/mesha");
-
-        verify(auditLogService).log(eq(installation),
-                eq(GitHubAuditLogService.REPOSITORY_DETACHED), eq("szerzogabor/mesha"));
-        verify(auditLogService).log(eq(installation),
-                eq(GitHubAuditLogService.INSTALLATION_DELETED), eq("auto-detected stale installation"));
-        // Already-disconnected repo must not generate an audit event
-        verify(auditLogService, never()).log(any(), eq(GitHubAuditLogService.REPOSITORY_DETACHED),
-                eq("szerzogabor/other"));
-    }
-
-    @Test
-    void autoMarkInstallationDeletedIsIdempotentWhenAlreadyDeleted() {
-        Long installationId = 111L;
-
-        GitHubInstallation installation = new GitHubInstallation();
-        ReflectionTestUtils.setField(installation, "id", UUID.randomUUID());
-        installation.setInstallationId(installationId);
-        installation.setStatus("deleted");
-
+        GitHubInstallation installation = activeInstallation(installationId);
         when(installationRepo.findByInstallationId(installationId)).thenReturn(Optional.of(installation));
 
-        ReflectionTestUtils.invokeMethod(service, "autoMarkInstallationDeleted", installationId);
+        service.deleteInstallation(installationId);
 
-        verify(installationRepo, never()).save(any());
+        verify(installationRepo).delete(installation);
+        // DB CASCADE handles repos and PRs — no manual repo iteration needed
         verifyNoInteractions(repositoryRepo, auditLogService);
     }
 
     @Test
-    void autoMarkInstallationDeletedDoesNothingWhenInstallationNotInDb() {
+    void deleteInstallationDoesNothingWhenNotFound() {
         Long installationId = 999L;
         when(installationRepo.findByInstallationId(installationId)).thenReturn(Optional.empty());
 
-        ReflectionTestUtils.invokeMethod(service, "autoMarkInstallationDeleted", installationId);
+        service.deleteInstallation(installationId);
 
-        verify(installationRepo, never()).save(any());
+        verify(installationRepo, never()).delete(any());
+        verifyNoInteractions(repositoryRepo, auditLogService);
+    }
+
+    // ---- autoDeleteInstallation (private) ---------------------------------
+
+    @Test
+    void autoDeleteInstallationPhysicallyRemovesTheRecord() {
+        Long installationId = 137966267L;
+        GitHubInstallation installation = activeInstallation(installationId);
+        when(installationRepo.findByInstallationId(installationId)).thenReturn(Optional.of(installation));
+
+        ReflectionTestUtils.invokeMethod(service, "autoDeleteInstallation", installationId);
+
+        verify(installationRepo).delete(installation);
+        verifyNoInteractions(repositoryRepo, auditLogService);
+    }
+
+    @Test
+    void autoDeleteInstallationDoesNothingWhenNotInDb() {
+        Long installationId = 999L;
+        when(installationRepo.findByInstallationId(installationId)).thenReturn(Optional.empty());
+
+        ReflectionTestUtils.invokeMethod(service, "autoDeleteInstallation", installationId);
+
+        verify(installationRepo, never()).delete(any());
         verifyNoInteractions(repositoryRepo, auditLogService);
     }
 
     // ---- helpers ----------------------------------------------------------
+
+    private GitHubInstallation activeInstallation(Long installationId) {
+        return installation(installationId, "active", null);
+    }
 
     private GitHubInstallation installation(Long installationId, String status, Workspace workspace) {
         GitHubInstallation inst = new GitHubInstallation();
@@ -160,7 +138,9 @@ class GitHubAppServiceTest {
         inst.setAppId(12345L);
         inst.setAccountLogin("account-" + installationId);
         inst.setStatus(status);
-        inst.setWorkspace(workspace);
+        if (workspace != null) {
+            inst.setWorkspace(workspace);
+        }
         return inst;
     }
 }
