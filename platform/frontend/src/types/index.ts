@@ -365,9 +365,18 @@ export type AutomationTriggerType =
 
 export type AutomationActionType = "SET_STATUS" | "ADD_LABEL" | "START_AI_SESSION";
 
+export type AutomationActionConditionType = "HAS_STATUS" | "HAS_LABEL";
+
+export interface AutomationActionCondition {
+  conditionType: AutomationActionConditionType;
+  conditionValue: string;
+  position?: number;
+}
+
 export interface AutomationAction {
   actionType: AutomationActionType;
   actionValue?: string;
+  conditions?: AutomationActionCondition[];
 }
 
 export interface AutomationRule {

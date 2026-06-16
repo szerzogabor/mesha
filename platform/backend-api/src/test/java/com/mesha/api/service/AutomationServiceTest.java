@@ -218,7 +218,7 @@ class AutomationServiceTest {
 
         CreateAutomationRuleRequest req = new CreateAutomationRuleRequest(
                 AutomationTriggerType.PR_OPENED, null,
-                List.of(new AutomationActionRequest(AutomationActionType.SET_STATUS, "NOPE")));
+                List.of(new AutomationActionRequest(AutomationActionType.SET_STATUS, "NOPE", null)));
 
         assertThatThrownBy(() -> service.create(projectId, req, null))
                 .isInstanceOf(ResponseStatusException.class)
@@ -239,7 +239,7 @@ class AutomationServiceTest {
 
         CreateAutomationRuleRequest req = new CreateAutomationRuleRequest(
                 AutomationTriggerType.PR_MERGED, null,
-                List.of(new AutomationActionRequest(AutomationActionType.ADD_LABEL, labelId.toString())));
+                List.of(new AutomationActionRequest(AutomationActionType.ADD_LABEL, labelId.toString(), null)));
 
         assertThatThrownBy(() -> service.create(projectId, req, null))
                 .isInstanceOf(ResponseStatusException.class)
@@ -261,8 +261,8 @@ class AutomationServiceTest {
         CreateAutomationRuleRequest req = new CreateAutomationRuleRequest(
                 AutomationTriggerType.BLOCKS_SESSION_FAILED, null,
                 List.of(
-                        new AutomationActionRequest(AutomationActionType.SET_STATUS, "PENDING"),
-                        new AutomationActionRequest(AutomationActionType.ADD_LABEL, labelId.toString())));
+                        new AutomationActionRequest(AutomationActionType.SET_STATUS, "PENDING", null),
+                        new AutomationActionRequest(AutomationActionType.ADD_LABEL, labelId.toString(), null)));
 
         AutomationRule saved = service.create(projectId, req, null);
 
@@ -279,7 +279,7 @@ class AutomationServiceTest {
 
         CreateAutomationRuleRequest req = new CreateAutomationRuleRequest(
                 AutomationTriggerType.STATUS_UPDATED, null,
-                List.of(new AutomationActionRequest(AutomationActionType.SET_STATUS, "DONE")));
+                List.of(new AutomationActionRequest(AutomationActionType.SET_STATUS, "DONE", null)));
 
         assertThatThrownBy(() -> service.create(projectId, req, null))
                 .isInstanceOf(ResponseStatusException.class)
@@ -293,7 +293,7 @@ class AutomationServiceTest {
 
         CreateAutomationRuleRequest req = new CreateAutomationRuleRequest(
                 AutomationTriggerType.STATUS_UPDATED, "NONEXISTENT",
-                List.of(new AutomationActionRequest(AutomationActionType.SET_STATUS, "DONE")));
+                List.of(new AutomationActionRequest(AutomationActionType.SET_STATUS, "DONE", null)));
 
         assertThatThrownBy(() -> service.create(projectId, req, null))
                 .isInstanceOf(ResponseStatusException.class)
