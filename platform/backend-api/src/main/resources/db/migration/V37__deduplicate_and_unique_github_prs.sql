@@ -8,9 +8,13 @@ WHERE id NOT IN (
 );
 
 DO $$ BEGIN
-    ALTER TABLE github_pull_requests
-        ADD CONSTRAINT uq_github_pull_requests_repo_pr_number
-        UNIQUE (repository_id, github_pr_number);
-EXCEPTION
-    WHEN duplicate_object THEN NULL;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'uq_github_pull_requests_repo_pr_number'
+          AND conrelid = 'github_pull_requests'::regclass
+    ) THEN
+        ALTER TABLE github_pull_requests
+            ADD CONSTRAINT uq_github_pull_requests_repo_pr_number
+            UNIQUE (repository_id, github_pr_number);
+    END IF;
 END $$;
