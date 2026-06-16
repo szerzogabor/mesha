@@ -351,7 +351,7 @@ export default function GitHubPage({
 
   const [showConnectForm, setShowConnectForm] = useState(false);
 
-  const visibleInstallations = installations.filter((i) => i.status === "active");
+  const activeInstallations = installations.filter((i) => i.status === "active");
 
   useEffect(() => {
     const installationIdParam = searchParams.get("installation_id");
@@ -440,7 +440,7 @@ export default function GitHubPage({
       {/* Installations */}
       <section className="mb-8">
         <h2 className="text-lg font-semibold text-text-primary mb-3">App Installations</h2>
-        {visibleInstallations.length === 0 ? (
+        {installations.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border-subtle p-6 text-center">
             <p className="text-text-muted text-sm mb-3">No GitHub App installations found.</p>
             <a
@@ -452,7 +452,7 @@ export default function GitHubPage({
           </div>
         ) : (
           <ul className="space-y-2">
-            {visibleInstallations.map((inst) => (
+            {installations.map((inst) => (
               <InstallationCard key={inst.id} inst={inst} workspaceId={workspaceId} />
             ))}
           </ul>
@@ -463,7 +463,7 @@ export default function GitHubPage({
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-text-primary">Connected Repositories</h2>
-          {visibleInstallations.length > 0 && (
+          {activeInstallations.length > 0 && (
             <button
               onClick={() => setShowConnectForm((v) => !v)}
               className="text-sm px-3 py-1.5 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors"
@@ -476,7 +476,7 @@ export default function GitHubPage({
         {showConnectForm && (
           <ConnectRepositoryForm
             workspaceId={workspaceId}
-            installations={visibleInstallations}
+            installations={activeInstallations}
             onCancel={() => setShowConnectForm(false)}
             onConnected={() => setShowConnectForm(false)}
           />
