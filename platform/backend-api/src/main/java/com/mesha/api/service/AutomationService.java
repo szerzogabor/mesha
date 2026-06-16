@@ -1,18 +1,15 @@
 package com.mesha.api.service;
 
-import com.mesha.api.dto.AutomationActionConditionRequest;
 import com.mesha.api.dto.AutomationActionRequest;
 import com.mesha.api.dto.CreateAutomationRuleRequest;
 import com.mesha.api.dto.UpdateAutomationRuleRequest;
 import com.mesha.api.model.ActivityEventType;
 import com.mesha.api.model.AutomationRule;
 import com.mesha.api.model.AutomationRuleAction;
-import com.mesha.api.model.AutomationRuleActionCondition;
 import com.mesha.api.model.AutomationTriggerType;
 import com.mesha.api.model.Issue;
 import com.mesha.api.model.Label;
 import com.mesha.api.model.Project;
-import com.mesha.api.model.TicketRuleConditionType;
 import com.mesha.api.model.User;
 import com.mesha.api.repository.AutomationRuleRepository;
 import com.mesha.api.repository.IssueRepository;
@@ -88,7 +85,6 @@ public class AutomationService {
         validateTriggerValue(project, req.triggerType(), req.triggerValue());
         for (AutomationActionRequest action : req.actions()) {
             validateActionValue(project, action);
-            validateActionConditions(project, action);
         }
 
         AutomationRule rule = new AutomationRule();
@@ -123,7 +119,6 @@ public class AutomationService {
             }
             for (AutomationActionRequest action : req.actions()) {
                 validateActionValue(rule.getProject(), action);
-                validateActionConditions(rule.getProject(), action);
             }
             applyActions(rule, req.actions());
         }
@@ -153,17 +148,6 @@ public class AutomationService {
             action.setActionType(req.actionType());
             action.setActionValue(req.actionValue() != null ? req.actionValue().trim() : null);
             action.setPosition(i);
-            if (req.conditions() != null) {
-                for (int j = 0; j < req.conditions().size(); j++) {
-                    AutomationActionConditionRequest condReq = req.conditions().get(j);
-                    AutomationRuleActionCondition condition = new AutomationRuleActionCondition();
-                    condition.setAction(action);
-                    condition.setConditionType(condReq.conditionType());
-                    condition.setConditionValue(condReq.conditionValue().trim());
-                    condition.setPosition(j);
-                    action.getConditions().add(condition);
-                }
-            }
             rule.getActions().add(action);
         }
     }
@@ -232,41 +216,12 @@ public class AutomationService {
             return;
         }
         for (AutomationRuleAction action : rule.getActions()) {
-            if (!actionConditionsMatch(action, issue)) {
-                log.debug("automation_action_skipped ruleId={} issueId={} actionType={} conditionsMet=false",
-                        rule.getId(), issueId, action.getActionType());
-                continue;
-            }
             switch (action.getActionType()) {
                 case SET_STATUS -> applySetStatus(rule, action, projectId, issue);
                 case ADD_LABEL -> applyAddLabel(rule, action, issue);
                 case START_AI_SESSION -> applyStartAiSession(rule, issue);
             }
         }
-    }
-
-    private boolean actionConditionsMatch(AutomationRuleAction action, Issue issue) {
-        for (AutomationRuleActionCondition condition : action.getConditions()) {
-            if (!actionConditionMatches(condition, issue)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean actionConditionMatches(AutomationRuleActionCondition condition, Issue issue) {
-        return switch (condition.getConditionType()) {
-            case HAS_STATUS -> condition.getConditionValue().equalsIgnoreCase(issue.getStatus());
-            case HAS_LABEL -> {
-                UUID labelId;
-                try {
-                    labelId = UUID.fromString(condition.getConditionValue());
-                } catch (IllegalArgumentException e) {
-                    yield false;
-                }
-                yield issue.getLabels().stream().anyMatch(l -> l.getId().equals(labelId));
-            }
-        };
     }
 
     private void applySetStatus(AutomationRule rule, AutomationRuleAction action, UUID projectId, Issue issue) {
@@ -398,44 +353,6 @@ public class AutomationService {
                 if (!inWorkspace) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Unknown label for this workspace: " + actionValue);
-                }
-            }
-        }
-    }
-
-    private void validateActionConditions(Project project, AutomationActionRequest action) {
-        if (action.conditions() == null || action.conditions().isEmpty()) {
-            return;
-        }
-        for (AutomationActionConditionRequest condition : action.conditions()) {
-            String value = condition.conditionValue();
-            if (value == null || value.isBlank()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Action condition value is required");
-            }
-            switch (condition.conditionType()) {
-                case HAS_STATUS -> {
-                    String normalized = value.trim().toUpperCase();
-                    if (!projectStatusRepository.existsByProjectIdAndName(project.getId(), normalized)) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                            "Unknown status for this project: " + value);
-                    }
-                }
-                case HAS_LABEL -> {
-                    UUID labelId;
-                    try {
-                        labelId = UUID.fromString(value.trim());
-                    } catch (IllegalArgumentException e) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                            "Action condition value for HAS_LABEL must be a label UUID");
-                    }
-                    UUID workspaceId = project.getWorkspace().getId();
-                    boolean inWorkspace = labelRepository.findById(labelId)
-                        .map(l -> l.getWorkspace().getId().equals(workspaceId))
-                        .orElse(false);
-                    if (!inWorkspace) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                            "Unknown label for this workspace: " + value);
-                    }
                 }
             }
         }

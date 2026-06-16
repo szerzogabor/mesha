@@ -1,8 +1,6 @@
 package com.mesha.api.model;
 
 import jakarta.persistence.*;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -28,10 +26,6 @@ public class AutomationRuleAction {
     @Column(nullable = false)
     private Integer position = 0;
 
-    @OneToMany(mappedBy = "action", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("position ASC")
-    private List<AutomationRuleActionCondition> conditions = new ArrayList<>();
-
     public UUID getId() { return id; }
     public AutomationRule getRule() { return rule; }
     public void setRule(AutomationRule rule) { this.rule = rule; }
@@ -41,5 +35,4 @@ public class AutomationRuleAction {
     public void setActionValue(String actionValue) { this.actionValue = actionValue; }
     public Integer getPosition() { return position; }
     public void setPosition(Integer position) { this.position = position; }
-    public List<AutomationRuleActionCondition> getConditions() { return conditions; }
 }
