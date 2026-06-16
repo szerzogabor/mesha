@@ -2,11 +2,9 @@
 
 import { use } from "react";
 import Link from "next/link";
-import AutomationRulesSection from "@/components/automation/AutomationRulesSection";
-import TicketRulesSection from "@/components/settings/TicketRulesSection";
 import StatusesSection from "@/components/settings/StatusesSection";
 
-export default function ProjectSettingsPage({
+export default function ProjectStatusesPage({
   params,
 }: {
   params: Promise<{ workspaceId: string; projectId: string }>;
@@ -26,18 +24,14 @@ export default function ProjectSettingsPage({
             </svg>
           </Link>
           <div>
-            <h2 className="text-lg font-semibold text-text-primary">Project Settings</h2>
-            <p className="text-sm text-text-tertiary">Manage statuses, workflow and automations</p>
+            <h2 className="text-lg font-semibold text-text-primary">Ticket Statuses</h2>
+            <p className="text-sm text-text-tertiary">Manage workflow stages for this project</p>
           </div>
         </div>
       </div>
 
       <div className="p-6 max-w-2xl mx-auto">
         <StatusesSection projectId={projectId} />
-
-        <AutomationRulesSection workspaceId={workspaceId} projectId={projectId} />
-
-        <TicketRulesSection workspaceId={workspaceId} projectId={projectId} />
       </div>
     </div>
   );

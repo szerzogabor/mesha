@@ -29,6 +29,10 @@ const ChevronRightIcon = () => (
 export function Sidebar({ workspace, projects, onCreateProject, isCollapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
 
+  // Extract active projectId from the pathname when browsing a project
+  const projectMatch = pathname.match(/\/workspaces\/[^/]+\/projects\/([^/]+)/);
+  const activeProjectId = projectMatch ? projectMatch[1] : null;
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !isCollapsed) {
@@ -148,6 +152,49 @@ export function Sidebar({ workspace, projects, onCreateProject, isCollapsed, onT
                 AI Agents
               </Link>
             </li>
+            {activeProjectId && (
+              <>
+                <li>
+                  <Link
+                    href={`/workspaces/${workspace.id}/projects/${activeProjectId}/settings/statuses`}
+                    className={cn(
+                      "block px-3 py-2 rounded-lg text-sm truncate transition-colors",
+                      pathname.startsWith(`/workspaces/${workspace.id}/projects/${activeProjectId}/settings/statuses`)
+                        ? "bg-sidebar-item-active text-white"
+                        : "text-sidebar-text hover:bg-sidebar-item-hover hover:text-sidebar-text-active"
+                    )}
+                  >
+                    Ticket Statuses
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href={`/workspaces/${workspace.id}/projects/${activeProjectId}/settings/automations`}
+                    className={cn(
+                      "block px-3 py-2 rounded-lg text-sm truncate transition-colors",
+                      pathname.startsWith(`/workspaces/${workspace.id}/projects/${activeProjectId}/settings/automations`)
+                        ? "bg-sidebar-item-active text-white"
+                        : "text-sidebar-text hover:bg-sidebar-item-hover hover:text-sidebar-text-active"
+                    )}
+                  >
+                    Automations
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href={`/workspaces/${workspace.id}/projects/${activeProjectId}/settings/rules`}
+                    className={cn(
+                      "block px-3 py-2 rounded-lg text-sm truncate transition-colors",
+                      pathname.startsWith(`/workspaces/${workspace.id}/projects/${activeProjectId}/settings/rules`)
+                        ? "bg-sidebar-item-active text-white"
+                        : "text-sidebar-text hover:bg-sidebar-item-hover hover:text-sidebar-text-active"
+                    )}
+                  >
+                    Ticket Rules
+                  </Link>
+                </li>
+              </>
+            )}
           </ul>
 
           <div className="px-3 mt-4 mb-2">
