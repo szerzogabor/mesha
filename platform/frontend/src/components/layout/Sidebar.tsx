@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Project, Workspace } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -28,10 +28,21 @@ const ChevronRightIcon = () => (
 
 export function Sidebar({ workspace, projects, onCreateProject, isCollapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
+  const [lastActiveProjectId, setLastActiveProjectId] = useState<string | null>(null);
 
   // Extract active projectId from the pathname when browsing a project
   const projectMatch = pathname.match(/\/workspaces\/[^/]+\/projects\/([^/]+)/);
-  const activeProjectId = projectMatch ? projectMatch[1] : null;
+  const currentProjectId = projectMatch ? projectMatch[1] : null;
+
+  // Update the last active projectId when entering a project
+  useEffect(() => {
+    if (currentProjectId) {
+      setLastActiveProjectId(currentProjectId);
+    }
+  }, [currentProjectId]);
+
+  // Use current projectId if available, otherwise fall back to last active projectId
+  const activeProjectId = currentProjectId || lastActiveProjectId;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
