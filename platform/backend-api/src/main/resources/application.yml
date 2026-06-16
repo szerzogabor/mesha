@@ -8,15 +8,15 @@ app:
   worker:
     enabled: ${APP_WORKER_ENABLED:false}
 
-  datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:mesha}
-    username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:postgres}
-    driver-class-name: org.postgresql.Driver
-    hikari:
-      pool-name: mesha-api-hikari
-      maximum-pool-size: ${DB_POOL_SIZE:5}
-      leak-detection-threshold: ${DB_LEAK_DETECTION_THRESHOLD_MS:60000}
+datasource:
+  url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:mesha}
+  username: ${DB_USER:postgres}
+  password: ${DB_PASSWORD:postgres}
+  driver-class-name: org.postgresql.Driver
+  hikari:
+    pool-name: mesha-api-hikari
+    maximum-pool-size: ${DB_POOL_SIZE:5}
+    leak-detection-threshold: ${DB_LEAK_DETECTION_THRESHOLD_MS:60000}
 
   jpa:
     open-in-view: false
