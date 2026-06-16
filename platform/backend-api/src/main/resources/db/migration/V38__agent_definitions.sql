@@ -1,4 +1,5 @@
-CREATE TABLE agent_definitions (
+-- Idempotent recovery of V33 (schema already applied on production via original V33).
+CREATE TABLE IF NOT EXISTS agent_definitions (
     id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     workspace_id          UUID         NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     name                  VARCHAR(100) NOT NULL,
@@ -13,10 +14,10 @@ CREATE TABLE agent_definitions (
     UNIQUE (workspace_id, name)
 );
 
-CREATE INDEX idx_agent_definitions_workspace_id ON agent_definitions(workspace_id);
-CREATE INDEX idx_agent_definitions_active ON agent_definitions(workspace_id, active);
+CREATE INDEX IF NOT EXISTS idx_agent_definitions_workspace_id ON agent_definitions(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_agent_definitions_active ON agent_definitions(workspace_id, active);
 
-CREATE TABLE issue_agents (
+CREATE TABLE IF NOT EXISTS issue_agents (
     id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     issue_id              UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
     agent_definition_id   UUID NOT NULL REFERENCES agent_definitions(id) ON DELETE CASCADE,
@@ -25,5 +26,5 @@ CREATE TABLE issue_agents (
     UNIQUE (issue_id, agent_definition_id)
 );
 
-CREATE INDEX idx_issue_agents_issue_id ON issue_agents(issue_id);
-CREATE INDEX idx_issue_agents_agent_definition_id ON issue_agents(agent_definition_id);
+CREATE INDEX IF NOT EXISTS idx_issue_agents_issue_id ON issue_agents(issue_id);
+CREATE INDEX IF NOT EXISTS idx_issue_agents_agent_definition_id ON issue_agents(agent_definition_id);
