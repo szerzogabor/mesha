@@ -20,8 +20,6 @@ services:
     rootDir: platform/backend-api
     branch: main
     autoDeploy: true
-    previews:
-      generation: none
     healthCheckPath: /actuator/health
     buildFilter:
       paths:
@@ -102,8 +100,6 @@ services:
     rootDir: platform/backend-worker
     branch: main
     autoDeploy: true
-    previews:
-      generation: none
     buildFilter:
       paths:
         - render.yaml
