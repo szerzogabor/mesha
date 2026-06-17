@@ -59,7 +59,7 @@ export function Sidebar({ workspace, projects, onCreateProject, isCollapsed, onT
       {/* Mobile backdrop */}
       {!isCollapsed && (
         <div
-          className="fixed inset-0 bg-black/40 z-20 md:hidden"
+          className="fixed inset-0 bg-black/40 z-20 md:hidden touch-none"
           onClick={onToggle}
           aria-hidden="true"
         />

@@ -50,7 +50,7 @@ export default function WorkspaceLayout({
         isCollapsed={isCollapsed}
         onToggle={toggle}
       />
-      <main className="flex-1 bg-bg-app min-w-0 overflow-hidden">
+      <main className="flex-1 bg-bg-app min-w-0 overflow-y-auto">
         {/* Mobile open button — only visible when sidebar is closed on small screens */}
         {isCollapsed && (
           <button

@@ -14,7 +14,7 @@ export default function ProjectSettingsPage({
   const { workspaceId, projectId } = use(params);
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto touch-pan-y">
       <div className="px-6 py-4 bg-bg-surface border-b border-border-default">
         <div className="flex items-center gap-3">
           <Link

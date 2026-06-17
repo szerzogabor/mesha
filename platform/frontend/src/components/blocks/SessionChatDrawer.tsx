@@ -137,6 +137,12 @@ export function SessionChatDrawer({ session, sessionIndex, projectId, issueId, o
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   const handleSend = async () => {
     const content = input.trim();
     if (!content || sendMessage.isPending) return;
@@ -148,7 +154,7 @@ export function SessionChatDrawer({ session, sessionIndex, projectId, issueId, o
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/30 z-40"
+        className="fixed inset-0 bg-black/30 z-40 touch-none"
         onClick={onClose}
         aria-hidden="true"
       />
