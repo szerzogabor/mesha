@@ -190,7 +190,7 @@ export default function ProjectPage({
         className={
           view === "kanban"
             ? "flex-1 overflow-hidden flex flex-col min-h-0"
-            : "flex-1 overflow-y-auto"
+            : "flex-1 overflow-y-auto touch-pan-y"
         }
       >
         {view === "list" ? (

@@ -94,6 +94,8 @@
 html {
   color-scheme: light;
   height: 100%;
+  /* Use dynamic viewport height on mobile to account for browser chrome */
+  min-height: 100dvh;
 }
 
 html.dark {
@@ -106,6 +108,27 @@ body {
   flex-direction: column;
   background-color: var(--bg-app);
   color: var(--text-primary);
+  /* Prevent pull-to-refresh and overscroll bounce on mobile */
+  overscroll-behavior: none;
+}
+
+/* ─── Mobile scroll ─── */
+/* Momentum (inertia) scrolling on iOS for all scrollable containers */
+.overflow-y-auto,
+.overflow-x-auto,
+.overflow-auto,
+.overflow-y-scroll,
+.overflow-x-scroll,
+.overflow-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Prevent double-tap zoom delay on interactive elements */
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
 }
 
 /* ─── Scrollbar ─── */

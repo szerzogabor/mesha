@@ -39,9 +39,11 @@ export function KanbanCard({ issue, workspaceId, projectId, overlay = false }: K
     disabled: overlay,
   });
 
+  // No touchAction on the card itself — only the drag handle gets touch-action:none
+  // so the column can scroll freely on mobile when touching the card body.
   const style = overlay
     ? undefined
-    : { transform: CSS.Transform.toString(transform), transition, touchAction: "none" };
+    : { transform: CSS.Transform.toString(transform), transition };
 
   const { mutate: updateIssue } = useUpdateIssueInProject(projectId);
   const { data: allLabels = [] } = useLabels(workspaceId);
@@ -51,18 +53,36 @@ export function KanbanCard({ issue, workspaceId, projectId, overlay = false }: K
     <div
       ref={overlay ? undefined : setNodeRef}
       style={style}
-      {...(overlay ? {} : { ...attributes, ...listeners })}
       className={cn(
-        "bg-bg-surface border border-border-default rounded-lg p-3",
-        "cursor-grab active:cursor-grabbing select-none",
-        "hover:border-accent/40 hover:shadow-sm transition-all",
+        "relative bg-bg-surface border border-border-default rounded-lg p-3",
+        "select-none hover:border-accent/40 hover:shadow-sm transition-all",
         isDragging && !overlay && "opacity-40",
         overlay && "shadow-xl ring-1 ring-accent/20 rotate-1"
       )}
     >
+      {/* Drag handle — touch-action:none is scoped here so the card body stays scrollable */}
+      {!overlay && (
+        <div
+          {...attributes}
+          {...listeners}
+          style={{ touchAction: "none" }}
+          className="absolute top-2 right-2 z-10 cursor-grab active:cursor-grabbing p-1 text-text-tertiary hover:text-text-secondary rounded transition-colors"
+          aria-label={`Drag ${issue.title}`}
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+            <circle cx="4" cy="3" r="1" />
+            <circle cx="8" cy="3" r="1" />
+            <circle cx="4" cy="6" r="1" />
+            <circle cx="8" cy="6" r="1" />
+            <circle cx="4" cy="9" r="1" />
+            <circle cx="8" cy="9" r="1" />
+          </svg>
+        </div>
+      )}
+
       <Link
         href={`/workspaces/${workspaceId}/projects/${projectId}/issues/${issue.id}`}
-        className="block"
+        className="block pr-5"
         onClick={(e) => isDragging && e.preventDefault()}
         draggable={false}
       >

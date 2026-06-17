@@ -76,7 +76,7 @@ export function KanbanColumn({ status, issues, workspaceId, projectId, onCreateI
       <div
         ref={setDropRef}
         className={cn(
-          "flex flex-col gap-2 flex-1 p-2 rounded-xl min-h-[120px] overflow-y-auto transition-colors",
+          "flex flex-col gap-2 flex-1 p-2 rounded-xl min-h-[120px] overflow-y-auto touch-pan-y transition-colors",
           isOver ? "bg-accent/5 ring-1 ring-inset ring-accent/30" : "bg-bg-surface-hover"
         )}
       >
