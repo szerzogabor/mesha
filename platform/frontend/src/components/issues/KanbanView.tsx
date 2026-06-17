@@ -219,7 +219,7 @@ export function KanbanView({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="flex gap-4 px-6 py-4 overflow-x-auto flex-1 pb-6 min-h-0 touch-pan-x">
+      <div className="flex gap-4 px-6 py-4 overflow-x-auto flex-1 pb-6 min-h-0">
         <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
           {localStatuses.map((status) => (
             <KanbanColumn
