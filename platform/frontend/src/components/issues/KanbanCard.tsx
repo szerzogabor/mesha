@@ -41,7 +41,7 @@ export function KanbanCard({ issue, workspaceId, projectId, overlay = false }: K
 
   const style = overlay
     ? undefined
-    : { transform: CSS.Transform.toString(transform), transition, touchAction: "none" };
+    : { transform: CSS.Transform.toString(transform), transition, touchAction: "pan-y" };
 
   const { mutate: updateIssue } = useUpdateIssueInProject(projectId);
   const { data: allLabels = [] } = useLabels(workspaceId);
