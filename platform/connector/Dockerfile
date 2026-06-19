@@ -3,6 +3,7 @@ WORKDIR /app
 COPY gradlew .
 COPY gradle ./gradle
 COPY settings.gradle build.gradle ./
+RUN ./gradlew dependencies --no-daemon || true
 COPY src ./src
 RUN ./gradlew clean bootJar --no-daemon
 

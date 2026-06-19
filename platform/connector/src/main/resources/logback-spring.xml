@@ -2,7 +2,7 @@
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
-    <!-- JSON console appender — all MDC fields are included automatically -->
+    <!-- JSON console appender — includeMdcKeyName below is an allow-list; only these MDC keys are emitted -->
     <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <includeMdcKeyName>correlationId</includeMdcKeyName>
