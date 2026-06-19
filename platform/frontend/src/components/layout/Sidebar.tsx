@@ -164,6 +164,19 @@ export function Sidebar({ workspace, projects, onCreateProject, isCollapsed, onT
                 AI Agents
               </Link>
             </li>
+            <li>
+              <Link
+                href={`/workspaces/${workspace.id}/connector-agents`}
+                className={cn(
+                  "block px-3 py-2 rounded-lg text-sm truncate transition-colors",
+                  pathname.startsWith(`/workspaces/${workspace.id}/connector-agents`)
+                    ? "bg-sidebar-item-active text-white"
+                    : "text-sidebar-text hover:bg-sidebar-item-hover hover:text-sidebar-text-active"
+                )}
+              >
+                Connector Agents
+              </Link>
+            </li>
             {activeProjectId && (
               <>
                 <li>
