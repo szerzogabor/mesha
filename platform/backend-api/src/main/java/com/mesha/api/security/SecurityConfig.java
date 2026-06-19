@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -34,14 +35,19 @@ public class SecurityConfig {
 
     /**
      * Authenticates the opaque connector access token (issued via the Clerk-protected
-     * /api/connector/auth/login exchange) instead of a Clerk JWT. Must be ordered before
-     * the default chain so its narrower path match takes precedence.
+     * /api/connector/auth/login exchange) instead of a Clerk JWT. Matched by the
+     * "Bearer mcat_" prefix rather than a fixed path so any current or future endpoint
+     * called by the connector is routed here instead of the Clerk JWT chain. Must be
+     * ordered before the default chain so this narrower match takes precedence.
      */
     @Bean
     @Order(1)
     public SecurityFilterChain connectorFilterChain(HttpSecurity http, ConnectorAuthService connectorAuthService) throws Exception {
         return http
-            .securityMatcher("/api/connector/auth/validate")
+            .securityMatcher(request -> {
+                String auth = request.getHeader(HttpHeaders.AUTHORIZATION);
+                return auth != null && auth.startsWith("Bearer mcat_");
+            })
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

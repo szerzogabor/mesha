@@ -27,17 +27,27 @@ public class ConnectorTokenStore {
     }
 
     public synchronized void save(ConnectorCredentials credentials) {
+        Path tempFile = null;
         try {
             Path parent = credentialsPath.getParent();
             if (parent != null) {
                 Files.createDirectories(parent);
             }
-            Path tempFile = Files.createTempFile(parent, "credentials", ".tmp");
-            objectMapper.writeValue(tempFile.toFile(), credentials);
+            tempFile = Files.createTempFile(parent, "credentials", ".tmp");
             restrictToOwner(tempFile);
+            objectMapper.writeValue(tempFile.toFile(), credentials);
             Files.move(tempFile, credentialsPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            tempFile = null;
         } catch (IOException e) {
             throw new ConnectorAuthException("Failed to persist connector credentials", e);
+        } finally {
+            if (tempFile != null) {
+                try {
+                    Files.deleteIfExists(tempFile);
+                } catch (IOException ignored) {
+                    // best-effort cleanup; the primary failure is already surfaced above
+                }
+            }
         }
     }
 

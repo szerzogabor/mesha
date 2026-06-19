@@ -34,7 +34,7 @@ public class ConnectorAuthService {
      * Returns an access token guaranteed to be valid for at least {@link #REFRESH_SKEW_SECONDS},
      * transparently refreshing it first if needed.
      */
-    public String getValidAccessToken() {
+    public synchronized String getValidAccessToken() {
         ConnectorCredentials credentials = tokenStore.load()
                 .orElseThrow(() -> new ConnectorAuthException("Not authenticated. Run the `login` command first."));
 
