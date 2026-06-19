@@ -70,11 +70,13 @@ public class AgentDefinitionService {
         agent.setProviderType(req.providerType());
         agent.setSystemPrompt(req.systemPrompt());
         agent.setProviderParameters(req.providerParameters() != null ? req.providerParameters() : Map.of());
-        agent.setBlocksAgentName(req.blocksAgentName());
+        agent.setBlocksAgentName(normalizeBlocksAgentName(req.blocksAgentName()));
         agent.setActive(req.active() != null ? req.active() : true);
 
         agent = agentDefinitionRepository.save(agent);
-        log.info("Agent definition created agentId={} workspaceId={} name={}", agent.getId(), workspaceId, req.name());
+        log.info("Agent definition created agentId={} workspaceId={} name={} blocksAgentName={}",
+                agent.getId(), workspaceId, req.name(),
+                agent.getBlocksAgentName() != null ? agent.getBlocksAgentName() : "none");
         return agent;
     }
 
@@ -94,11 +96,13 @@ public class AgentDefinitionService {
         if (req.providerType() != null) agent.setProviderType(req.providerType());
         if (req.systemPrompt() != null) agent.setSystemPrompt(req.systemPrompt());
         if (req.providerParameters() != null) agent.setProviderParameters(req.providerParameters());
-        if (req.blocksAgentName() != null) agent.setBlocksAgentName(req.blocksAgentName().isBlank() ? null : req.blocksAgentName());
+        if (req.blocksAgentName() != null) agent.setBlocksAgentName(normalizeBlocksAgentName(req.blocksAgentName()));
         if (req.active() != null) agent.setActive(req.active());
 
         agent = agentDefinitionRepository.save(agent);
-        log.info("Agent definition updated agentId={} workspaceId={}", agentId, workspaceId);
+        log.info("Agent definition updated agentId={} workspaceId={} blocksAgentName={}",
+                agentId, workspaceId,
+                agent.getBlocksAgentName() != null ? agent.getBlocksAgentName() : "none");
         return agent;
     }
 
@@ -108,5 +112,10 @@ public class AgentDefinitionService {
         AgentDefinition agent = getById(workspaceId, agentId);
         agentDefinitionRepository.delete(agent);
         log.info("Agent definition deleted agentId={} workspaceId={}", agentId, workspaceId);
+    }
+
+    private String normalizeBlocksAgentName(String name) {
+        if (name == null || name.isBlank()) return null;
+        return name.startsWith("/") ? name.substring(1) : name;
     }
 }
