@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: mesha-connector
+  profiles:
+    active: ${APP_ENV:local}
+
+connector:
+  name: mesha-connector
+  environment: ${APP_ENV:local}
+
+server:
+  port: ${PORT:8081}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+
+# Structured JSON logging — format handled by logback-spring.xml
+logging:
+  level:
+    root: INFO
+    com.mesha: DEBUG
