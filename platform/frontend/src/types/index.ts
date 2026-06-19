@@ -120,6 +120,19 @@ export interface IssueAgentAssignment {
   assignedBy?: string;
 }
 
+export type ConnectorAgentStatus = "ONLINE" | "OFFLINE";
+
+export interface ConnectorAgent {
+  id: string;
+  hostname: string;
+  executorType: string;
+  connectorVersion: string;
+  capabilities: string[];
+  status: ConnectorAgentStatus;
+  registeredAt: string;
+  lastSeenAt?: string;
+}
+
 export interface Issue {
   id: string;
   projectId: string;

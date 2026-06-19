@@ -75,6 +75,8 @@ blocks:
 # When absent, the scheduler runs but sessions remain in CREATED state and
 # dispatch attempts fail gracefully with logged errors.
 mesha:
+  agents:
+    offline-timeout-seconds: ${CONNECTOR_AGENT_OFFLINE_TIMEOUT_SECONDS:90}
   blocks:
     api-url: ${BLOCKS_API_URL:}
     api-key: ${BLOCKS_API_KEY:}

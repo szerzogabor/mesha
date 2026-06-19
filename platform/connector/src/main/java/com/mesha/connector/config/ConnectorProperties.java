@@ -7,5 +7,7 @@ public record ConnectorProperties(
         String name,
         String environment,
         String backendUrl,
-        String credentialsPath
+        String credentialsPath,
+        String version,
+        String agentRegistrationPath
 ) {}

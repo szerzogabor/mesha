@@ -6,14 +6,17 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 import java.util.Arrays;
+import java.util.List;
 
 @SpringBootApplication
 @ConfigurationPropertiesScan
 public class ConnectorApplication {
 
+    private static final List<String> CLI_COMMANDS = List.of("login", "register", "heartbeat");
+
     public static void main(String[] args) {
         SpringApplication app = new SpringApplication(ConnectorApplication.class);
-        if (Arrays.asList(args).contains("login")) {
+        if (Arrays.stream(args).anyMatch(CLI_COMMANDS::contains)) {
             app.setWebApplicationType(WebApplicationType.NONE);
         }
         app.run(args);

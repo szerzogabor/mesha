@@ -21,7 +21,7 @@ class ConnectorTokenStoreTest {
 
     private ConnectorTokenStore newStore() {
         Path credentialsPath = tempDir.resolve("nested/credentials.json");
-        ConnectorProperties properties = new ConnectorProperties("mesha-connector", "test", "http://localhost:8080", credentialsPath.toString());
+        ConnectorProperties properties = new ConnectorProperties("mesha-connector", "test", "http://localhost:8080", credentialsPath.toString(), "0.0.1-SNAPSHOT", tempDir.resolve("nested/agent.json").toString());
         return new ConnectorTokenStore(properties, new ObjectMapper().findAndRegisterModules());
     }
 

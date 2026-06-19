@@ -9,6 +9,8 @@ connector:
   environment: ${APP_ENV:local}
   backend-url: ${CONNECTOR_BACKEND_URL:http://localhost:8080}
   credentials-path: ${CONNECTOR_CREDENTIALS_PATH:${user.home}/.mesha/connector/credentials.json}
+  version: ${CONNECTOR_VERSION:0.0.1-SNAPSHOT}
+  agent-registration-path: ${CONNECTOR_AGENT_REGISTRATION_PATH:${user.home}/.mesha/connector/agent.json}
 
 server:
   port: ${PORT:8081}
