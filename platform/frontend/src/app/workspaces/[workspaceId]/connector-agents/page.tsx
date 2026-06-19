@@ -65,7 +65,7 @@ function AgentCard({ agent }: { agent: ConnectorAgent }) {
         </div>
       )}
 
-      <div className="pt-1 border-t border-border-default text-xs text-text-tertiary">
+      <div className="pt-1 border-t border-border-default text-xs text-text-tertiary" suppressHydrationWarning>
         Last seen: {agent.lastSeenAt ? new Date(agent.lastSeenAt).toLocaleString() : "Never"}
       </div>
     </div>

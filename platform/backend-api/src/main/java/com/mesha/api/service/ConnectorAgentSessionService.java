@@ -4,8 +4,12 @@ import com.mesha.api.dto.CreateConnectorAgentSessionRequest;
 import com.mesha.api.model.ConnectorAgent;
 import com.mesha.api.model.ConnectorAgentSession;
 import com.mesha.api.model.ConnectorAgentSessionStatus;
+import com.mesha.api.model.Issue;
+import com.mesha.api.model.WorkspaceRole;
 import com.mesha.api.repository.ConnectorAgentRepository;
 import com.mesha.api.repository.ConnectorAgentSessionRepository;
+import com.mesha.api.repository.IssueRepository;
+import com.mesha.api.repository.WorkspaceMemberRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -42,15 +46,30 @@ public class ConnectorAgentSessionService {
 
     private final ConnectorAgentSessionRepository connectorAgentSessionRepository;
     private final ConnectorAgentRepository connectorAgentRepository;
+    private final IssueRepository issueRepository;
+    private final WorkspaceMemberRepository workspaceMemberRepository;
 
     public ConnectorAgentSessionService(ConnectorAgentSessionRepository connectorAgentSessionRepository,
-                                        ConnectorAgentRepository connectorAgentRepository) {
+                                        ConnectorAgentRepository connectorAgentRepository,
+                                        IssueRepository issueRepository,
+                                        WorkspaceMemberRepository workspaceMemberRepository) {
         this.connectorAgentSessionRepository = connectorAgentSessionRepository;
         this.connectorAgentRepository = connectorAgentRepository;
+        this.issueRepository = issueRepository;
+        this.workspaceMemberRepository = workspaceMemberRepository;
     }
 
     @Transactional
     public ConnectorAgentSession create(UUID userId, CreateConnectorAgentSessionRequest req) {
+        Issue issue = issueRepository.findById(req.issueId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found"));
+        UUID workspaceId = issue.getProject().getWorkspace().getId();
+        boolean isMember = workspaceMemberRepository.existsByWorkspaceIdAndUserIdAndRoleIn(
+            workspaceId, userId, List.of(WorkspaceRole.OWNER, WorkspaceRole.ADMIN, WorkspaceRole.DEVELOPER, WorkspaceRole.VIEWER));
+        if (!isMember) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found");
+        }
+
         ConnectorAgentSession session = new ConnectorAgentSession();
         session.setUserId(userId);
         session.setIssueId(req.issueId());
@@ -111,6 +130,9 @@ public class ConnectorAgentSessionService {
     public ConnectorAgentSession updateStatusByAgent(UUID userId, UUID sessionId, ConnectorAgentSessionStatus newStatus, String errorMessage) {
         ConnectorAgentSession session = connectorAgentSessionRepository.findByIdAndUserId(sessionId, userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
+        if (session.getAgentId() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Session is not claimed by any agent");
+        }
 
         transition(session, newStatus);
         stampTimestamps(session, newStatus);

@@ -17,7 +17,8 @@ import java.util.List;
  * {@code java -jar mesha-connector.jar register --executor-type=cli --capabilities=qwen,shell}.
  * Registers this machine/executor combination as a Mesha agent, persisting the agent's
  * identity locally so subsequent {@code register} or {@code heartbeat} calls reconnect to it
- * instead of creating a duplicate.
+ * instead of creating a duplicate. Hostname is auto-detected via reverse DNS lookup unless
+ * overridden with {@code --hostname=<name>}.
  */
 @Component
 public class RegisterCommandRunner implements ApplicationRunner {
@@ -36,7 +37,7 @@ public class RegisterCommandRunner implements ApplicationRunner {
 
         List<String> executorTypeValues = args.getOptionValues("executor-type");
         if (executorTypeValues == null || executorTypeValues.isEmpty()) {
-            System.err.println("Usage: register --executor-type=<type> [--capabilities=a,b,c]");
+            System.err.println("Usage: register --executor-type=<type> [--capabilities=a,b,c] [--hostname=<name>]");
             System.exit(1);
             return;
         }
@@ -44,18 +45,38 @@ public class RegisterCommandRunner implements ApplicationRunner {
         List<String> capabilityValues = args.getOptionValues("capabilities");
         List<String> capabilities = (capabilityValues == null || capabilityValues.isEmpty())
                 ? List.of()
-                : Arrays.asList(capabilityValues.get(0).split(","));
+                : capabilityValues.stream()
+                        .flatMap(val -> Arrays.stream(val.split(",")))
+                        .map(String::trim)
+                        .filter(val -> !val.isEmpty())
+                        .toList();
 
         try {
-            String hostname = InetAddress.getLocalHost().getHostName();
+            String hostname = resolveHostname(args);
             AgentResponse agent = agentRegistrationService.register(hostname, executorTypeValues.get(0), capabilities);
             System.out.println("Registered agent " + agent.id() + " (" + agent.hostname() + "/" + agent.executorType() + ")");
-        } catch (UnknownHostException e) {
-            System.err.println("Registration failed: could not determine local hostname (" + e.getMessage() + ")");
-            System.exit(1);
         } catch (AgentRegistrationException e) {
             System.err.println(e.getMessage());
             System.exit(1);
+        }
+    }
+
+    private String resolveHostname(ApplicationArguments args) {
+        List<String> hostnameValues = args.getOptionValues("hostname");
+        if (hostnameValues != null && !hostnameValues.isEmpty() && !hostnameValues.get(0).isBlank()) {
+            return hostnameValues.get(0);
+        }
+        try {
+            return InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException e) {
+            String envHostname = System.getenv("HOSTNAME");
+            if (envHostname == null || envHostname.isBlank()) {
+                envHostname = System.getenv("COMPUTERNAME");
+            }
+            if (envHostname != null && !envHostname.isBlank()) {
+                return envHostname;
+            }
+            return "unknown-host";
         }
     }
 }
