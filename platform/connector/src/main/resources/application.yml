@@ -11,6 +11,17 @@ connector:
   credentials-path: ${CONNECTOR_CREDENTIALS_PATH:${user.home}/.mesha/connector/credentials.json}
   version: ${CONNECTOR_VERSION:0.0.1-SNAPSHOT}
   agent-registration-path: ${CONNECTOR_AGENT_REGISTRATION_PATH:${user.home}/.mesha/connector/agent.json}
+  polling:
+    interval-ms: ${CONNECTOR_POLLING_INTERVAL_MS:5000}
+    backoff:
+      base-ms: ${CONNECTOR_POLLING_BACKOFF_BASE_MS:5000}
+      max-ms: ${CONNECTOR_POLLING_BACKOFF_MAX_MS:60000}
+      multiplier: ${CONNECTOR_POLLING_BACKOFF_MULTIPLIER:2.0}
+  workspace:
+    root: ${CONNECTOR_WORKSPACE_ROOT:${user.home}/mesha-workspaces}
+    cleanup-policy: ${CONNECTOR_WORKSPACE_CLEANUP_POLICY:NEVER}
+  context:
+    max-description-chars: ${CONNECTOR_CONTEXT_MAX_DESCRIPTION_CHARS:20000}
 
 server:
   port: ${PORT:8081}

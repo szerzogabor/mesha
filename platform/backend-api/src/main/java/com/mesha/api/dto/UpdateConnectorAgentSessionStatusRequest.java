@@ -5,5 +5,7 @@ import jakarta.validation.constraints.NotNull;
 
 public record UpdateConnectorAgentSessionStatusRequest(
     @NotNull ConnectorAgentSessionStatus status,
-    String errorMessage
+    String errorMessage,
+    String branchName,
+    String workspacePath
 ) {}

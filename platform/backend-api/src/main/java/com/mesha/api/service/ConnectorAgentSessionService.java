@@ -1,13 +1,19 @@
 package com.mesha.api.service;
 
+import com.mesha.api.dto.ConnectorAgentSessionContextDto;
 import com.mesha.api.dto.CreateConnectorAgentSessionRequest;
 import com.mesha.api.model.ConnectorAgent;
 import com.mesha.api.model.ConnectorAgentSession;
 import com.mesha.api.model.ConnectorAgentSessionStatus;
+import com.mesha.api.model.GitHubRepository;
 import com.mesha.api.model.Issue;
+import com.mesha.api.model.IssueLink;
 import com.mesha.api.model.WorkspaceRole;
+import com.mesha.api.repository.CommentRepository;
 import com.mesha.api.repository.ConnectorAgentRepository;
 import com.mesha.api.repository.ConnectorAgentSessionRepository;
+import com.mesha.api.repository.GitHubRepositoryRepository;
+import com.mesha.api.repository.IssueLinkRepository;
 import com.mesha.api.repository.IssueRepository;
 import com.mesha.api.repository.WorkspaceMemberRepository;
 import org.slf4j.Logger;
@@ -48,15 +54,24 @@ public class ConnectorAgentSessionService {
     private final ConnectorAgentRepository connectorAgentRepository;
     private final IssueRepository issueRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final CommentRepository commentRepository;
+    private final IssueLinkRepository issueLinkRepository;
+    private final GitHubRepositoryRepository gitHubRepositoryRepository;
 
     public ConnectorAgentSessionService(ConnectorAgentSessionRepository connectorAgentSessionRepository,
                                         ConnectorAgentRepository connectorAgentRepository,
                                         IssueRepository issueRepository,
-                                        WorkspaceMemberRepository workspaceMemberRepository) {
+                                        WorkspaceMemberRepository workspaceMemberRepository,
+                                        CommentRepository commentRepository,
+                                        IssueLinkRepository issueLinkRepository,
+                                        GitHubRepositoryRepository gitHubRepositoryRepository) {
         this.connectorAgentSessionRepository = connectorAgentSessionRepository;
         this.connectorAgentRepository = connectorAgentRepository;
         this.issueRepository = issueRepository;
         this.workspaceMemberRepository = workspaceMemberRepository;
+        this.commentRepository = commentRepository;
+        this.issueLinkRepository = issueLinkRepository;
+        this.gitHubRepositoryRepository = gitHubRepositoryRepository;
     }
 
     @Transactional
@@ -127,7 +142,8 @@ public class ConnectorAgentSessionService {
      * agent: the caller must own the agent currently assigned to the session.
      */
     @Transactional
-    public ConnectorAgentSession updateStatusByAgent(UUID userId, UUID sessionId, ConnectorAgentSessionStatus newStatus, String errorMessage) {
+    public ConnectorAgentSession updateStatusByAgent(UUID userId, UUID sessionId, ConnectorAgentSessionStatus newStatus,
+                                                       String errorMessage, String branchName, String workspacePath) {
         ConnectorAgentSession session = connectorAgentSessionRepository.findByIdAndUserId(sessionId, userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
         if (session.getAgentId() == null) {
@@ -138,6 +154,12 @@ public class ConnectorAgentSessionService {
         stampTimestamps(session, newStatus);
         if (errorMessage != null) {
             session.setErrorMessage(errorMessage);
+        }
+        if (branchName != null) {
+            session.setBranchName(branchName);
+        }
+        if (workspacePath != null) {
+            session.setWorkspacePath(workspacePath);
         }
         session = connectorAgentSessionRepository.save(session);
         log.info("connector_agent_session_status_updated sessionId={} status={}", sessionId, newStatus);
@@ -151,6 +173,57 @@ public class ConnectorAgentSessionService {
     public ConnectorAgentSession getOwned(UUID sessionId, UUID userId) {
         return connectorAgentSessionRepository.findByIdAndUserId(sessionId, userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
+    }
+
+    /**
+     * Assembles the issue content, comments, related issues, and target repository a connector
+     * needs to prepare a workspace and write a task brief for a claimed session.
+     */
+    @Transactional(readOnly = true)
+    public ConnectorAgentSessionContextDto getContext(UUID userId, UUID sessionId) {
+        ConnectorAgentSession session = getOwned(sessionId, userId);
+        if (session.getIssueId() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Session has no associated issue");
+        }
+        Issue issue = issueRepository.findById(session.getIssueId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found"));
+
+        String projectKey = issue.getProject() != null ? issue.getProject().getKey() : null;
+        Integer issueNumber = issue.getNumber();
+        String issueIdentifier = (projectKey != null && issueNumber != null) ? projectKey + "-" + issueNumber : null;
+
+        List<ConnectorAgentSessionContextDto.CommentSummary> comments = commentRepository.findAllByIssueId(issue.getId())
+            .stream()
+            .map(ConnectorAgentSessionContextDto.CommentSummary::from)
+            .toList();
+
+        List<ConnectorAgentSessionContextDto.RelatedIssueSummary> relatedIssues = issueLinkRepository.findAllByIssueId(issue.getId())
+            .stream()
+            .map((IssueLink link) -> ConnectorAgentSessionContextDto.RelatedIssueSummary.from(link, issue.getId()))
+            .toList();
+
+        ConnectorAgentSessionContextDto.RepositorySummary repository = null;
+        if (issue.getProject() != null && issue.getProject().getWorkspace() != null) {
+            UUID workspaceId = issue.getProject().getWorkspace().getId();
+            List<GitHubRepository> repos = gitHubRepositoryRepository.findAllByWorkspaceIdAndConnectedTrue(workspaceId);
+            if (!repos.isEmpty()) {
+                repository = ConnectorAgentSessionContextDto.RepositorySummary.from(repos.get(0));
+            }
+        }
+
+        return new ConnectorAgentSessionContextDto(
+            session.getId(),
+            issue.getId(),
+            issueIdentifier,
+            issue.getTitle(),
+            issue.getDescription(),
+            issue.getStatus(),
+            issue.getPriority() != null ? issue.getPriority().name() : null,
+            session.getInstructions(),
+            comments,
+            relatedIssues,
+            repository
+        );
     }
 
     private void transition(ConnectorAgentSession session, ConnectorAgentSessionStatus newStatus) {

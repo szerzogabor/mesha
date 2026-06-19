@@ -37,6 +37,12 @@ public class ConnectorAgentSession {
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
+    @Column(name = "branch_name")
+    private String branchName;
+
+    @Column(name = "workspace_path", columnDefinition = "TEXT")
+    private String workspacePath;
+
     @Column(name = "queued_at")
     private Instant queuedAt;
 
@@ -73,6 +79,10 @@ public class ConnectorAgentSession {
     public void setInstructions(String instructions) { this.instructions = instructions; }
     public String getErrorMessage() { return errorMessage; }
     public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+    public String getBranchName() { return branchName; }
+    public void setBranchName(String branchName) { this.branchName = branchName; }
+    public String getWorkspacePath() { return workspacePath; }
+    public void setWorkspacePath(String workspacePath) { this.workspacePath = workspacePath; }
     public Instant getQueuedAt() { return queuedAt; }
     public void setQueuedAt(Instant queuedAt) { this.queuedAt = queuedAt; }
     public Instant getClaimedAt() { return claimedAt; }

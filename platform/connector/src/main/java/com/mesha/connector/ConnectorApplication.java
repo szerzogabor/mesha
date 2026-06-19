@@ -12,7 +12,7 @@ import java.util.List;
 @ConfigurationPropertiesScan
 public class ConnectorApplication {
 
-    private static final List<String> CLI_COMMANDS = List.of("login", "register", "heartbeat");
+    private static final List<String> CLI_COMMANDS = List.of("login", "register", "heartbeat", "poll");
 
     public static void main(String[] args) {
         SpringApplication app = new SpringApplication(ConnectorApplication.class);
