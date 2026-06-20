@@ -82,6 +82,10 @@ mesha:
     api-key: ${BLOCKS_API_KEY:}
     agent-name: ${BLOCKS_AGENT_NAME:claude}
     dashboard-url: ${BLOCKS_DASHBOARD_URL:https://www.blocks.team}
+  qwen:
+    cli-path: ${QWEN_CLI_PATH:qwen}
+    working-directory: ${QWEN_WORKING_DIRECTORY:}
+    timeout-seconds: ${QWEN_TIMEOUT_SECONDS:1800}
   polling:
     interval-ms: 5000
     max-session-age-hours: 24
