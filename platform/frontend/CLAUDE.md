@@ -179,7 +179,12 @@ E2E tests with Playwright: `e2e/tests/`
 | `issue-management.spec.ts` | Create, edit, delete issues |
 | `kanban.spec.ts` | Drag-and-drop board |
 | `mobile.spec.ts` | Mobile viewport responsiveness |
+| `pwa.spec.ts` | Manifest, service worker, install/download experience, bottom nav |
 | `github-integration.spec.ts` | GitHub OAuth + repo sync |
+
+**Mobile / PWA:** Mesha is an installable Android PWA built into this same app.
+See [`platform/docs/MOBILE.md`](../docs/MOBILE.md) for the manifest, service
+worker, bottom navigation, touch-Kanban, and push-notification foundation.
 
 Run: `npm run test:e2e`
 Config: `playwright.config.ts`

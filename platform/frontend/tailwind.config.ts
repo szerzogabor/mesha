@@ -45,9 +45,14 @@ const config: Config = {
           from: { transform: "translateX(100%)" },
           to: { transform: "translateX(0)" },
         },
+        "slide-up": {
+          from: { transform: "translateY(100%)" },
+          to: { transform: "translateY(0)" },
+        },
       },
       animation: {
         "slide-in-right": "slide-in-right 0.2s ease-out",
+        "slide-up": "slide-up 0.22s ease-out",
       },
     },
   },

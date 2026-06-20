@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Mesha">
+  <rect width="512" height="512" rx="112" fill="#5e6ad2"/>
+  <path d="M133 399 V133 L256 287 L379 133 V399"
+        fill="none" stroke="#ffffff" stroke-width="44"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

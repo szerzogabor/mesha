@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { apiClient, setTokenGetter } from "@/lib/api-client";
 import { AuthSyncContext, AuthSyncStatus } from "@/lib/auth-sync";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { PwaProvider } from "@/context/PwaContext";
 import { logger } from "@/lib/logger";
 
 function ClerkTokenBridge({ onStatusChange }: { onStatusChange: (status: AuthSyncStatus) => void }) {
@@ -91,10 +92,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeProvider>
-      <AuthSyncContext.Provider value={authSyncStatus}>
-        <ClerkTokenBridge onStatusChange={setAuthSyncStatus} />
-        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-      </AuthSyncContext.Provider>
+      <PwaProvider>
+        <AuthSyncContext.Provider value={authSyncStatus}>
+          <ClerkTokenBridge onStatusChange={setAuthSyncStatus} />
+          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        </AuthSyncContext.Provider>
+      </PwaProvider>
     </ThemeProvider>
   );
 }

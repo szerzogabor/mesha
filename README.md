@@ -18,6 +18,7 @@ Full architecture documentation lives in [`platform/docs/architecture/`](./platf
 | [Infrastructure](./platform/docs/architecture/infrastructure.md) | Hosting, databases, Redis, scaling strategy |
 | [API Design](./platform/docs/architecture/api-design.md) | REST endpoints, WebSocket events, RBAC |
 | [Security](./platform/docs/architecture/security.md) | Auth, permissions, audit logging |
+| [Mobile & PWA](./platform/docs/MOBILE.md) | Installable Android PWA, mobile navigation, offline shell, push-notification foundation |
 
 ---
 
@@ -75,11 +76,27 @@ The frontend runs on `http://localhost:3000`, API on `http://localhost:8080`.
 
 ---
 
+## Install on Android (PWA)
+
+Mesha is an installable, Android-first Progressive Web App — **the same Next.js
+frontend**, made responsive and installable (no separate app, React Native, or
+Flutter).
+
+1. Open Mesha (or the **`/download`** page) in Chrome on Android.
+2. Tap **Install app**, or use Chrome's **⋮** menu → **Install app**.
+3. Mesha launches full-screen from your home screen.
+
+On desktop, visit `/download` and scan the QR code with your phone. Full details,
+testing, and the push-notification roadmap are in the
+[Mobile & PWA guide](./platform/docs/MOBILE.md).
+
+---
+
 ## Key Principles
 
 - **Human-in-the-loop** — AI never merges or deploys without explicit approval
 - **AI provider abstraction** — Blocks is a provider, not the core architecture
 - **Event-driven** — all AI tasks are asynchronous
-- **Mobile-first** — the same Next.js app works on desktop, tablet, and mobile
+- **Mobile-first** — the same Next.js app works on desktop, tablet, and mobile, and installs as an Android PWA
 
 this is a test task

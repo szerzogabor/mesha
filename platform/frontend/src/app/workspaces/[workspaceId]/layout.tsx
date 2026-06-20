@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { use } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { MobileNav } from "@/components/layout/MobileNav";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { useProjects, useCreateProject } from "@/hooks/useProjects";
@@ -50,7 +51,7 @@ export default function WorkspaceLayout({
         isCollapsed={isCollapsed}
         onToggle={toggle}
       />
-      <main className="flex-1 bg-bg-app min-w-0 overflow-y-auto">
+      <main className="flex-1 bg-bg-app min-w-0 overflow-y-auto pb-mobile-nav">
         {/* Mobile open button — only visible when sidebar is closed on small screens */}
         {isCollapsed && (
           <button
@@ -63,6 +64,8 @@ export default function WorkspaceLayout({
         )}
         {children}
       </main>
+
+      <MobileNav workspaceId={workspaceId} />
 
       <CreateProjectModal
         open={showCreate}
