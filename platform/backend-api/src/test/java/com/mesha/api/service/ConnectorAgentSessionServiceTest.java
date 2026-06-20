@@ -152,6 +152,52 @@ class ConnectorAgentSessionServiceTest {
         assertThat(updated.getStatus()).isEqualTo(ConnectorAgentSessionStatus.PREPARING);
     }
 
+    @Test
+    void reportPullRequest_persistsPrFields() {
+        ConnectorAgentSession session = sessionWithIssue();
+        when(connectorAgentSessionRepository.findByIdAndUserId(sessionId, userId)).thenReturn(Optional.of(session));
+        when(connectorAgentSessionRepository.save(any(ConnectorAgentSession.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ConnectorAgentSession updated = service.reportPullRequest(
+            userId, sessionId, "https://github.com/acme/widgets/pull/7", "Fix widget bug", 7);
+
+        assertThat(updated.getPrUrl()).isEqualTo("https://github.com/acme/widgets/pull/7");
+        assertThat(updated.getPrTitle()).isEqualTo("Fix widget bug");
+        assertThat(updated.getPrNumber()).isEqualTo(7);
+        assertThat(updated.getPrReportedAt()).isNotNull();
+    }
+
+    @Test
+    void reportPullRequest_sessionNotClaimed_throwsConflict() {
+        ConnectorAgentSession session = sessionWithIssue();
+        session.setAgentId(null);
+        when(connectorAgentSessionRepository.findByIdAndUserId(sessionId, userId)).thenReturn(Optional.of(session));
+
+        assertThatThrownBy(() -> service.reportPullRequest(userId, sessionId, "https://github.com/acme/widgets/pull/7", "Fix bug", 7))
+            .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void resumeFromWaitingForUser_transitionsToRunning() {
+        ConnectorAgentSession session = sessionWithIssue();
+        session.setStatus(ConnectorAgentSessionStatus.WAITING_FOR_USER);
+        when(connectorAgentSessionRepository.save(any(ConnectorAgentSession.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ConnectorAgentSession resumed = service.resumeFromWaitingForUser(session);
+
+        assertThat(resumed.getStatus()).isEqualTo(ConnectorAgentSessionStatus.RUNNING);
+    }
+
+    @Test
+    void resumeFromWaitingForUser_notWaiting_noOp() {
+        ConnectorAgentSession session = sessionWithIssue();
+        session.setStatus(ConnectorAgentSessionStatus.RUNNING);
+
+        ConnectorAgentSession result = service.resumeFromWaitingForUser(session);
+
+        assertThat(result.getStatus()).isEqualTo(ConnectorAgentSessionStatus.RUNNING);
+    }
+
     private static void setId(Object entity, UUID id) {
         try {
             var field = entity.getClass().getDeclaredField("id");

@@ -121,7 +121,8 @@ class SessionProcessorTest {
 
     private ClaimedSessionResponse claimedSession() {
         return new ClaimedSessionResponse(sessionId, UUID.randomUUID(), UUID.randomUUID(), "CLAIMED",
-                null, null, null, null, Instant.now(), Instant.now(), null, null, Instant.now(), Instant.now());
+                null, null, null, null, null, null, null, null,
+                Instant.now(), Instant.now(), null, null, Instant.now(), Instant.now());
     }
 
     private SessionContextResponse contextFor(String identifier, RepositorySummary repository) {

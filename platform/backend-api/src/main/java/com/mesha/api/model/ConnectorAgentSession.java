@@ -43,6 +43,18 @@ public class ConnectorAgentSession {
     @Column(name = "workspace_path", columnDefinition = "TEXT")
     private String workspacePath;
 
+    @Column(name = "pr_url")
+    private String prUrl;
+
+    @Column(name = "pr_number")
+    private Integer prNumber;
+
+    @Column(name = "pr_title")
+    private String prTitle;
+
+    @Column(name = "pr_reported_at")
+    private Instant prReportedAt;
+
     @Column(name = "queued_at")
     private Instant queuedAt;
 
@@ -83,6 +95,14 @@ public class ConnectorAgentSession {
     public void setBranchName(String branchName) { this.branchName = branchName; }
     public String getWorkspacePath() { return workspacePath; }
     public void setWorkspacePath(String workspacePath) { this.workspacePath = workspacePath; }
+    public String getPrUrl() { return prUrl; }
+    public void setPrUrl(String prUrl) { this.prUrl = prUrl; }
+    public Integer getPrNumber() { return prNumber; }
+    public void setPrNumber(Integer prNumber) { this.prNumber = prNumber; }
+    public String getPrTitle() { return prTitle; }
+    public void setPrTitle(String prTitle) { this.prTitle = prTitle; }
+    public Instant getPrReportedAt() { return prReportedAt; }
+    public void setPrReportedAt(Instant prReportedAt) { this.prReportedAt = prReportedAt; }
     public Instant getQueuedAt() { return queuedAt; }
     public void setQueuedAt(Instant queuedAt) { this.queuedAt = queuedAt; }
     public Instant getClaimedAt() { return claimedAt; }
