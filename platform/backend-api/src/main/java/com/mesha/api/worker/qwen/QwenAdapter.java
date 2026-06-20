@@ -7,6 +7,7 @@ import com.mesha.api.worker.orchestration.SessionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.stereotype.Component;
 
 import java.nio.file.Path;
@@ -30,7 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * create/poll contract every other {@link ProviderAdapter} follows.
  */
 @Component
-public class QwenAdapter implements ProviderAdapter {
+public class QwenAdapter implements ProviderAdapter, DisposableBean {
 
     private static final Logger log = LoggerFactory.getLogger(QwenAdapter.class);
     private static final int STDERR_TAIL_LINES = 20;
@@ -100,10 +101,11 @@ public class QwenAdapter implements ProviderAdapter {
             ProcessExecutionResult result = execution.future().get();
             return finish(providerSessionId, messages, mapResult(providerSessionId, result));
         } catch (ExecutionException e) {
-            workflowTracer.capturePollingFailure(providerName(), providerSessionId, 1, e.getCause());
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            workflowTracer.capturePollingFailure(providerName(), providerSessionId, 1, cause);
             return finish(providerSessionId, messages, new SessionResult(providerSessionId,
                     SessionResult.SessionStatus.FAILED,
-                    "Qwen process execution failed: " + e.getCause().getMessage(), null, null, null));
+                    "Qwen process execution failed: " + cause.getMessage(), null, null, null));
         } catch (Exception e) {
             workflowTracer.capturePollingFailure(providerName(), providerSessionId, 1, e);
             return finish(providerSessionId, messages, new SessionResult(providerSessionId,
@@ -204,4 +206,17 @@ public class QwenAdapter implements ProviderAdapter {
     }
 
     private record RunningExecution(Future<ProcessExecutionResult> future, AtomicInteger offset) {}
+
+    @Override
+    public void destroy() {
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                executorService.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executorService.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
 }

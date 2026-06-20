@@ -5,10 +5,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -30,7 +31,7 @@ public class QwenExecutionMonitor implements ProcessExecutionListener {
     }
 
     public void register(String executionId) {
-        executions.put(executionId, new Execution());
+        executions.putIfAbsent(executionId, new Execution());
     }
 
     @Override
@@ -71,23 +72,30 @@ public class QwenExecutionMonitor implements ProcessExecutionListener {
             return List.of();
         }
         List<String> lines = execution.stdoutLines;
-        int from = offset.get();
-        if (from >= lines.size()) {
-            return List.of();
+        synchronized (lines) {
+            int from = offset.get();
+            if (from >= lines.size()) {
+                return List.of();
+            }
+            List<String> newLines = List.copyOf(lines.subList(from, lines.size()));
+            offset.set(lines.size());
+            return newLines;
         }
-        List<String> newLines = List.copyOf(lines.subList(from, lines.size()));
-        offset.set(lines.size());
-        return newLines;
     }
 
     public String stderrTail(String executionId, int maxLines) {
         Execution execution = executions.get(executionId);
-        if (execution == null || execution.stderrLines.isEmpty()) {
+        if (execution == null) {
             return "";
         }
         List<String> lines = execution.stderrLines;
-        int from = Math.max(0, lines.size() - maxLines);
-        return String.join("\n", lines.subList(from, lines.size()));
+        synchronized (lines) {
+            if (lines.isEmpty()) {
+                return "";
+            }
+            int from = Math.max(0, lines.size() - maxLines);
+            return String.join("\n", lines.subList(from, lines.size()));
+        }
     }
 
     public void dispose(String executionId) {
@@ -99,7 +107,7 @@ public class QwenExecutionMonitor implements ProcessExecutionListener {
     }
 
     private static final class Execution {
-        final List<String> stdoutLines = new CopyOnWriteArrayList<>();
-        final List<String> stderrLines = new CopyOnWriteArrayList<>();
+        final List<String> stdoutLines = Collections.synchronizedList(new ArrayList<>());
+        final List<String> stderrLines = Collections.synchronizedList(new ArrayList<>());
     }
 }

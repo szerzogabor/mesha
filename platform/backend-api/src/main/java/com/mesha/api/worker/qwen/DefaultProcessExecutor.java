@@ -27,11 +27,18 @@ public class DefaultProcessExecutor implements ProcessExecutor {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultProcessExecutor.class);
 
+    private final ExecutorService streamReaders = Executors.newCachedThreadPool(r -> {
+        Thread t = new Thread(r);
+        t.setDaemon(true);
+        t.setName("qwen-stream-reader");
+        return t;
+    });
+
     @Override
     public ProcessExecutionResult execute(ProcessExecutionRequest request, ProcessExecutionListener listener) {
         String executionId = request.executionId() != null ? request.executionId() : UUID.randomUUID().toString();
         ProcessExecutionListener safeListener = listener != null ? listener : new ProcessExecutionListener() {};
-        ExecutorService streamReaders = Executors.newFixedThreadPool(2);
+        Process process = null;
 
         try {
             ProcessBuilder builder = new ProcessBuilder(request.command());
@@ -43,20 +50,25 @@ public class DefaultProcessExecutor implements ProcessExecutor {
             }
 
             safeListener.onStart(executionId, request.command());
-            Process process = builder.start();
-
-            if (request.stdin() != null) {
-                writeStdin(process.getOutputStream(), request.stdin());
-            } else {
-                closeQuietly(process.getOutputStream());
-            }
+            process = builder.start();
 
             StringBuilder stdout = new StringBuilder();
             StringBuilder stderr = new StringBuilder();
+            final Process finalProcess = process;
+
+            // Start the stream readers before writing stdin, so a process that
+            // writes to stdout/stderr before consuming all of stdin can't deadlock.
             Future<?> stdoutFuture = streamReaders.submit(() ->
-                    drainStream(process.getInputStream(), stdout, line -> safeListener.onStdout(executionId, line)));
+                    drainStream(finalProcess.getInputStream(), stdout, line -> safeListener.onStdout(executionId, line)));
             Future<?> stderrFuture = streamReaders.submit(() ->
-                    drainStream(process.getErrorStream(), stderr, line -> safeListener.onStderr(executionId, line)));
+                    drainStream(finalProcess.getErrorStream(), stderr, line -> safeListener.onStderr(executionId, line)));
+
+            Future<?> stdinFuture = null;
+            if (request.stdin() != null) {
+                stdinFuture = streamReaders.submit(() -> writeStdin(finalProcess.getOutputStream(), request.stdin()));
+            } else {
+                closeQuietly(process.getOutputStream());
+            }
 
             boolean finished = request.timeout() != null
                     ? process.waitFor(request.timeout().toMillis(), TimeUnit.MILLISECONDS)
@@ -66,12 +78,14 @@ public class DefaultProcessExecutor implements ProcessExecutor {
                 process.destroyForcibly();
                 awaitQuietly(stdoutFuture);
                 awaitQuietly(stderrFuture);
+                awaitQuietly(stdinFuture);
                 log.warn("qwen_process_timeout execution_id={} command={}", executionId, request.command());
                 return new ProcessExecutionResult(-1, stdout.toString(), stderr.toString(), true);
             }
 
             awaitQuietly(stdoutFuture);
             awaitQuietly(stderrFuture);
+            awaitQuietly(stdinFuture);
 
             int exitCode = process.exitValue();
             safeListener.onExit(executionId, exitCode);
@@ -85,7 +99,9 @@ public class DefaultProcessExecutor implements ProcessExecutor {
             safeListener.onFailure(executionId, e);
             throw new ProcessExecutionException("Process execution interrupted: " + request.command(), e);
         } finally {
-            streamReaders.shutdownNow();
+            if (process != null && process.isAlive()) {
+                process.destroyForcibly();
+            }
         }
     }
 
@@ -123,8 +139,14 @@ public class DefaultProcessExecutor implements ProcessExecutor {
     }
 
     private void awaitQuietly(Future<?> future) {
+        if (future == null) {
+            return;
+        }
         try {
             future.get(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.debug("qwen_stream_drain_interrupted", e);
         } catch (Exception e) {
             log.debug("qwen_stream_drain_incomplete error={}", e.getMessage());
         }
