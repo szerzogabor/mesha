@@ -29,7 +29,7 @@ class QwenAdapterTest {
     private SessionRequest minimalRequest() {
         return new SessionRequest("issue-1", "MES-1", "Fix bug", "Some details", "todo", "high",
                 "assignee", List.of("bug"), "2024-01-01", "2024-01-02", "ws", "proj", "repo",
-                "https://github.com/org/repo", "main", List.of(), "api-key", null, null, null, null, null);
+                "https://github.com/org/repo", "main", List.of(), "api-key", null, null, null, null, null, null);
     }
 
     @Test
