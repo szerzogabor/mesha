@@ -198,6 +198,37 @@ class BlocksAdapterTest {
         assertThat(captured.agentName()).isEqualTo("claude");
     }
 
+    @Test
+    void createSession_fallsBackToDefaultWhenBlocksAgentNameIsInvalid() {
+        // Regression: if blocksAgentName contains an invalid value (e.g. stored before
+        // validation was added), it must NOT be forwarded to the Blocks API.
+        doReturn(new BlocksAdapter.CreateSessionResponse("sess-id", "pending", null))
+                .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
+        doReturn(requestBodySpec).when(requestBodySpec).body(bodyCaptor.capture());
+
+        var request = new SessionRequest(
+                "uuid-1", null, "Title", "Desc",
+                null, null, null, List.of(),
+                null, null,
+                null, null, null, null, null,
+                List.of(),
+                "test-key",
+                null, null, "claude-opus", null,
+                List.of(), null
+        );
+        adapter.createSession(request);
+
+        BlocksAdapter.CreateSessionRequest captured = (BlocksAdapter.CreateSessionRequest) bodyCaptor.getValue();
+        assertThat(captured.agentName()).isEqualTo("claude");
+        assertThat(BlocksAdapter.VALID_AGENT_NAMES).doesNotContain("claude-opus");
+    }
+
+    @Test
+    void validAgentNames_containsAllKnownBlocksAgents() {
+        assertThat(BlocksAdapter.VALID_AGENT_NAMES)
+                .containsExactlyInAnyOrder("claude", "codex", "gemini", "opencode", "cursor", "kimi", "sisyphus");
+    }
+
     // ---- buildMessage / issueIdentifier ----
 
     @Test

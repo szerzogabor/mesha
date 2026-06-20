@@ -17,6 +17,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -28,6 +29,10 @@ import java.util.stream.Collectors;
 public class BlocksAdapter implements ProviderAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(BlocksAdapter.class);
+
+    static final Set<String> VALID_AGENT_NAMES = Set.of(
+            "claude", "codex", "gemini", "opencode", "cursor", "kimi", "sisyphus"
+    );
 
     private final WorkflowTracer workflowTracer;
     private final RestClient restClient;
@@ -66,9 +71,7 @@ public class BlocksAdapter implements ProviderAdapter {
                 request.repositoryUrl() != null ? request.repositoryUrl() : "none");
 
         try {
-            String effectiveAgentName = (request.blocksAgentName() != null && !request.blocksAgentName().isBlank())
-                    ? request.blocksAgentName()
-                    : agentName;
+            String effectiveAgentName = resolveAgentName(request.blocksAgentName());
             var body = new CreateSessionRequest(effectiveAgentName, message);
 
             var response = restClient.post()
@@ -371,6 +374,17 @@ public class BlocksAdapter implements ProviderAdapter {
         }
 
         return bodyContent;
+    }
+
+    private String resolveAgentName(String blocksAgentName) {
+        if (blocksAgentName != null && !blocksAgentName.isBlank()) {
+            if (VALID_AGENT_NAMES.contains(blocksAgentName)) {
+                return blocksAgentName;
+            }
+            log.warn("session_agent_name_invalid configured={} fallback={} valid={}",
+                    blocksAgentName, agentName, VALID_AGENT_NAMES);
+        }
+        return agentName;
     }
 
     private void appendField(StringBuilder sb, String label, String value) {

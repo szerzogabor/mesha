@@ -13,6 +13,6 @@ public record UpdateAgentDefinitionRequest(
     AgentProviderType providerType,
     String systemPrompt,
     Map<String, Object> providerParameters,
-    @Size(max = 100) String blocksAgentName,
+    @Size(max = 100) @Pattern(regexp = "^(claude|codex|gemini|opencode|cursor|kimi|sisyphus)?$", message = "Must be a valid Blocks agent name: claude, codex, gemini, opencode, cursor, kimi, or sisyphus") String blocksAgentName,
     Boolean active
 ) {}
