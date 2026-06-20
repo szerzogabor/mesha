@@ -58,6 +58,7 @@ class SessionProcessorTest {
         verify(client).updateStatus(sessionId, ConnectorSessionStatus.RUNNING, null, "feature/MES-123", tempDir.toString());
         verify(client, never()).updateStatus(eq(sessionId), eq(ConnectorSessionStatus.FAILED), any(), any(), any());
         assertThat(Files.readString(tempDir.resolve("task.md"))).isEqualTo("# task brief");
+        verify(workspaceManager, never()).cleanup(any(), anyBoolean());
     }
 
     @Test
@@ -70,6 +71,7 @@ class SessionProcessorTest {
 
         verify(client).updateStatus(eq(sessionId), eq(ConnectorSessionStatus.FAILED), contains("No connected repository"), isNull(), isNull());
         verify(gitWorkspacePreparer, never()).prepare(any(), any(), any(), any());
+        verify(workspaceManager).cleanup("MES-123", false);
     }
 
     @Test
@@ -86,6 +88,7 @@ class SessionProcessorTest {
 
         verify(client).updateStatus(sessionId, ConnectorSessionStatus.FAILED, "clone failed", null, null);
         verify(client, never()).updateStatus(eq(sessionId), eq(ConnectorSessionStatus.RUNNING), any(), any(), any());
+        verify(workspaceManager).cleanup("MES-123", false);
     }
 
     @Test
@@ -96,6 +99,7 @@ class SessionProcessorTest {
         processor.process(claimed);
 
         verify(client).updateStatus(sessionId, ConnectorSessionStatus.FAILED, "backend unreachable", null, null);
+        verify(workspaceManager, never()).cleanup(any(), anyBoolean());
     }
 
     @Test

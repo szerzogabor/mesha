@@ -42,11 +42,12 @@ public class SessionProcessor {
 
     public void process(ClaimedSessionResponse claimed) {
         UUID sessionId = claimed.id();
+        String identifier = null;
         try {
             client.updateStatus(sessionId, ConnectorSessionStatus.PREPARING, null, null, null);
 
             SessionContextResponse context = client.fetchContext(sessionId);
-            String identifier = context.issueIdentifier() != null ? context.issueIdentifier() : sessionId.toString();
+            identifier = context.issueIdentifier() != null ? context.issueIdentifier() : sessionId.toString();
 
             SessionContextResponse.RepositorySummary repository = context.repository();
             if (repository == null) {
@@ -64,6 +65,11 @@ public class SessionProcessor {
         } catch (Exception e) {
             log.error("session_preparation_failed sessionId={} error={}", sessionId, e.getMessage(), e);
             safelyFail(sessionId, e);
+            // The workspace, if one was created, won't be used by a session that failed to
+            // prepare — apply the cleanup policy now rather than leaving it for a run that never starts.
+            if (identifier != null) {
+                workspaceManager.cleanup(identifier, false);
+            }
         }
     }
 
