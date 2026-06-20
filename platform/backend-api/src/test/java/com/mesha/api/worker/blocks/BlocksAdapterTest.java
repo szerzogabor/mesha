@@ -136,6 +136,68 @@ class BlocksAdapterTest {
         assertThat(MDC.get("provider")).isNull();
     }
 
+    // ---- agent_name resolution ----
+
+    @Test
+    void createSession_usesDefaultAgentNameWhenBlocksAgentNameAndAgentLlmAreNull() {
+        doReturn(new BlocksAdapter.CreateSessionResponse("sess-id", "pending", null))
+                .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
+        doReturn(requestBodySpec).when(requestBodySpec).body(bodyCaptor.capture());
+
+        adapter.createSession(minimalRequest("uuid-1", null, "Title", "Desc"));
+
+        BlocksAdapter.CreateSessionRequest captured = (BlocksAdapter.CreateSessionRequest) bodyCaptor.getValue();
+        assertThat(captured.agentName()).isEqualTo("claude");
+    }
+
+    @Test
+    void createSession_usesBlocksAgentNameWhenSet() {
+        doReturn(new BlocksAdapter.CreateSessionResponse("sess-id", "pending", null))
+                .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
+        doReturn(requestBodySpec).when(requestBodySpec).body(bodyCaptor.capture());
+
+        var request = new SessionRequest(
+                "uuid-1", null, "Title", "Desc",
+                null, null, null, List.of(),
+                null, null,
+                null, null, null, null, null,
+                List.of(),
+                "test-key",
+                null, null, "codex", null,
+                List.of(), null
+        );
+        adapter.createSession(request);
+
+        BlocksAdapter.CreateSessionRequest captured = (BlocksAdapter.CreateSessionRequest) bodyCaptor.getValue();
+        assertThat(captured.agentName()).isEqualTo("codex");
+    }
+
+    @Test
+    void createSession_doesNotUseAgentLlmAsAgentName() {
+        // Regression test for TP-83: agentLlm (e.g. "claude-haiku") is an LLM model
+        // identifier — it must NOT be passed as agent_name to the Blocks API.
+        // Valid agent_name values are: claude, codex, gemini, opencode, cursor, kimi, sisyphus.
+        doReturn(new BlocksAdapter.CreateSessionResponse("sess-id", "pending", null))
+                .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
+        doReturn(requestBodySpec).when(requestBodySpec).body(bodyCaptor.capture());
+
+        var request = new SessionRequest(
+                "uuid-1", null, "Title", "Desc",
+                null, null, null, List.of(),
+                null, null,
+                null, null, null, null, null,
+                List.of(),
+                "test-key",
+                null, "claude-haiku", null, null,
+                List.of(), null
+        );
+        adapter.createSession(request);
+
+        BlocksAdapter.CreateSessionRequest captured = (BlocksAdapter.CreateSessionRequest) bodyCaptor.getValue();
+        assertThat(captured.agentName()).isNotEqualTo("claude-haiku");
+        assertThat(captured.agentName()).isEqualTo("claude");
+    }
+
     // ---- buildMessage / issueIdentifier ----
 
     @Test
