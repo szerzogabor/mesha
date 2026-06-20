@@ -21,9 +21,13 @@ Workspace
               ├── Comments (threaded)
               ├── ActivityEvents (full changelog)
               ├── IssueLinks (relationships between issues)
-              └── BlocksSessions (AI execution lifecycle)
-                    ├── BlocksMessages (chat history)
-                    └── GitHubPullRequest (outcome)
+              ├── BlocksSessions (AI execution lifecycle)
+              │     ├── BlocksMessages (chat history)
+              │     └── GitHubPullRequest (outcome)
+              └── ConnectorAgentSessions (self-hosted connector execution lifecycle)
+                    └── ConnectorAgentSessionMessages (follow-up chat, claim-and-deliver)
+
+ConnectorAgent (registered self-hosted executor, polls for queued ConnectorAgentSessions)
 ```
 
 ---
@@ -35,6 +39,13 @@ Workspace
 CREATED → PLANNING → EXECUTING → WAITING_REVIEW → PR_OPENED → DONE
                                                   ↓
                                                FAILED / CANCELED
+```
+
+**ConnectorAgentSessionStatus** (ConnectorAgentSession lifecycle — self-hosted connector polling):
+```
+CREATED → QUEUED → CLAIMED → PREPARING → RUNNING ⇄ WAITING_FOR_USER → COMPLETED
+                                                                     ↓
+                                                              FAILED / CANCELLED
 ```
 
 **IssuePriority:** `LOW`, `MEDIUM`, `HIGH`, `URGENT`
@@ -76,6 +87,9 @@ Current highest: **V32** (`V32__deduplicate_and_unique_github_prs.sql`)
 | V25 | Agent assignee type on issues |
 | V28 | Ticket rules (conditions + restrictions) |
 | V32 | Deduplicate GitHub PRs |
+| V43–V44 | ConnectorAgentSessions (self-hosted connector execution tracking, workspace path) |
+| V45 | ConnectorAgentSessionMessages (follow-up chat, claim-and-deliver) |
+| V46 | Pull request fields on ConnectorAgentSessions (connector-reported, not webhook-synced) |
 
 ---
 
@@ -110,6 +124,13 @@ All endpoints require `Authorization: Bearer <clerk-jwt>` **except** `/api/webho
 | TicketRuleController | `GET/POST /api/projects/{projectId}/ticket-rules` |
 | IssueLinkController | `GET/POST /api/issues/{issueId}/links` |
 | AuthController | `POST /api/auth/sync` (sync Clerk user) |
+| AgentSessionController | `GET/POST /api/agent-sessions` — web app: create/list connector agent sessions |
+| | `POST /api/agent-sessions/{sessionId}/enqueue`, `/cancel` |
+| | `GET/POST /api/agent-sessions/{sessionId}/messages` — follow-up chat |
+| ConnectorAgentSessionController | `POST /api/connector/agent-sessions/claim` — connector: claim next queued session (connector token auth) |
+| | `POST /api/connector/agent-sessions/{sessionId}/status`, `GET .../context` |
+| | `GET /api/connector/agent-sessions/{sessionId}/messages` — claim-and-deliver pending follow-ups |
+| | `POST /api/connector/agent-sessions/{sessionId}/pull-request` — report opened PR |
 
 **Pagination:** `PagedResponse<T>` — `{ content, page, size, totalElements, totalPages, last }`
 

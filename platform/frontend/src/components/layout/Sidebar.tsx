@@ -177,6 +177,19 @@ export function Sidebar({ workspace, projects, onCreateProject, isCollapsed, onT
                 Connector Agents
               </Link>
             </li>
+            <li>
+              <Link
+                href={`/workspaces/${workspace.id}/agent-sessions`}
+                className={cn(
+                  "block px-3 py-2 rounded-lg text-sm truncate transition-colors",
+                  pathname.startsWith(`/workspaces/${workspace.id}/agent-sessions`)
+                    ? "bg-sidebar-item-active text-white"
+                    : "text-sidebar-text hover:bg-sidebar-item-hover hover:text-sidebar-text-active"
+                )}
+              >
+                Agent Sessions
+              </Link>
+            </li>
             {activeProjectId && (
               <>
                 <li>

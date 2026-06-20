@@ -133,6 +133,48 @@ export interface ConnectorAgent {
   lastSeenAt?: string;
 }
 
+export type ConnectorAgentSessionStatus =
+  | "CREATED"
+  | "QUEUED"
+  | "CLAIMED"
+  | "PREPARING"
+  | "RUNNING"
+  | "WAITING_FOR_USER"
+  | "COMPLETED"
+  | "FAILED"
+  | "CANCELLED";
+
+export interface ConnectorAgentSession {
+  id: string;
+  agentId?: string;
+  issueId?: string;
+  issueIdentifier?: string;
+  issueTitle?: string;
+  status: ConnectorAgentSessionStatus;
+  instructions?: string;
+  errorMessage?: string;
+  branchName?: string;
+  workspacePath?: string;
+  prUrl?: string;
+  prNumber?: number;
+  prTitle?: string;
+  prReportedAt?: string;
+  queuedAt?: string;
+  claimedAt?: string;
+  startedAt?: string;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ConnectorAgentSessionMessage {
+  id: string;
+  sessionId: string;
+  role: string;
+  content: string;
+  createdAt: string;
+}
+
 export interface Issue {
   id: string;
   projectId: string;

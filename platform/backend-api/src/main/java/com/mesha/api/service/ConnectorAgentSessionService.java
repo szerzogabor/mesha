@@ -1,6 +1,7 @@
 package com.mesha.api.service;
 
 import com.mesha.api.dto.ConnectorAgentSessionContextDto;
+import com.mesha.api.dto.ConnectorAgentSessionDto;
 import com.mesha.api.dto.CreateConnectorAgentSessionRequest;
 import com.mesha.api.model.ConnectorAgent;
 import com.mesha.api.model.ConnectorAgentSession;
@@ -28,9 +29,11 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static com.mesha.api.model.ConnectorAgentSessionStatus.*;
 
@@ -173,6 +176,55 @@ public class ConnectorAgentSessionService {
     public ConnectorAgentSession getOwned(UUID sessionId, UUID userId) {
         return connectorAgentSessionRepository.findByIdAndUserId(sessionId, userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
+    }
+
+    public ConnectorAgentSessionDto toDto(ConnectorAgentSession session) {
+        Issue issue = session.getIssueId() != null
+            ? issueRepository.findById(session.getIssueId()).orElse(null)
+            : null;
+        return ConnectorAgentSessionDto.from(session, issue);
+    }
+
+    public List<ConnectorAgentSessionDto> toDtos(List<ConnectorAgentSession> sessions) {
+        Set<UUID> issueIds = sessions.stream()
+            .map(ConnectorAgentSession::getIssueId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+        Map<UUID, Issue> issuesById = issueRepository.findAllById(issueIds).stream()
+            .collect(Collectors.toMap(Issue::getId, issue -> issue));
+        return sessions.stream()
+            .map(s -> ConnectorAgentSessionDto.from(s, issuesById.get(s.getIssueId())))
+            .toList();
+    }
+
+    /** Called when a follow-up message arrives for a session that paused waiting on the user. */
+    @Transactional
+    public ConnectorAgentSession resumeFromWaitingForUser(ConnectorAgentSession session) {
+        if (session.getStatus() == WAITING_FOR_USER) {
+            transition(session, RUNNING);
+            session = connectorAgentSessionRepository.save(session);
+            log.info("connector_agent_session_resumed sessionId={}", session.getId());
+        }
+        return session;
+    }
+
+    /**
+     * Records the pull request a connector opened for a claimed session. Reported directly by
+     * the connector (it pushed the branch and opened the PR itself), not synced via GitHub webhooks.
+     */
+    @Transactional
+    public ConnectorAgentSession reportPullRequest(UUID userId, UUID sessionId, String githubUrl, String title, Integer number) {
+        ConnectorAgentSession session = getOwned(sessionId, userId);
+        if (session.getAgentId() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Session is not claimed by any agent");
+        }
+        session.setPrUrl(githubUrl);
+        session.setPrTitle(title);
+        session.setPrNumber(number);
+        session.setPrReportedAt(Instant.now());
+        session = connectorAgentSessionRepository.save(session);
+        log.info("connector_agent_session_pr_reported sessionId={} prUrl={}", sessionId, githubUrl);
+        return session;
     }
 
     /**
