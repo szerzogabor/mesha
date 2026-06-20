@@ -51,6 +51,8 @@ mesha:
       base-ms: 5000
       max-ms: 300000
       multiplier: 2.0
+  pr-sync:
+    interval-ms: ${PR_SYNC_INTERVAL_MS:300000}
 
 blocks:
   webhook:
