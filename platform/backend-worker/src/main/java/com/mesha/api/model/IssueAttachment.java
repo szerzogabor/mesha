@@ -30,7 +30,6 @@ public class IssueAttachment {
     @Column(name = "file_size", nullable = false)
     private long fileSize;
 
-    @Lob
     @Column(name = "content", nullable = false)
     private byte[] content;
 
