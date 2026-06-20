@@ -111,8 +111,12 @@ export function MobileNav({ workspaceId }: MobileNavProps) {
       href: `${base}/settings`,
       Icon: SettingsIcon,
       active:
-        pathname.startsWith(`${base}/settings`) ||
-        pathname.includes("/agents") ||
+        // Matches the settings hub AND project-level settings
+        // (/projects/[id]/settings/...), plus AI/connector agents and GitHub —
+        // note "agents" (no leading slash) so /connector-agents matches too,
+        // while /agent-sessions (Sessions tab) does not contain "agents".
+        pathname.includes("/settings") ||
+        pathname.includes("agents") ||
         pathname.includes("/github"),
     },
   ];
