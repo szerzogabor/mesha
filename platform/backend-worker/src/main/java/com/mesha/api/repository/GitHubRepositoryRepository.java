@@ -11,6 +11,7 @@ public interface GitHubRepositoryRepository extends JpaRepository<GitHubReposito
     List<GitHubRepository> findAllByWorkspaceId(UUID workspaceId);
     List<GitHubRepository> findAllByWorkspaceIdAndConnectedTrue(UUID workspaceId);
     List<GitHubRepository> findAllByInstallationId(UUID installationId);
+    List<GitHubRepository> findAllByConnectedTrue();
     Optional<GitHubRepository> findByFullName(String fullName);
     Optional<GitHubRepository> findByGithubRepoId(Long githubRepoId);
     boolean existsByFullName(String fullName);
