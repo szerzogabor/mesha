@@ -407,6 +407,16 @@ export interface TicketRule {
   updatedAt: string;
 }
 
+export interface IssueAttachment {
+  id: string;
+  issueId: string;
+  fileName: string;
+  contentType: string;
+  fileSize: number;
+  uploadedByName?: string;
+  createdAt: string;
+}
+
 export type AutomationTriggerType =
   | "PR_OPENED"
   | "PR_MERGED"

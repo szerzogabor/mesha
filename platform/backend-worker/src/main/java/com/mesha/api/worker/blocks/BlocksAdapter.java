@@ -335,6 +335,15 @@ public class BlocksAdapter implements ProviderAdapter {
             }
         }
 
+        List<String> attachments = request.attachmentDescriptions();
+        if (attachments != null && !attachments.isEmpty()) {
+            sb.append("\nAttached Files\n\n");
+            for (int i = 0; i < attachments.size(); i++) {
+                sb.append(i + 1).append(". ").append(attachments.get(i)).append("\n");
+            }
+            sb.append("\n");
+        }
+
         if (request.instructions() != null && !request.instructions().isBlank()) {
             sb.append("\nAdditional Instructions\n\n").append(request.instructions()).append("\n");
         }

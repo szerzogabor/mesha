@@ -63,6 +63,43 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function requestMultipart<T>(path: string, formData: FormData): Promise<T> {
+  const token = await getAuthToken();
+  const correlationId = generateCorrelationId();
+
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  injectTraceHeaders(headers, correlationId);
+
+  const startMs = Date.now();
+  logger.api.request("POST", path, { correlationId });
+
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+  const durationMs = Date.now() - startMs;
+
+  if (!res.ok) {
+    let errorBody: string;
+    try {
+      const json = await res.json();
+      errorBody = json?.message ?? json?.error ?? json?.detail ?? JSON.stringify(json);
+    } catch {
+      errorBody = await res.text().catch(() => res.statusText);
+    }
+    const error = new Error(`API error ${res.status}: ${errorBody}`) as Error & { status: number };
+    error.status = res.status;
+    logger.api.failure(path, res.status, errorBody, "POST");
+    throw error;
+  }
+
+  logger.api.response("POST", path, res.status, durationMs);
+  if (res.status === 204) return undefined as T;
+  return res.json() as Promise<T>;
+}
+
 export const apiClient = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body: unknown) =>
@@ -72,4 +109,5 @@ export const apiClient = {
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
   delete: (path: string) => request<void>(path, { method: "DELETE" }),
+  upload: <T>(path: string, formData: FormData) => requestMultipart<T>(path, formData),
 };
