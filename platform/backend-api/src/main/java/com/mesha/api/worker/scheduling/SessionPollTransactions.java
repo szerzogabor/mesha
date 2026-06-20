@@ -9,11 +9,13 @@ import com.mesha.api.model.Comment;
 import com.mesha.api.model.GitHubRepository;
 import com.mesha.api.model.Issue;
 import com.mesha.api.model.IssueAgent;
+import com.mesha.api.model.IssueAttachment;
 import com.mesha.api.repository.BlocksMessageRepository;
 import com.mesha.api.repository.BlocksSessionRepository;
 import com.mesha.api.repository.CommentRepository;
 import com.mesha.api.repository.GitHubRepositoryRepository;
 import com.mesha.api.repository.IssueAgentRepository;
+import com.mesha.api.repository.IssueAttachmentRepository;
 import com.mesha.api.repository.IssueRepository;
 import com.mesha.api.repository.WorkspaceBlocksConfigRepository;
 import com.mesha.api.service.AutomationService;
@@ -47,6 +49,7 @@ class SessionPollTransactions {
     private final BlocksApiKeyService apiKeyService;
     private final AutomationService automationService;
     private final IssueAgentRepository issueAgentRepo;
+    private final IssueAttachmentRepository attachmentRepo;
 
     SessionPollTransactions(BlocksSessionRepository sessionRepo,
                             IssueRepository issueRepo,
@@ -56,7 +59,8 @@ class SessionPollTransactions {
                             WorkspaceBlocksConfigRepository configRepo,
                             BlocksApiKeyService apiKeyService,
                             AutomationService automationService,
-                            IssueAgentRepository issueAgentRepo) {
+                            IssueAgentRepository issueAgentRepo,
+                            IssueAttachmentRepository attachmentRepo) {
         this.sessionRepo = sessionRepo;
         this.issueRepo = issueRepo;
         this.commentRepo = commentRepo;
@@ -66,6 +70,7 @@ class SessionPollTransactions {
         this.apiKeyService = apiKeyService;
         this.automationService = automationService;
         this.issueAgentRepo = issueAgentRepo;
+        this.attachmentRepo = attachmentRepo;
     }
 
     /**
@@ -164,6 +169,8 @@ class SessionPollTransactions {
             }
         }
 
+        List<String> attachmentDescriptions = loadAttachmentDescriptions(issue.getId());
+
         return new DispatchInputs(
                 issue.getId(),
                 issueIdentifier,
@@ -187,7 +194,8 @@ class SessionPollTransactions {
                 issue.getAgentLlm(),
                 blocksAgentName,
                 agentSystemPrompt,
-                agentStartupCommands
+                agentStartupCommands,
+                attachmentDescriptions
         );
     }
 
@@ -205,6 +213,23 @@ class SessionPollTransactions {
             log.warn("session_dispatch_comments_load_failed issue_id={} error={}", issueId, e.getMessage());
             return List.of();
         }
+    }
+
+    private List<String> loadAttachmentDescriptions(UUID issueId) {
+        try {
+            return attachmentRepo.findAllByIssueIdOrderByCreatedAtAsc(issueId).stream()
+                    .map(a -> a.getFileName() + " (" + a.getContentType() + ", " + formatBytes(a.getFileSize()) + ")")
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.warn("session_dispatch_attachments_load_failed issue_id={} error={}", issueId, e.getMessage());
+            return List.of();
+        }
+    }
+
+    private static String formatBytes(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
+        return String.format("%.1f MB", bytes / (1024.0 * 1024));
     }
 
     /**
@@ -448,6 +473,7 @@ class SessionPollTransactions {
             String agentLlm,
             String blocksAgentName,
             String agentSystemPrompt,
-            List<String> agentStartupCommands
+            List<String> agentStartupCommands,
+            List<String> attachmentDescriptions
     ) {}
 }
