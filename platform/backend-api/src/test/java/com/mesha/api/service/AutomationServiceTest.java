@@ -1,15 +1,18 @@
 package com.mesha.api.service;
 
+import com.mesha.api.dto.AutomationActionConditionRequest;
 import com.mesha.api.dto.AutomationActionRequest;
 import com.mesha.api.dto.CreateAutomationRuleRequest;
 import com.mesha.api.model.ActivityEventType;
 import com.mesha.api.model.AutomationActionType;
 import com.mesha.api.model.AutomationRule;
 import com.mesha.api.model.AutomationRuleAction;
+import com.mesha.api.model.AutomationRuleActionCondition;
 import com.mesha.api.model.AutomationTriggerType;
 import com.mesha.api.model.Issue;
 import com.mesha.api.model.Label;
 import com.mesha.api.model.Project;
+import com.mesha.api.model.TicketRuleConditionType;
 import com.mesha.api.model.Workspace;
 import com.mesha.api.repository.AutomationRuleRepository;
 import com.mesha.api.repository.IssueRepository;
@@ -218,7 +221,7 @@ class AutomationServiceTest {
 
         CreateAutomationRuleRequest req = new CreateAutomationRuleRequest(
                 AutomationTriggerType.PR_OPENED, null,
-                List.of(new AutomationActionRequest(AutomationActionType.SET_STATUS, "NOPE")));
+                List.of(new AutomationActionRequest(AutomationActionType.SET_STATUS, "NOPE", null)));
 
         assertThatThrownBy(() -> service.create(projectId, req, null))
                 .isInstanceOf(ResponseStatusException.class)
@@ -239,7 +242,7 @@ class AutomationServiceTest {
 
         CreateAutomationRuleRequest req = new CreateAutomationRuleRequest(
                 AutomationTriggerType.PR_MERGED, null,
-                List.of(new AutomationActionRequest(AutomationActionType.ADD_LABEL, labelId.toString())));
+                List.of(new AutomationActionRequest(AutomationActionType.ADD_LABEL, labelId.toString(), null)));
 
         assertThatThrownBy(() -> service.create(projectId, req, null))
                 .isInstanceOf(ResponseStatusException.class)
@@ -261,8 +264,8 @@ class AutomationServiceTest {
         CreateAutomationRuleRequest req = new CreateAutomationRuleRequest(
                 AutomationTriggerType.BLOCKS_SESSION_FAILED, null,
                 List.of(
-                        new AutomationActionRequest(AutomationActionType.SET_STATUS, "PENDING"),
-                        new AutomationActionRequest(AutomationActionType.ADD_LABEL, labelId.toString())));
+                        new AutomationActionRequest(AutomationActionType.SET_STATUS, "PENDING", null),
+                        new AutomationActionRequest(AutomationActionType.ADD_LABEL, labelId.toString(), null)));
 
         AutomationRule saved = service.create(projectId, req, null);
 
@@ -279,7 +282,7 @@ class AutomationServiceTest {
 
         CreateAutomationRuleRequest req = new CreateAutomationRuleRequest(
                 AutomationTriggerType.STATUS_UPDATED, null,
-                List.of(new AutomationActionRequest(AutomationActionType.SET_STATUS, "DONE")));
+                List.of(new AutomationActionRequest(AutomationActionType.SET_STATUS, "DONE", null)));
 
         assertThatThrownBy(() -> service.create(projectId, req, null))
                 .isInstanceOf(ResponseStatusException.class)
@@ -293,11 +296,97 @@ class AutomationServiceTest {
 
         CreateAutomationRuleRequest req = new CreateAutomationRuleRequest(
                 AutomationTriggerType.STATUS_UPDATED, "NONEXISTENT",
-                List.of(new AutomationActionRequest(AutomationActionType.SET_STATUS, "DONE")));
+                List.of(new AutomationActionRequest(AutomationActionType.SET_STATUS, "DONE", null)));
 
         assertThatThrownBy(() -> service.create(projectId, req, null))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Unknown status");
+    }
+
+    private void addConditionToAction(AutomationRuleAction action, TicketRuleConditionType type, String value) {
+        AutomationRuleActionCondition condition = new AutomationRuleActionCondition();
+        ReflectionTestUtils.setField(condition, "id", UUID.randomUUID());
+        condition.setAction(action);
+        condition.setConditionType(type);
+        condition.setConditionValue(value);
+        condition.setPosition(action.getConditions().size());
+        action.getConditions().add(condition);
+    }
+
+    @Test
+    void executeForSkipsActionWhenConditionDoesNotMatch() {
+        AutomationRule rule = rule(AutomationActionType.SET_STATUS, "REVIEW");
+        AutomationRuleAction action = rule.getActions().get(0);
+        // Condition: issue must have status "IN_REVIEW", but issue has "TODO"
+        addConditionToAction(action, TicketRuleConditionType.HAS_STATUS, "IN_REVIEW");
+
+        when(ruleRepository.findEnabledByProjectIdAndTriggerTypeWithActions(projectId, AutomationTriggerType.PR_OPENED))
+                .thenReturn(List.of(rule));
+
+        service.executeFor(AutomationTriggerType.PR_OPENED, issue);
+
+        // Status should not change — condition not met
+        assertThat(issue.getStatus()).isEqualTo("TODO");
+        verify(issueRepository, never()).save(any());
+        verifyNoInteractions(activityService);
+    }
+
+    @Test
+    void executeForRunsActionWhenConditionMatches() {
+        issue.setStatus("IN_REVIEW");
+        when(issueRepository.findById(issue.getId())).thenReturn(Optional.of(issue));
+
+        AutomationRule rule = rule(AutomationActionType.SET_STATUS, "DONE");
+        AutomationRuleAction action = rule.getActions().get(0);
+        addConditionToAction(action, TicketRuleConditionType.HAS_STATUS, "IN_REVIEW");
+
+        when(ruleRepository.findEnabledByProjectIdAndTriggerTypeWithActions(projectId, AutomationTriggerType.PR_MERGED))
+                .thenReturn(List.of(rule));
+        when(projectStatusRepository.existsByProjectIdAndName(projectId, "DONE")).thenReturn(true);
+
+        service.executeFor(AutomationTriggerType.PR_MERGED, issue);
+
+        assertThat(issue.getStatus()).isEqualTo("DONE");
+        verify(issueRepository).save(issue);
+    }
+
+    @Test
+    void executeForCanSkipOneActionButRunAnother() {
+        // Rule has two actions: first with condition (won't match), second without condition (will run)
+        AutomationRule rule = new AutomationRule();
+        ReflectionTestUtils.setField(rule, "id", UUID.randomUUID());
+        rule.setProject(project);
+        rule.setTriggerType(AutomationTriggerType.PR_OPENED);
+
+        addAction(rule, AutomationActionType.SET_STATUS, "REVIEW");
+        addConditionToAction(rule.getActions().get(0), TicketRuleConditionType.HAS_STATUS, "NEVER");
+
+        addAction(rule, AutomationActionType.SET_STATUS, "IN_PROGRESS");
+
+        when(ruleRepository.findEnabledByProjectIdAndTriggerTypeWithActions(projectId, AutomationTriggerType.PR_OPENED))
+                .thenReturn(List.of(rule));
+        when(projectStatusRepository.existsByProjectIdAndName(projectId, "IN_PROGRESS")).thenReturn(true);
+
+        service.executeFor(AutomationTriggerType.PR_OPENED, issue);
+
+        assertThat(issue.getStatus()).isEqualTo("IN_PROGRESS");
+        verify(issueRepository).save(issue);
+    }
+
+    @Test
+    void createRejectsConditionWithMissingValueForHasStatus() {
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+        when(projectStatusRepository.existsByProjectIdAndName(projectId, "DONE")).thenReturn(true);
+
+        List<AutomationActionConditionRequest> conditions = List.of(
+            new AutomationActionConditionRequest(TicketRuleConditionType.HAS_STATUS, null));
+        CreateAutomationRuleRequest req = new CreateAutomationRuleRequest(
+                AutomationTriggerType.PR_OPENED, null,
+                List.of(new AutomationActionRequest(AutomationActionType.SET_STATUS, "DONE", conditions)));
+
+        assertThatThrownBy(() -> service.create(projectId, req, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Condition value is required");
     }
 
     @Test
