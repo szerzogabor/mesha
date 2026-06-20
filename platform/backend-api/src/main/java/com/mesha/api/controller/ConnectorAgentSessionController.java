@@ -1,6 +1,7 @@
 package com.mesha.api.controller;
 
 import com.mesha.api.dto.ClaimConnectorAgentSessionRequest;
+import com.mesha.api.dto.ConnectorAgentSessionContextDto;
 import com.mesha.api.dto.ConnectorAgentSessionDto;
 import com.mesha.api.dto.UpdateConnectorAgentSessionStatusRequest;
 import com.mesha.api.security.ConnectorUserId;
@@ -35,7 +36,14 @@ public class ConnectorAgentSessionController {
     public ResponseEntity<ConnectorAgentSessionDto> updateStatus(@ConnectorUserId UUID userId,
                                                                   @PathVariable UUID sessionId,
                                                                   @Valid @RequestBody UpdateConnectorAgentSessionStatusRequest req) {
-        var session = connectorAgentSessionService.updateStatusByAgent(userId, sessionId, req.status(), req.errorMessage());
+        var session = connectorAgentSessionService.updateStatusByAgent(
+            userId, sessionId, req.status(), req.errorMessage(), req.branchName(), req.workspacePath());
         return ResponseEntity.ok(ConnectorAgentSessionDto.from(session));
+    }
+
+    @GetMapping("/{sessionId}/context")
+    public ResponseEntity<ConnectorAgentSessionContextDto> context(@ConnectorUserId UUID userId,
+                                                                     @PathVariable UUID sessionId) {
+        return ResponseEntity.ok(connectorAgentSessionService.getContext(userId, sessionId));
     }
 }
