@@ -205,7 +205,8 @@ class BlocksAdapterTest {
                 List.of(),
                 "test-key",
                 null, null, null, null,
-                List.of("/claude-haiku")
+                List.of("/claude-haiku"),
+                null
         );
         adapter.createSession(request);
 
@@ -227,7 +228,8 @@ class BlocksAdapterTest {
                 List.of(),
                 "test-key",
                 null, null, null, null,
-                List.of("/claude-haiku", "/ultrathink")
+                List.of("/claude-haiku", "/ultrathink"),
+                null
         );
         adapter.createSession(request);
 
@@ -249,12 +251,52 @@ class BlocksAdapterTest {
                 List.of(),
                 "test-key",
                 null, null, null, "System prompt here",
-                List.of("/claude-haiku")
+                List.of("/claude-haiku"),
+                null
         );
         adapter.createSession(request);
 
         String message = ((BlocksAdapter.CreateSessionRequest) bodyCaptor.getValue()).message();
         assertThat(message).startsWith("/claude-haiku\n\nSystem prompt here");
+    }
+
+    // ---- buildMessage / attachments ----
+
+    @Test
+    void buildMessage_includesAttachedFilesSection() {
+        doReturn(new BlocksAdapter.CreateSessionResponse("sess-id", "pending", null))
+                .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
+        doReturn(requestBodySpec).when(requestBodySpec).body(bodyCaptor.capture());
+
+        var request = new SessionRequest(
+                "uuid-1", "MES-10", "My Issue", "Description",
+                null, null, null, List.of(),
+                null, null,
+                null, null, null, null, null,
+                List.of(),
+                "test-key",
+                null, null, null, null,
+                List.of(),
+                List.of("design.png (image/png, 1.2 MB)", "spec.pdf (application/pdf, 320 KB)")
+        );
+        adapter.createSession(request);
+
+        String message = ((BlocksAdapter.CreateSessionRequest) bodyCaptor.getValue()).message();
+        assertThat(message).contains("Attached Files");
+        assertThat(message).contains("1. design.png (image/png, 1.2 MB)");
+        assertThat(message).contains("2. spec.pdf (application/pdf, 320 KB)");
+    }
+
+    @Test
+    void buildMessage_omitsAttachedFilesSectionWhenEmpty() {
+        doReturn(new BlocksAdapter.CreateSessionResponse("sess-id", "pending", null))
+                .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
+        doReturn(requestBodySpec).when(requestBodySpec).body(bodyCaptor.capture());
+
+        adapter.createSession(minimalRequest("uuid-1", null, "My Issue", "Description"));
+
+        String message = ((BlocksAdapter.CreateSessionRequest) bodyCaptor.getValue()).message();
+        assertThat(message).doesNotContain("Attached Files");
     }
 
     // ---- pollSession ----
@@ -443,7 +485,8 @@ class BlocksAdapterTest {
                 null,
                 null,
                 null,
-                List.of()
+                List.of(),
+                null
         );
     }
 }

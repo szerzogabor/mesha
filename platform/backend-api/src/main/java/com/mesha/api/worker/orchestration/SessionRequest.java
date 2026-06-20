@@ -24,5 +24,6 @@ public record SessionRequest(
         String agentLlm,
         String blocksAgentName,
         String agentSystemPrompt,
-        List<String> agentStartupCommands
+        List<String> agentStartupCommands,
+        List<String> attachmentDescriptions
 ) {}
