@@ -156,3 +156,20 @@ a,
   outline: 2px solid var(--input-focus-ring);
   outline-offset: 2px;
 }
+
+/* ─── Safe-area insets (notches / gesture bars in standalone PWA mode) ─── */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+/* Reserve space for the persistent mobile bottom navigation (h-14 + safe area). */
+.pb-mobile-nav {
+  padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
+}
+@media (min-width: 768px) {
+  .pb-mobile-nav {
+    padding-bottom: 0;
+  }
+}

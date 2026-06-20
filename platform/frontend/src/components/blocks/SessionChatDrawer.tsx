@@ -285,7 +285,7 @@ export function SessionChatDrawer({ session, sessionIndex, projectId, issueId, o
 
         {/* Input */}
         {!isTerminal && (
-          <div className="border-t border-border-default px-4 py-3 flex-shrink-0">
+          <div className="border-t border-border-default px-4 py-3 flex-shrink-0 pb-safe">
             <div className="flex gap-2 items-end">
               <textarea
                 value={input}

@@ -10,12 +10,14 @@ import { cn, statusLabel } from "@/lib/utils";
 interface KanbanColumnProps {
   status: ProjectStatus;
   issues: Issue[];
+  allStatuses: ProjectStatus[];
   workspaceId: string;
   projectId: string;
+  onMoveStatus: (issueId: string, status: string) => void;
   onCreateIssue?: () => void;
 }
 
-export function KanbanColumn({ status, issues, workspaceId, projectId, onCreateIssue }: KanbanColumnProps) {
+export function KanbanColumn({ status, issues, allStatuses, workspaceId, projectId, onMoveStatus, onCreateIssue }: KanbanColumnProps) {
   const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: status.name,
     data: { status: status.name, type: "column" },
@@ -85,8 +87,10 @@ export function KanbanColumn({ status, issues, workspaceId, projectId, onCreateI
             <KanbanCard
               key={issue.id}
               issue={issue}
+              allStatuses={allStatuses}
               workspaceId={workspaceId}
               projectId={projectId}
+              onMoveStatus={onMoveStatus}
             />
           ))}
         </SortableContext>

@@ -43,6 +43,19 @@ Responsibilities:
 - AI activity feed
 - Swipe actions
 
+### Installable PWA (Android-first)
+Mesha ships as an installable Progressive Web App built into this same Next.js
+frontend — **not** a separate app, React Native, or Flutter project:
+- Web App Manifest (`src/app/manifest.ts`), maskable icons, splash/theme colors.
+- Service worker (`public/sw.js`) with an offline app shell + `offline.html`.
+- Android-style bottom navigation (`MobileNav`), workspace dashboard, projects
+  index, and a mobile settings hub.
+- Touch-friendly Kanban (tap-to-move bottom sheet) alongside desktop drag-and-drop.
+- Install/download experience at `/` (hero CTA) and `/download` (steps, QR, version).
+- Push-notification **foundation** (`src/lib/notifications/*`) — abstraction only.
+
+Full details: [`platform/docs/MOBILE.md`](../MOBILE.md).
+
 ---
 
 ## 4. Realtime Updates

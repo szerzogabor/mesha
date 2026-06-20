@@ -109,7 +109,7 @@ export default function IssueDetailPage({
 
   return (
     <div className="h-full overflow-y-auto touch-pan-y">
-      <div className="px-6 py-4 bg-bg-surface border-b border-border-default flex items-center gap-3">
+      <div className="px-4 md:px-6 py-4 bg-bg-surface border-b border-border-default flex items-center gap-3">
         <Link
           href={`/workspaces/${workspaceId}/projects/${projectId}`}
           className="text-sm text-text-tertiary hover:text-text-primary transition-colors"
@@ -118,7 +118,7 @@ export default function IssueDetailPage({
         </Link>
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Title */}

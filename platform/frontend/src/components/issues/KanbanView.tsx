@@ -226,8 +226,10 @@ export function KanbanView({
               key={status.id}
               status={status}
               issues={localIssues.filter((i) => i.status === status.name)}
+              allStatuses={localStatuses}
               workspaceId={workspaceId}
               projectId={projectId}
+              onMoveStatus={onUpdateStatus}
               onCreateIssue={onCreateIssueForStatus ? () => onCreateIssueForStatus(status.name) : undefined}
             />
           ))}

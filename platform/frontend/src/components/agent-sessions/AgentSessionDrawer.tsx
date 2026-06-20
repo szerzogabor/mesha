@@ -236,7 +236,7 @@ export function AgentSessionDrawer({ session, onClose }: Props) {
 
         {/* Footer: cancel + input */}
         {!isTerminal && (
-          <div className="border-t border-border-default px-4 py-3 flex-shrink-0 space-y-2">
+          <div className="border-t border-border-default px-4 py-3 flex-shrink-0 space-y-2 pb-safe">
             <div className="flex gap-2 items-end">
               <textarea
                 value={input}
