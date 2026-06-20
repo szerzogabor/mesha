@@ -71,7 +71,8 @@ public class SessionContextBuilder {
             if (comment.createdAt() != null) {
                 md.append(" (").append(comment.createdAt()).append(")");
             }
-            md.append(": ").append(comment.body().strip().replace("\n", " ")).append("\n");
+            String body = comment.body() != null ? comment.body().strip().replace("\n", " ") : "";
+            md.append(": ").append(body).append("\n");
         }
         md.append("\n");
     }

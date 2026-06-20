@@ -29,10 +29,20 @@ public record ConnectorAgentSessionContextDto(
 ) {
     public record CommentSummary(String author, String body, Instant createdAt) {
         public static CommentSummary from(Comment c) {
-            String author = c.getAuthor() == null ? "Unknown"
-                : (c.getAuthor().getName() != null && !c.getAuthor().getName().isBlank()
-                    ? c.getAuthor().getName() : c.getAuthor().getEmail());
-            return new CommentSummary(author, c.getBody(), c.getCreatedAt());
+            return new CommentSummary(resolveAuthor(c), c.getBody(), c.getCreatedAt());
+        }
+
+        private static String resolveAuthor(Comment c) {
+            if (c.getAuthor() == null) {
+                return "Unknown";
+            }
+            if (c.getAuthor().getName() != null && !c.getAuthor().getName().isBlank()) {
+                return c.getAuthor().getName();
+            }
+            if (c.getAuthor().getEmail() != null && !c.getAuthor().getEmail().isBlank()) {
+                return c.getAuthor().getEmail();
+            }
+            return "Unknown";
         }
     }
 
@@ -48,7 +58,9 @@ public record ConnectorAgentSessionContextDto(
 
     public record RepositorySummary(String fullName, String htmlUrl, String cloneUrl, String defaultBranch) {
         public static RepositorySummary from(GitHubRepository repo) {
-            return new RepositorySummary(repo.getFullName(), repo.getHtmlUrl(), repo.getHtmlUrl() + ".git", repo.getDefaultBranch());
+            String htmlUrl = repo.getHtmlUrl();
+            String cloneUrl = htmlUrl == null ? null : (htmlUrl.endsWith(".git") ? htmlUrl : htmlUrl + ".git");
+            return new RepositorySummary(repo.getFullName(), htmlUrl, cloneUrl, repo.getDefaultBranch());
         }
     }
 }

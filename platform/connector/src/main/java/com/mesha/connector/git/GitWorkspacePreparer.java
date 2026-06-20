@@ -10,7 +10,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Clones (or reuses) a repository into a session's workspace and checks out the working branch,
@@ -50,16 +53,16 @@ public class GitWorkspacePreparer {
     }
 
     private void updateExistingClone(Path workspaceDir, String defaultBranch) {
+        run(workspaceDir, "git", "reset", "--hard");
+        run(workspaceDir, "git", "clean", "-fd");
         run(workspaceDir, "git", "fetch", "origin");
         run(workspaceDir, "git", "checkout", defaultBranch);
         run(workspaceDir, "git", "pull", "origin", defaultBranch);
     }
 
     private void checkoutWorkingBranch(Path workspaceDir, String branchName) {
-        GitCommandResult check = exec(workspaceDir, "git", "rev-parse", "--verify", branchName);
-        if (check.exitCode() == 0) {
-            run(workspaceDir, "git", "checkout", branchName);
-        } else {
+        GitCommandResult result = exec(workspaceDir, "git", "checkout", branchName);
+        if (result.exitCode() != 0) {
             run(workspaceDir, "git", "checkout", "-b", branchName);
         }
     }
@@ -72,26 +75,47 @@ public class GitWorkspacePreparer {
     }
 
     private GitCommandResult exec(Path workspaceDir, String... command) {
+        Process process = null;
         try {
-            Process process = new ProcessBuilder(command)
+            process = new ProcessBuilder(command)
                     .directory(workspaceDir.toFile())
                     .redirectErrorStream(true)
                     .start();
-            String output;
-            try (InputStream is = process.getInputStream()) {
-                output = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-            }
+            // Drain stdout off-thread first: a process whose output exceeds the pipe buffer
+            // would otherwise deadlock if we called waitFor() before reading it.
+            Process finalProcess = process;
+            CompletableFuture<String> outputFuture = CompletableFuture.supplyAsync(() -> readAll(finalProcess));
+
             boolean finished = process.waitFor(TIMEOUT.toSeconds(), TimeUnit.SECONDS);
             if (!finished) {
                 process.destroyForcibly();
+                outputFuture.cancel(true);
                 throw new GitCommandException("git command timed out: " + String.join(" ", command));
+            }
+
+            String output;
+            try {
+                output = outputFuture.get(5, TimeUnit.SECONDS);
+            } catch (ExecutionException | TimeoutException e) {
+                output = "";
             }
             return new GitCommandResult(process.exitValue(), output);
         } catch (IOException e) {
             throw new GitCommandException("Failed to run git command: " + String.join(" ", command), e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            if (process != null) {
+                process.destroyForcibly();
+            }
             throw new GitCommandException("Interrupted while running git command: " + String.join(" ", command), e);
+        }
+    }
+
+    private static String readAll(Process process) {
+        try (InputStream is = process.getInputStream()) {
+            return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            return "";
         }
     }
 
