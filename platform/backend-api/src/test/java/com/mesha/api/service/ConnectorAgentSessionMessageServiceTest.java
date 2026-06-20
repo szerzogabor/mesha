@@ -91,7 +91,6 @@ class ConnectorAgentSessionMessageServiceTest {
         pending.setRole("USER");
         pending.setContent("are you done?");
         when(messageRepository.findBySessionIdAndDeliveredAtIsNullOrderByCreatedAtAsc(sessionId)).thenReturn(List.of(pending));
-        when(messageRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
 
         List<ConnectorAgentSessionMessage> delivered = service.fetchPendingForConnector(userId, sessionId);
 

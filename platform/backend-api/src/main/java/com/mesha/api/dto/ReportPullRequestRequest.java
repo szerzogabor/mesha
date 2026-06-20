@@ -1,9 +1,10 @@
 package com.mesha.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 public record ReportPullRequestRequest(
     @NotBlank String githubUrl,
-    String title,
+    @Size(max = 500) String title,
     Integer number
 ) {}

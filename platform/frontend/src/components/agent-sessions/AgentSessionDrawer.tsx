@@ -69,7 +69,7 @@ function MessageBubble({ msg }: { msg: ConnectorAgentSessionMessage }) {
               : "text-accent underline hover:opacity-80 break-all"
           )}
         </p>
-        <p className={`mt-1 text-[10px] opacity-60 ${isUser ? "text-right" : ""}`}>
+        <p suppressHydrationWarning className={`mt-1 text-[10px] opacity-60 ${isUser ? "text-right" : ""}`}>
           {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}
         </p>
       </div>
@@ -113,7 +113,11 @@ export function AgentSessionDrawer({ session, onClose }: Props) {
     const content = input.trim();
     if (!content || sendMessage.isPending) return;
     setInput("");
-    await sendMessage.mutateAsync({ sessionId: session.id, content });
+    try {
+      await sendMessage.mutateAsync({ sessionId: session.id, content });
+    } catch {
+      setInput(content);
+    }
   };
 
   const canCancel = !isTerminal && session.status !== "CREATED";

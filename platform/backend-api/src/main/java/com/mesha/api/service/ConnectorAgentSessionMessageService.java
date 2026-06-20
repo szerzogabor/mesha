@@ -65,6 +65,6 @@ public class ConnectorAgentSessionMessageService {
         List<ConnectorAgentSessionMessage> pending = messageRepository.findBySessionIdAndDeliveredAtIsNullOrderByCreatedAtAsc(sessionId);
         Instant now = Instant.now();
         pending.forEach(m -> m.setDeliveredAt(now));
-        return messageRepository.saveAll(pending);
+        return pending;
     }
 }
