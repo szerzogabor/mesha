@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface IssueRepository extends JpaRepository<Issue, UUID> {
@@ -52,4 +53,15 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
 
     @Query("SELECT COALESCE(MAX(i.number), 0) + 1 FROM Issue i WHERE i.project.id = :projectId")
     Integer nextNumberForProject(@Param("projectId") UUID projectId);
+
+    @Query("""
+           SELECT i FROM Issue i
+           WHERE i.project.workspace.id = :workspaceId
+             AND UPPER(i.project.key) = :projectKey
+             AND i.number = :issueNumber
+           """)
+    Optional<Issue> findByWorkspaceAndProjectKeyAndNumber(
+            @Param("workspaceId") UUID workspaceId,
+            @Param("projectKey") String projectKey,
+            @Param("issueNumber") Integer issueNumber);
 }
