@@ -11,6 +11,12 @@ connector:
   credentials-path: ${CONNECTOR_CREDENTIALS_PATH:${user.home}/.mesha/connector/credentials.json}
   version: ${CONNECTOR_VERSION:0.0.1-SNAPSHOT}
   agent-registration-path: ${CONNECTOR_AGENT_REGISTRATION_PATH:${user.home}/.mesha/connector/agent.json}
+  auto-connect:
+    enabled: ${CONNECTOR_AUTO_CONNECT_ENABLED:false}
+    mesha-token: ${CONNECTOR_AUTO_CONNECT_TOKEN:}
+    executor-type: ${CONNECTOR_AUTO_CONNECT_EXECUTOR_TYPE:}
+    capabilities: ${CONNECTOR_AUTO_CONNECT_CAPABILITIES:}
+    hostname: ${CONNECTOR_AUTO_CONNECT_HOSTNAME:}
   polling:
     interval-ms: ${CONNECTOR_POLLING_INTERVAL_MS:5000}
     backoff:
