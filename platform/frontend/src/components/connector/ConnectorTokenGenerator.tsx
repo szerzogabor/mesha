@@ -103,14 +103,22 @@ export function ConnectorTokenGenerator() {
             </p>
           </div>
 
-          <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 space-y-2">
-            <h4 className="text-sm font-medium text-blue-700 dark:text-blue-300">Quick Start</h4>
-            <ol className="text-xs text-blue-600 dark:text-blue-400 space-y-1 list-decimal list-inside">
-              <li>Copy the access token above</li>
-              <li>Run: <code className="font-mono">mesha-connector login --token=&lt;token&gt;</code></li>
-              <li>Register: <code className="font-mono">mesha-connector register --executor-type=docker</code></li>
-              <li>Start polling: <code className="font-mono">mesha-connector poll</code></li>
-            </ol>
+          <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 space-y-2">
+            <h4 className="text-sm font-medium text-amber-700 dark:text-amber-300">Important: Setup Flow</h4>
+            <div className="text-xs text-amber-600 dark:text-amber-400 space-y-2">
+              <p><strong>Step 1: Initial Login</strong></p>
+              <p className="ml-2">Run: <code className="font-mono">mesha-connector login --token=&lt;your-clerk-jwt&gt;</code></p>
+              <p className="text-[11px] ml-2 italic">Use your Clerk JWT from the web app, not the token above</p>
+
+              <p className="mt-2"><strong>Step 2: Register Agent</strong></p>
+              <p className="ml-2">Run: <code className="font-mono">mesha-connector register --executor-type=docker</code></p>
+
+              <p className="mt-2"><strong>Step 3: For Direct API Calls (Advanced)</strong></p>
+              <p className="ml-2">Use the access token above: <code className="font-mono">curl -H "Authorization: Bearer &lt;access-token&gt;" https://mesha-api.onrender.com/api/agents</code></p>
+
+              <p className="mt-2"><strong>Step 4: Poll Sessions</strong></p>
+              <p className="ml-2">Run: <code className="font-mono">mesha-connector poll</code></p>
+            </div>
           </div>
         </div>
       )}
