@@ -176,7 +176,7 @@ class BlocksAdapterTest {
     void createSession_doesNotUseAgentLlmAsAgentName() {
         // Regression test for TP-83: agentLlm (e.g. "claude-haiku") is an LLM model
         // identifier — it must NOT be passed as agent_name to the Blocks API.
-        // Valid agent_name values are: claude, codex, gemini, opencode, cursor, kimi, sisyphus.
+        // Valid agent_name values are: claude, codex, gemini, opencode, cursor, kimi.
         doReturn(new BlocksAdapter.CreateSessionResponse("sess-id", "pending", null))
                 .when(responseSpec).body(BlocksAdapter.CreateSessionResponse.class);
         doReturn(requestBodySpec).when(requestBodySpec).body(bodyCaptor.capture());
@@ -226,7 +226,7 @@ class BlocksAdapterTest {
     @Test
     void validAgentNames_containsAllKnownBlocksAgents() {
         assertThat(BlocksAdapter.VALID_AGENT_NAMES)
-                .containsExactlyInAnyOrder("claude", "codex", "gemini", "opencode", "cursor", "kimi", "sisyphus");
+                .containsExactlyInAnyOrder("claude", "codex", "gemini", "opencode", "cursor", "kimi");
     }
 
     // ---- buildMessage / issueIdentifier ----

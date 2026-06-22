@@ -279,7 +279,6 @@ function AgentForm({
             <option value="opencode">OpenCode</option>
             <option value="cursor">Cursor CLI</option>
             <option value="kimi">Kimi Code</option>
-            <option value="sisyphus">Sisyphus</option>
           </select>
           <p className="text-xs text-text-tertiary mt-1">
             The Blocks agent to use for sessions. Leave blank to use the workspace default.

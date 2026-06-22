@@ -31,7 +31,7 @@ public class BlocksAdapter implements ProviderAdapter {
     private static final Logger log = LoggerFactory.getLogger(BlocksAdapter.class);
 
     static final Set<String> VALID_AGENT_NAMES = Set.of(
-            "claude", "codex", "gemini", "opencode", "cursor", "kimi", "sisyphus"
+            "claude", "codex", "gemini", "opencode", "cursor", "kimi"
     );
 
     private final WorkflowTracer workflowTracer;
