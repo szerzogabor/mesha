@@ -9,10 +9,12 @@ import com.mesha.api.model.BlocksSession;
 import com.mesha.api.model.GitHubInstallation;
 import com.mesha.api.model.GitHubPullRequest;
 import com.mesha.api.model.GitHubRepository;
+import com.mesha.api.model.Issue;
 import com.mesha.api.repository.BlocksSessionRepository;
 import com.mesha.api.repository.GitHubInstallationRepository;
 import com.mesha.api.repository.GitHubPullRequestRepository;
 import com.mesha.api.repository.GitHubRepositoryRepository;
+import com.mesha.api.repository.IssueRepository;
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -47,6 +49,7 @@ public class GitHubPullRequestService {
     private final GitHubRepositoryRepository repositoryRepo;
     private final GitHubInstallationRepository installationRepo;
     private final BlocksSessionRepository blocksSessionRepo;
+    private final IssueRepository issueRepository;
     private final GitHubAppService appService;
     private final AutomationService automationService;
     private final ObjectMapper objectMapper;
@@ -56,6 +59,7 @@ public class GitHubPullRequestService {
                                     GitHubRepositoryRepository repositoryRepo,
                                     GitHubInstallationRepository installationRepo,
                                     BlocksSessionRepository blocksSessionRepo,
+                                    IssueRepository issueRepository,
                                     GitHubAppService appService,
                                     AutomationService automationService,
                                     ObjectMapper objectMapper) {
@@ -63,6 +67,7 @@ public class GitHubPullRequestService {
         this.repositoryRepo = repositoryRepo;
         this.installationRepo = installationRepo;
         this.blocksSessionRepo = blocksSessionRepo;
+        this.issueRepository = issueRepository;
         this.appService = appService;
         this.automationService = automationService;
         this.objectMapper = objectMapper;
@@ -172,8 +177,14 @@ public class GitHubPullRequestService {
         GitHubPullRequest pr = upsertPullRequest(repoOpt.get(), prNode);
 
         AutomationTriggerType trigger = resolveAutomationTrigger(action, prNode);
-        if (trigger != null && pr.getBlocksSession() != null) {
-            automationService.executeFor(trigger, pr.getBlocksSession().getIssue());
+        if (trigger != null) {
+            Issue issue = resolveIssueForAutomation(pr);
+            if (issue != null) {
+                automationService.executeFor(trigger, issue);
+            } else {
+                log.debug("No linked issue found for PR automation prNumber={} fullName={} action={}",
+                        prNumber, fullName, action);
+            }
         }
 
         log.info("Pull request webhook processed action={} fullName={} prNumber={}", action, fullName, prNumber);
@@ -187,6 +198,33 @@ public class GitHubPullRequestService {
                     : AutomationTriggerType.PR_CLOSED;
             default -> null;
         };
+    }
+
+    private Issue resolveIssueForAutomation(GitHubPullRequest pr) {
+        if (pr.getBlocksSession() != null) {
+            return pr.getBlocksSession().getIssue();
+        }
+        String title = pr.getTitle();
+        if (title == null || pr.getRepository() == null || pr.getRepository().getWorkspace() == null) {
+            return null;
+        }
+        UUID workspaceId = pr.getRepository().getWorkspace().getId();
+        Matcher matcher = IDENTIFIER_PATTERN.matcher(title);
+        while (matcher.find()) {
+            String projectKey = matcher.group(1).toUpperCase();
+            int issueNumber;
+            try {
+                issueNumber = Integer.parseInt(matcher.group(2));
+            } catch (NumberFormatException e) {
+                continue;
+            }
+            Optional<Issue> issue = issueRepository.findByWorkspaceAndProjectKeyAndNumber(
+                    workspaceId, projectKey, issueNumber);
+            if (issue.isPresent()) {
+                return issue.get();
+            }
+        }
+        return null;
     }
 
     private GitHubPullRequest upsertPullRequest(GitHubRepository repo, JsonNode prNode) {
