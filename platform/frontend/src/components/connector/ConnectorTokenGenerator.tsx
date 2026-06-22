@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useConnectorAuthLogin } from "@/hooks/useConnectorAuthLogin";
-import { ConnectorTokenResponse } from "@/types";
 
 export function ConnectorTokenGenerator() {
   const { mutate: generateToken, isPending, data: tokenData, error } = useConnectorAuthLogin();
