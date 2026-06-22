@@ -2,6 +2,7 @@
 
 import { use } from "react";
 import { useConnectorAgents } from "@/hooks/useConnectorAgents";
+import { ConnectorTokenGenerator } from "@/components/connector/ConnectorTokenGenerator";
 import { Spinner } from "@/components/ui/Spinner";
 import { ConnectorAgent } from "@/types";
 
@@ -104,13 +105,15 @@ export default function ConnectorAgentsPage({
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="mb-6">
+    <div className="p-6 max-w-4xl mx-auto space-y-8">
+      <div>
         <h1 className="text-2xl font-bold text-text-primary">Connector Agents</h1>
         <p className="text-text-muted mt-1 text-sm">
           {agents.length} agent{agents.length !== 1 ? "s" : ""} registered
         </p>
       </div>
+
+      <ConnectorTokenGenerator />
 
       {agents.length === 0 ? (
         <div className="bg-bg-surface border border-border-default rounded-xl p-8 text-center">

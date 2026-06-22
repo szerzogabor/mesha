@@ -7,7 +7,7 @@ spring:
 connector:
   name: mesha-connector
   environment: ${APP_ENV:local}
-  backend-url: ${CONNECTOR_BACKEND_URL:http://localhost:8080}
+  backend-url: https://mesha-api.onrender.com
   credentials-path: ${CONNECTOR_CREDENTIALS_PATH:${user.home}/.mesha/connector/credentials.json}
   version: ${CONNECTOR_VERSION:0.0.1-SNAPSHOT}
   agent-registration-path: ${CONNECTOR_AGENT_REGISTRATION_PATH:${user.home}/.mesha/connector/agent.json}
