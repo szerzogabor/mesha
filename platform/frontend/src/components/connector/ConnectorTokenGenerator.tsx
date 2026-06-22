@@ -12,7 +12,19 @@ export function ConnectorTokenGenerator() {
   };
 
   const copyToClipboard = (text: string, type: "access" | "refresh") => {
-    navigator.clipboard.writeText(text);
+    if (!navigator.clipboard) {
+      // Fallback for environments without clipboard API
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    } else {
+      navigator.clipboard.writeText(text).catch((err) => {
+        console.error("Failed to copy to clipboard:", err);
+      });
+    }
     setCopiedIndex(type);
     setTimeout(() => setCopiedIndex(null), 2000);
   };
