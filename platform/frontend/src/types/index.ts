@@ -175,6 +175,12 @@ export interface ConnectorAgentSessionMessage {
   createdAt: string;
 }
 
+export interface ConnectorTokenResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
 export interface Issue {
   id: string;
   projectId: string;
