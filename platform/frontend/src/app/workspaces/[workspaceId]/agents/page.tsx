@@ -267,14 +267,19 @@ function AgentForm({
           <label className="block text-xs font-medium text-text-secondary mb-1">
             Blocks Agent Name
           </label>
-          <input
-            type="text"
+          <select
             value={blocksAgentName}
             onChange={(e) => setBlocksAgentName(e.target.value)}
-            placeholder="e.g. claude, codex"
-            maxLength={100}
-            className={inputClass}
-          />
+            className={selectClass}
+          >
+            <option value="">Workspace default</option>
+            <option value="claude">Claude Code</option>
+            <option value="codex">Codex</option>
+            <option value="gemini">Gemini CLI</option>
+            <option value="opencode">OpenCode</option>
+            <option value="cursor">Cursor CLI</option>
+            <option value="kimi">Kimi Code</option>
+          </select>
           <p className="text-xs text-text-tertiary mt-1">
             The Blocks agent to use for sessions. Leave blank to use the workspace default.
           </p>
