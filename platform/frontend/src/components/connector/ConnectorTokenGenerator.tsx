@@ -13,20 +13,17 @@ export function ConnectorTokenGenerator() {
 
   const copyToClipboard = (text: string, type: "access" | "refresh") => {
     if (!navigator.clipboard) {
-      // Fallback for environments without clipboard API
-      const textarea = document.createElement("textarea");
-      textarea.value = text;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
-    } else {
-      navigator.clipboard.writeText(text).catch((err) => {
-        console.error("Failed to copy to clipboard:", err);
-      });
+      console.warn("Clipboard API not available");
+      return;
     }
-    setCopiedIndex(type);
-    setTimeout(() => setCopiedIndex(null), 2000);
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        setCopiedIndex(type);
+        setTimeout(() => setCopiedIndex(null), 2000);
+      })
+      .catch((err) => {
+        console.error("Failed to copy text: ", err);
+      });
   };
 
   const formatExpiryTime = (seconds: number) => {
