@@ -114,7 +114,7 @@ export function ConnectorTokenGenerator() {
               <p className="ml-2">Run: <code className="font-mono">mesha-connector register --executor-type=docker</code></p>
 
               <p className="mt-2"><strong>Step 3: For Direct API Calls (Advanced)</strong></p>
-              <p className="ml-2">Use the access token above: <code className="font-mono">curl -H "Authorization: Bearer &lt;access-token&gt;" https://mesha-api.onrender.com/api/agents</code></p>
+              <p className="ml-2">Use the access token above: <code className="font-mono">curl -H &quot;Authorization: Bearer &lt;access-token&gt;&quot; https://mesha-api.onrender.com/api/agents</code></p>
 
               <p className="mt-2"><strong>Step 4: Poll Sessions</strong></p>
               <p className="ml-2">Run: <code className="font-mono">mesha-connector poll</code></p>
