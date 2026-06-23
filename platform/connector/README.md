@@ -73,7 +73,9 @@ variables:
 | `CONNECTOR_AUTO_CONNECT_CAPABILITIES` | _(empty)_ | Comma-separated capabilities for auto-connect |
 | `CONNECTOR_AUTO_CONNECT_HOSTNAME` | _(empty)_ | Hostname override for auto-connect |
 | `CONNECTOR_POLLING_INTERVAL_MS` | `5000` | Delay between successful poll cycles |
-| `CONNECTOR_POLLING_BACKOFF_BASE_MS` / `_MAX_MS` / `_MULTIPLIER` | `5000` / `60000` / `2.0` | Exponential backoff on poll failures |
+| `CONNECTOR_POLLING_BACKOFF_BASE_MS` | `5000` | Initial backoff delay on poll failures |
+| `CONNECTOR_POLLING_BACKOFF_MAX_MS` | `60000` | Maximum backoff delay on poll failures |
+| `CONNECTOR_POLLING_BACKOFF_MULTIPLIER` | `2.0` | Backoff growth multiplier on poll failures |
 | `CONNECTOR_WORKSPACE_ROOT` | `~/mesha-workspaces` | Root directory for per-ticket git workspaces |
 | `CONNECTOR_WORKSPACE_CLEANUP_POLICY` | `NEVER` | `NEVER` / `ON_SUCCESS` / `ALWAYS` |
 | `CONNECTOR_CONTEXT_MAX_DESCRIPTION_CHARS` | `20000` | Max ticket description length written into `task.md` |
