@@ -38,11 +38,12 @@ The same Spring Boot application also runs web-less for one-off CLI invocations:
 # 2. Register this machine/executor as a Mesha agent
 ./gradlew bootRun --args='register --executor-type=<type> [--capabilities=a,b,c]'
 
-# 3. Send a heartbeat for the registered agent
-./gradlew bootRun --args='heartbeat'
-
-# 4. Start polling for queued sessions (runs until terminated)
+# 3. Start polling for queued sessions (runs until terminated; also sends periodic
+#    heartbeats automatically so the agent stays reported as online)
 ./gradlew bootRun --args='poll'
+
+# Optional: send a one-off heartbeat without starting the poll loop
+./gradlew bootRun --args='heartbeat'
 ```
 
 Credentials are stored at `~/.mesha/connector/credentials.json` and the
