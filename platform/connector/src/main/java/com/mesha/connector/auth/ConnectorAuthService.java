@@ -14,14 +14,18 @@ public class ConnectorAuthService {
     private final ConnectorAuthClient connectorAuthClient;
     private final ConnectorTokenStore tokenStore;
 
+    private volatile ConnectorCredentials cachedCredentials;
+
     public ConnectorAuthService(ConnectorAuthClient connectorAuthClient, ConnectorTokenStore tokenStore) {
         this.connectorAuthClient = connectorAuthClient;
         this.tokenStore = tokenStore;
     }
 
-    public void login(String accessToken) {
+    public synchronized void login(String accessToken) {
         ConnectorTokenValidationResponse response = connectorAuthClient.validate(accessToken);
-        tokenStore.save(new ConnectorCredentials(accessToken, Instant.now().plusSeconds(response.expiresIn())));
+        ConnectorCredentials credentials = new ConnectorCredentials(accessToken, Instant.now().plusSeconds(response.expiresIn()));
+        tokenStore.save(credentials);
+        cachedCredentials = credentials;
     }
 
     public boolean isAuthenticated() {
@@ -31,14 +35,28 @@ public class ConnectorAuthService {
     /**
      * Returns the stored access token, failing fast if it's missing or has expired
      * rather than attempting any kind of refresh — there is no refresh token to fall back on.
+     * Credentials are cached in memory (re-checked from disk once expired) so frequent
+     * polling doesn't hit disk on every call. Double-checked locking, synchronized with
+     * {@link #login(String)}, prevents a concurrent login's freshly-saved credentials from
+     * being wiped out by a stale expiry check.
      */
     public String getValidAccessToken() {
-        ConnectorCredentials credentials = tokenStore.load()
-                .orElseThrow(() -> new ConnectorAuthException("Not authenticated. Run the `login` command first."));
+        ConnectorCredentials credentials = cachedCredentials;
+        if (credentials == null || credentials.accessTokenExpiresAt().isBefore(Instant.now())) {
+            synchronized (this) {
+                credentials = cachedCredentials;
+                if (credentials == null || credentials.accessTokenExpiresAt().isBefore(Instant.now())) {
+                    credentials = tokenStore.load()
+                            .orElseThrow(() -> new ConnectorAuthException("Not authenticated. Run the `login` command first."));
 
-        if (credentials.accessTokenExpiresAt().isBefore(Instant.now())) {
-            tokenStore.clear();
-            throw new ConnectorAuthException("Access token expired. Run the `login` command again with a fresh token.");
+                    if (credentials.accessTokenExpiresAt().isBefore(Instant.now())) {
+                        tokenStore.clear();
+                        cachedCredentials = null;
+                        throw new ConnectorAuthException("Access token expired. Run the `login` command again with a fresh token.");
+                    }
+                    cachedCredentials = credentials;
+                }
+            }
         }
         return credentials.accessToken();
     }
