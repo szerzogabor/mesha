@@ -50,7 +50,7 @@ public class AgentDefinitionController {
             .map(AssignableAgentDto::fromDefinition)
             .forEach(agents::add);
 
-        connectorAgentService.listOnlineForUser(user.getId())
+        connectorAgentService.listForUser(user.getId())
             .stream()
             .map(a -> AssignableAgentDto.fromConnector(a, connectorAgentService.getOfflineTimeout()))
             .forEach(agents::add);
