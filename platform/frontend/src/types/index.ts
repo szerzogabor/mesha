@@ -93,6 +93,17 @@ export type AgentLlm = "claude" | "codex";
 
 export type AgentProviderType = "BLOCKS";
 
+export type AssignableAgentProviderType = "BLOCKS" | "QWEN" | "CONNECTOR";
+
+export interface AssignableAgent {
+  id: string;
+  title: string;
+  name: string;
+  providerType: AssignableAgentProviderType;
+  active: boolean;
+  providerParameters?: Record<string, unknown>;
+}
+
 export interface AgentDefinition {
   id: string;
   workspaceId: string;

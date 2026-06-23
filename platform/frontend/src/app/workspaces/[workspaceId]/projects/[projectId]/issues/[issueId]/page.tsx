@@ -23,6 +23,7 @@ import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers";
 import { AssigneeSelector } from "@/components/issues/AssigneeSelector";
 import { useActiveAgentDefinitions } from "@/hooks/useAgentDefinitions";
 import { useIssueAgents, useAssignAgent, useUnassignAgent } from "@/hooks/useIssueAgents";
+import { useCreateConnectorSession, useEnqueueAgentSession } from "@/hooks/useAgentSessions";
 import { formatRelativeTime, statusLabel } from "@/lib/utils";
 import { RuleViolationDialog } from "@/components/ui/RuleViolationDialog";
 import { extractApiErrorMessage, isRuleViolationError } from "@/lib/error-utils";
@@ -62,6 +63,8 @@ export default function IssueDetailPage({
   const { data: agentAssignments = [], isLoading: agentsLoading } = useIssueAgents(projectId, issueId);
   const assignAgent = useAssignAgent(projectId, issueId);
   const unassignAgent = useUnassignAgent(projectId, issueId);
+  const createConnectorSession = useCreateConnectorSession();
+  const enqueueConnectorSession = useEnqueueAgentSession();
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -333,9 +336,9 @@ export default function IssueDetailPage({
                 assignedAgent={displayedAgent}
                 members={workspaceMembers}
                 activeAgents={activeAgents}
-                disabled={agentsLoading || updateIssue.isPending || assignAgent.isPending || unassignAgent.isPending}
+                disabled={agentsLoading || updateIssue.isPending || assignAgent.isPending || unassignAgent.isPending || createConnectorSession.isPending || enqueueConnectorSession.isPending}
                 onSelect={async (selection) => {
-                  if (updateIssue.isPending || assignAgent.isPending || unassignAgent.isPending) return;
+                  if (updateIssue.isPending || assignAgent.isPending || unassignAgent.isPending || createConnectorSession.isPending || enqueueConnectorSession.isPending) return;
                   setAssignError(null);
                   setPendingSelection(
                     selection.type === "none" ? { type: "none" }
@@ -356,14 +359,22 @@ export default function IssueDetailPage({
                       }
                       await updateIssue.mutateAsync({ assigneeId: selection.userId, clearAgentAssignee: true });
                     } else if (selection.type === "agent") {
-                      if (currentAgent?.agentDefinitionId === selection.agentId) return;
                       const agent = activeAgents.find((a) => a.id === selection.agentId);
-                      const agentLlm = (agent?.providerParameters?.agentLlm as string) || "claude";
-                      for (const a of agentAssignments) {
-                        await unassignAgent.mutateAsync(a.agentDefinitionId);
+                      if (agent?.providerType === "CONNECTOR") {
+                        const session = await createConnectorSession.mutateAsync({
+                          issueId,
+                          instructions: issue.description || undefined,
+                        });
+                        await enqueueConnectorSession.mutateAsync(session.id);
+                      } else {
+                        if (currentAgent?.agentDefinitionId === selection.agentId) return;
+                        const agentLlm = (agent?.providerParameters?.agentLlm as string) || "claude";
+                        for (const a of agentAssignments) {
+                          await unassignAgent.mutateAsync(a.agentDefinitionId);
+                        }
+                        await updateIssue.mutateAsync({ clearAssignee: true, agentType: "BLOCKS", agentLlm });
+                        await assignAgent.mutateAsync(selection.agentId);
                       }
-                      await updateIssue.mutateAsync({ clearAssignee: true, agentType: "BLOCKS", agentLlm });
-                      await assignAgent.mutateAsync(selection.agentId);
                     }
                   } catch (err) {
                     if (isRuleViolationError(err)) {
