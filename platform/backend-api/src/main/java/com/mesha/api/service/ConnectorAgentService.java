@@ -74,6 +74,11 @@ public class ConnectorAgentService {
         return connectorAgentRepository.findByUserIdOrderByRegisteredAtDesc(userId);
     }
 
+    public List<ConnectorAgent> listOnlineForUser(UUID userId) {
+        Instant threshold = Instant.now().minus(offlineTimeout);
+        return connectorAgentRepository.findByUserIdAndLastSeenAtAfter(userId, threshold);
+    }
+
     public ConnectorAgent getForUser(UUID agentId, UUID userId) {
         return connectorAgentRepository.findByIdAndUserId(agentId, userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Agent not found"));

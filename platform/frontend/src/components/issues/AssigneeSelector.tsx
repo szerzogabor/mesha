@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { UserSummary, AgentDefinition, IssueAgentAssignment } from "@/types";
+import { UserSummary, AssignableAgent, IssueAgentAssignment } from "@/types";
 import { WorkspaceMember } from "@/hooks/useWorkspaceMembers";
 
 type AssigneeSelection =
@@ -13,7 +13,7 @@ interface AssigneeSelectorProps {
   assignee?: UserSummary;
   assignedAgent?: IssueAgentAssignment;
   members: WorkspaceMember[];
-  activeAgents?: AgentDefinition[];
+  activeAgents?: AssignableAgent[];
   onSelect: (selection: AssigneeSelection) => void;
   disabled?: boolean;
   compact?: boolean;

@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
-import { AgentDefinition } from "@/types";
+import { AgentDefinition, AssignableAgent } from "@/types";
 
 export function useAgentDefinitions(workspaceId: string) {
   return useQuery({
@@ -17,7 +17,7 @@ export function useActiveAgentDefinitions(workspaceId: string) {
   return useQuery({
     queryKey: ["agentDefinitions", workspaceId, "active"],
     queryFn: () =>
-      apiClient.get<AgentDefinition[]>(`/api/workspaces/${workspaceId}/agents/active`),
+      apiClient.get<AssignableAgent[]>(`/api/workspaces/${workspaceId}/agents/active`),
     enabled: !!workspaceId,
   });
 }

@@ -43,6 +43,17 @@ export function useAgentSessionMessages(sessionId: string | undefined, status: C
   });
 }
 
+export function useCreateConnectorSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ issueId, instructions }: { issueId: string; instructions?: string }) =>
+      apiClient.post<ConnectorAgentSession>("/api/agent-sessions", { issueId, instructions }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["agent-sessions"] });
+    },
+  });
+}
+
 export function useEnqueueAgentSession() {
   const qc = useQueryClient();
   return useMutation({
