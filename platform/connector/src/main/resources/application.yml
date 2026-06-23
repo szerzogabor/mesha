@@ -19,6 +19,7 @@ connector:
     hostname: ${CONNECTOR_AUTO_CONNECT_HOSTNAME:}
   polling:
     interval-ms: ${CONNECTOR_POLLING_INTERVAL_MS:5000}
+    heartbeat-interval-ms: ${CONNECTOR_POLLING_HEARTBEAT_INTERVAL_MS:30000}
     backoff:
       base-ms: ${CONNECTOR_POLLING_BACKOFF_BASE_MS:5000}
       max-ms: ${CONNECTOR_POLLING_BACKOFF_MAX_MS:60000}

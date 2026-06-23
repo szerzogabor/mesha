@@ -86,11 +86,15 @@ sends a heartbeat for that agent via `POST /api/connector/agents/{agentId}/heart
 a duplicate.
 
 Session polling: `mesha-connector poll` reads the locally persisted agent id and runs
-`SessionPollingLoop` until the process is terminated. Each cycle atomically claims the next queued
-session for that agent via `POST /api/connector/agent-sessions/claim` (backend uses
-`SELECT ... FOR UPDATE SKIP LOCKED`, so concurrent connectors never double-claim), fetches the full
-ticket context via `GET /api/connector/agent-sessions/{id}/context`, and hands it to
-`SessionProcessor`, which:
+`SessionPollingLoop` until the process is terminated. The loop also sends a heartbeat
+(`POST /api/connector/agents/{agentId}/heartbeat`) on start and every
+`connector.polling.heartbeat-interval-ms` (default 30s, comfortably under the backend's 90s
+offline-timeout) so the agent keeps reporting as online for as long as `poll` keeps running —
+claiming/processing sessions alone does not refresh the agent's liveness. Each cycle atomically
+claims the next queued session for that agent via `POST /api/connector/agent-sessions/claim`
+(backend uses `SELECT ... FOR UPDATE SKIP LOCKED`, so concurrent connectors never double-claim),
+fetches the full ticket context via `GET /api/connector/agent-sessions/{id}/context`, and hands it
+to `SessionProcessor`, which:
 1. Marks the session `PREPARING`.
 2. Resolves a workspace directory keyed by issue identifier (`WorkspaceManager`, e.g.
    `~/mesha-workspaces/MES-123`) — retried/follow-up sessions for the same ticket reuse the clone.
