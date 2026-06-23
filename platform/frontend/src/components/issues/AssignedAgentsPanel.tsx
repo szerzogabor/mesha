@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useIssueAgents, useAssignAgent, useUnassignAgent } from "@/hooks/useIssueAgents";
 import { useActiveAgentDefinitions } from "@/hooks/useAgentDefinitions";
-import { AgentDefinition, IssueAgentAssignment } from "@/types";
+import { AssignableAgent, IssueAgentAssignment } from "@/types";
 
 interface AssignedAgentsPanelProps {
   workspaceId: string;
@@ -31,7 +31,9 @@ export function AssignedAgentsPanel({ workspaceId, projectId, issueId }: Assigne
   }, [showPicker]);
 
   const assignedIds = new Set(assignments.map((a: IssueAgentAssignment) => a.agentDefinitionId));
-  const availableAgents = activeAgents.filter((a: AgentDefinition) => !assignedIds.has(a.id));
+  const availableAgents = activeAgents.filter(
+    (a: AssignableAgent) => a.providerType !== "CONNECTOR" && !assignedIds.has(a.id)
+  );
 
   return (
     <div className="bg-bg-surface rounded-xl border border-border-default p-4">
@@ -87,7 +89,7 @@ export function AssignedAgentsPanel({ workspaceId, projectId, issueId }: Assigne
                   : "All active agents are already assigned."}
               </p>
             ) : (
-              availableAgents.map((agent: AgentDefinition) => (
+              availableAgents.map((agent: AssignableAgent) => (
                 <button
                   key={agent.id}
                   onClick={async () => {
