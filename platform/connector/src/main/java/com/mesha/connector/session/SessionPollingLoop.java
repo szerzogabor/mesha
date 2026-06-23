@@ -1,6 +1,5 @@
 package com.mesha.connector.session;
 
-import com.mesha.connector.agent.AgentRegistrationException;
 import com.mesha.connector.agent.AgentRegistrationService;
 import com.mesha.connector.config.SessionPollingProperties;
 import com.mesha.connector.session.dto.ClaimedSessionResponse;
@@ -71,7 +70,7 @@ public class SessionPollingLoop {
     private long sendHeartbeat() {
         try {
             agentRegistrationService.heartbeat();
-        } catch (AgentRegistrationException e) {
+        } catch (Exception e) {
             log.warn("heartbeat_failed error={}", e.getMessage());
         }
         return System.currentTimeMillis();
