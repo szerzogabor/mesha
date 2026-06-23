@@ -4,6 +4,5 @@ import java.time.Instant;
 
 public record ConnectorCredentials(
         String accessToken,
-        Instant accessTokenExpiresAt,
-        String refreshToken
+        Instant accessTokenExpiresAt
 ) {}

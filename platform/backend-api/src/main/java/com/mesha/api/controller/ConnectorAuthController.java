@@ -1,13 +1,17 @@
 package com.mesha.api.controller;
 
 import com.mesha.api.dto.ConnectorTokenResponse;
+import com.mesha.api.dto.ConnectorTokenValidationResponse;
 import com.mesha.api.dto.RefreshConnectorTokenRequest;
 import com.mesha.api.model.User;
 import com.mesha.api.security.CurrentUser;
 import com.mesha.api.service.ConnectorAuthService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/api/connector/auth")
@@ -35,10 +39,15 @@ public class ConnectorAuthController {
 
     /**
      * Lets the connector confirm its current access token is still valid before
-     * relying on it for future API calls.
+     * relying on it for future API calls, and reports how long it has left.
      */
     @GetMapping("/validate")
-    public ResponseEntity<Void> validate() {
-        return ResponseEntity.ok().build();
+    public ResponseEntity<ConnectorTokenValidationResponse> validate(
+        @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization
+    ) {
+        String accessToken = authorization.replaceFirst("(?i)^Bearer ", "");
+        long remainingSeconds = connectorAuthService.getAccessTokenRemainingSeconds(accessToken)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired access token"));
+        return ResponseEntity.ok(new ConnectorTokenValidationResponse(remainingSeconds));
     }
 }

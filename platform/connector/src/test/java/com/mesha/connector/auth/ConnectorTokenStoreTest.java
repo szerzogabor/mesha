@@ -29,7 +29,7 @@ class ConnectorTokenStoreTest {
     void save_thenLoad_roundTrips() {
         ConnectorTokenStore store = newStore();
         ConnectorCredentials credentials = new ConnectorCredentials(
-                "mcat_abc", Instant.now().truncatedTo(ChronoUnit.SECONDS), "mcrt_def");
+                "mcat_abc", Instant.now().truncatedTo(ChronoUnit.SECONDS));
 
         store.save(credentials);
         Optional<ConnectorCredentials> loaded = store.load();
@@ -47,7 +47,7 @@ class ConnectorTokenStoreTest {
     @Test
     void save_createsFileWithOwnerOnlyPermissions() throws Exception {
         ConnectorTokenStore store = newStore();
-        store.save(new ConnectorCredentials("mcat_abc", Instant.now(), "mcrt_def"));
+        store.save(new ConnectorCredentials("mcat_abc", Instant.now()));
 
         Path credentialsPath = tempDir.resolve("nested/credentials.json");
         assertThat(Files.isReadable(credentialsPath)).isTrue();
@@ -57,7 +57,7 @@ class ConnectorTokenStoreTest {
     @Test
     void clear_removesStoredCredentials() {
         ConnectorTokenStore store = newStore();
-        store.save(new ConnectorCredentials("mcat_abc", Instant.now(), "mcrt_def"));
+        store.save(new ConnectorCredentials("mcat_abc", Instant.now()));
 
         store.clear();
 

@@ -10,8 +10,9 @@ import java.util.List;
 
 /**
  * Handles {@code login} invocations, e.g. {@code java -jar mesha-connector.jar login --token=<token>}.
- * The supplied token is the bearer token the user already obtained from Mesha (e.g. via the web app);
- * it is exchanged for connector-specific credentials which are then stored locally.
+ * The supplied token is the connector access token ({@code mcat_...}) copied from the
+ * "Connector Access Token" generator in the Mesha web app; it is validated against the
+ * backend and stored locally as-is.
  */
 @Component
 public class LoginCommandRunner implements ApplicationRunner {
@@ -30,7 +31,7 @@ public class LoginCommandRunner implements ApplicationRunner {
 
         List<String> tokenValues = args.getOptionValues("token");
         if (tokenValues == null || tokenValues.isEmpty()) {
-            System.err.println("Usage: login --token=<mesha-access-token>");
+            System.err.println("Usage: login --token=<connector-access-token>");
             System.exit(1);
             return;
         }

@@ -26,21 +26,20 @@ class ConnectorAuthServiceTest {
     }
 
     @Test
-    void login_savesCredentialsFromBackendResponse() {
-        when(connectorAuthClient.login("supplied-token"))
-            .thenReturn(new ConnectorTokenResponse("mcat_new", "mcrt_new", 3600, "Bearer"));
+    void login_savesCredentialsFromValidationResponse() {
+        when(connectorAuthClient.validate("mcat_supplied"))
+            .thenReturn(new ConnectorTokenValidationResponse(3600));
 
-        service.login("supplied-token");
+        service.login("mcat_supplied");
 
-        verify(tokenStore).save(argThat(c ->
-            c.accessToken().equals("mcat_new") && c.refreshToken().equals("mcrt_new")));
+        verify(tokenStore).save(argThat(c -> c.accessToken().equals("mcat_supplied")));
     }
 
     @Test
     void login_invalidToken_propagatesException() {
-        when(connectorAuthClient.login("bad-token")).thenThrow(new ConnectorAuthException("rejected"));
+        when(connectorAuthClient.validate("mcat_bad")).thenThrow(new ConnectorAuthException("rejected"));
 
-        assertThatThrownBy(() -> service.login("bad-token")).isInstanceOf(ConnectorAuthException.class);
+        assertThatThrownBy(() -> service.login("mcat_bad")).isInstanceOf(ConnectorAuthException.class);
         verify(tokenStore, never()).save(any());
     }
 
@@ -52,36 +51,23 @@ class ConnectorAuthServiceTest {
     }
 
     @Test
-    void getValidAccessToken_freshToken_returnsWithoutRefreshing() {
-        ConnectorCredentials fresh = new ConnectorCredentials("mcat_fresh", Instant.now().plusSeconds(3600), "mcrt_x");
+    void getValidAccessToken_freshToken_returnsToken() {
+        ConnectorCredentials fresh = new ConnectorCredentials("mcat_fresh", Instant.now().plusSeconds(3600));
         when(tokenStore.load()).thenReturn(Optional.of(fresh));
 
         String token = service.getValidAccessToken();
 
         assertThat(token).isEqualTo("mcat_fresh");
-        verify(connectorAuthClient, never()).refresh(any());
     }
 
     @Test
-    void getValidAccessToken_nearExpiry_refreshesAndSavesNewCredentials() {
-        ConnectorCredentials expiring = new ConnectorCredentials("mcat_old", Instant.now().plusSeconds(5), "mcrt_old");
-        when(tokenStore.load()).thenReturn(Optional.of(expiring));
-        when(connectorAuthClient.refresh("mcrt_old"))
-            .thenReturn(new ConnectorTokenResponse("mcat_refreshed", "mcrt_refreshed", 3600, "Bearer"));
+    void getValidAccessToken_expiredToken_clearsStoreAndThrowsWithReLoginMessage() {
+        ConnectorCredentials expired = new ConnectorCredentials("mcat_old", Instant.now().minusSeconds(5));
+        when(tokenStore.load()).thenReturn(Optional.of(expired));
 
-        String token = service.getValidAccessToken();
-
-        assertThat(token).isEqualTo("mcat_refreshed");
-        verify(tokenStore).save(argThat(c -> c.accessToken().equals("mcat_refreshed")));
-    }
-
-    @Test
-    void getValidAccessToken_refreshRejected_clearsStoreAndThrows() {
-        ConnectorCredentials expiring = new ConnectorCredentials("mcat_old", Instant.now().plusSeconds(5), "mcrt_old");
-        when(tokenStore.load()).thenReturn(Optional.of(expiring));
-        when(connectorAuthClient.refresh("mcrt_old")).thenThrow(new ConnectorAuthException("expired"));
-
-        assertThatThrownBy(service::getValidAccessToken).isInstanceOf(ConnectorAuthException.class);
+        assertThatThrownBy(service::getValidAccessToken)
+            .isInstanceOf(ConnectorAuthException.class)
+            .hasMessageContaining("login");
         verify(tokenStore).clear();
     }
 }

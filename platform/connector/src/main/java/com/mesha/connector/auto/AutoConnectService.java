@@ -19,7 +19,7 @@ import java.util.List;
  * <p>Required env vars:
  * <ul>
  *   <li>{@code CONNECTOR_AUTO_CONNECT_ENABLED=true}</li>
- *   <li>{@code CONNECTOR_AUTO_CONNECT_TOKEN} — Mesha JWT obtained from the web app</li>
+ *   <li>{@code CONNECTOR_AUTO_CONNECT_TOKEN} — connector access token ({@code mcat_...}) from the web app</li>
  *   <li>{@code CONNECTOR_AUTO_CONNECT_EXECUTOR_TYPE} — executor type (e.g. {@code cli}, {@code docker})</li>
  * </ul>
  * Optional:
