@@ -43,9 +43,12 @@ public class ConnectorAuthController {
      */
     @GetMapping("/validate")
     public ResponseEntity<ConnectorTokenValidationResponse> validate(
-        @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization
+        @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization
     ) {
-        String accessToken = authorization.replaceFirst("(?i)^Bearer ", "");
+        if (authorization == null || !authorization.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing or invalid Authorization header");
+        }
+        String accessToken = authorization.substring(7).trim();
         long remainingSeconds = connectorAuthService.getAccessTokenRemainingSeconds(accessToken)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired access token"));
         return ResponseEntity.ok(new ConnectorTokenValidationResponse(remainingSeconds));
