@@ -26,7 +26,7 @@ import java.util.UUID;
 @Service
 public class ConnectorAuthService {
 
-    static final Duration ACCESS_TOKEN_TTL = Duration.ofHours(1);
+    static final Duration ACCESS_TOKEN_TTL = Duration.ofDays(30);
     static final Duration REFRESH_TOKEN_TTL = Duration.ofDays(30);
     private static final String ACCESS_TOKEN_PREFIX = "mcat_";
     private static final String REFRESH_TOKEN_PREFIX = "mcrt_";
@@ -73,12 +73,20 @@ public class ConnectorAuthService {
     }
 
     public Optional<UUID> validateAccessToken(String accessToken) {
+        return findValidCredential(accessToken).map(ConnectorCredential::getUserId);
+    }
+
+    public Optional<Long> getAccessTokenRemainingSeconds(String accessToken) {
+        return findValidCredential(accessToken)
+            .map(c -> Duration.between(Instant.now(), c.getAccessTokenExpiresAt()).getSeconds());
+    }
+
+    private Optional<ConnectorCredential> findValidCredential(String accessToken) {
         if (accessToken == null || accessToken.isBlank()) {
             return Optional.empty();
         }
         return connectorCredentialRepository.findByAccessTokenHash(hash(accessToken))
-            .filter(c -> c.getAccessTokenExpiresAt().isAfter(Instant.now()))
-            .map(ConnectorCredential::getUserId);
+            .filter(c -> c.getAccessTokenExpiresAt().isAfter(Instant.now()));
     }
 
     private String generateToken(String prefix) {

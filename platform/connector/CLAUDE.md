@@ -35,11 +35,11 @@ src/main/java/com/mesha/connector/
 │   ├── HeartbeatCommandRunner.java    # Handles `heartbeat` invocations
 │   └── PollCommandRunner.java         # Handles `poll` invocations; runs SessionPollingLoop for the registered agent
 ├── auth/
-│   ├── ConnectorAuthService.java      # Login/refresh orchestration, exposes getValidAccessToken()
+│   ├── ConnectorAuthService.java      # Login orchestration, exposes getValidAccessToken()
 │   ├── ConnectorAuthClient.java       # HTTP calls to backend-api /api/connector/auth/*
 │   ├── ConnectorAuthInterceptor.java  # Attaches Bearer token to outgoing backendApiRestClient calls
 │   ├── ConnectorTokenStore.java       # Persists credentials to connector.credentials-path (chmod 600)
-│   └── ConnectorCredentials.java      # accessToken/refreshToken + access token expiry
+│   └── ConnectorCredentials.java      # accessToken + access token expiry
 ├── agent/
 │   ├── AgentRegistrationService.java  # Register/heartbeat orchestration
 │   ├── AgentRegistrationClient.java   # HTTP calls to backend-api /api/connector/agents/*
@@ -70,11 +70,13 @@ src/main/java/com/mesha/connector/
     └── BackendApiClientConfig.java    # backendApiRestClient bean for authenticated backend calls
 ```
 
-Authentication: `mesha-connector login --token=<mesha-access-token>` exchanges a token the user
-already obtained from Mesha for connector-specific credentials via `POST /api/connector/auth/login`,
-then stores them locally. Subsequent backend calls made through the `backendApiRestClient` bean
-are authenticated automatically by `ConnectorAuthInterceptor`, which refreshes the access token
-via `POST /api/connector/auth/refresh` when it's close to expiry.
+Authentication: `mesha-connector login --token=<connector-access-token>` takes the `mcat_...` access
+token copied from the "Connector Access Token" generator in the Mesha web app, validates it against
+the backend via `GET /api/connector/auth/validate`, and stores it locally as-is — there is no token
+exchange and no refresh token. The access token is long-lived (30 days); once it expires, re-run
+`login` with a freshly generated token. Subsequent backend calls made through the
+`backendApiRestClient` bean are authenticated automatically by `ConnectorAuthInterceptor`, which
+attaches the stored token as a Bearer header.
 
 Agent registration: `mesha-connector register --executor-type=<type> [--capabilities=a,b,c]` registers
 this machine/executor combination as a Mesha agent via `POST /api/connector/agents/register`

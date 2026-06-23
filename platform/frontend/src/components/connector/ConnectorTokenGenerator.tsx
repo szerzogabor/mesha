@@ -5,21 +5,21 @@ import { useConnectorAuthLogin } from "@/hooks/useConnectorAuthLogin";
 
 export function ConnectorTokenGenerator() {
   const { mutate: generateToken, isPending, data: tokenData, error } = useConnectorAuthLogin();
-  const [copiedIndex, setCopiedIndex] = useState<"access" | "refresh" | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const handleGenerateToken = () => {
     generateToken();
   };
 
-  const copyToClipboard = (text: string, type: "access" | "refresh") => {
+  const copyToClipboard = (text: string) => {
     if (!navigator.clipboard) {
       console.warn("Clipboard API not available");
       return;
     }
     navigator.clipboard.writeText(text)
       .then(() => {
-        setCopiedIndex(type);
-        setTimeout(() => setCopiedIndex(null), 2000);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
       })
       .catch((err) => {
         console.error("Failed to copy text: ", err);
@@ -27,12 +27,12 @@ export function ConnectorTokenGenerator() {
   };
 
   const formatExpiryTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    if (days > 0) {
+      return `${days}d ${hours}h`;
     }
-    return `${minutes}m`;
+    return `${hours}h`;
   };
 
   return (
@@ -74,10 +74,10 @@ export function ConnectorTokenGenerator() {
                 {tokenData.accessToken}
               </code>
               <button
-                onClick={() => copyToClipboard(tokenData.accessToken, "access")}
+                onClick={() => copyToClipboard(tokenData.accessToken)}
                 className="px-3 py-2 rounded-lg bg-bg-surface-hover hover:bg-bg-surface-hover/80 text-text-secondary hover:text-text-primary text-sm font-medium transition-colors"
               >
-                {copiedIndex === "access" ? "✓" : "Copy"}
+                {copied ? "✓" : "Copy"}
               </button>
             </div>
             <p className="text-xs text-text-tertiary">
@@ -85,38 +85,16 @@ export function ConnectorTokenGenerator() {
             </p>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-text-primary">Refresh Token</label>
-            <div className="flex gap-2">
-              <code className="flex-1 px-3 py-2 rounded-lg bg-bg-surface-hover text-text-secondary text-xs font-mono overflow-x-auto break-all">
-                {tokenData.refreshToken}
-              </code>
-              <button
-                onClick={() => copyToClipboard(tokenData.refreshToken, "refresh")}
-                className="px-3 py-2 rounded-lg bg-bg-surface-hover hover:bg-bg-surface-hover/80 text-text-secondary hover:text-text-primary text-sm font-medium transition-colors"
-              >
-                {copiedIndex === "refresh" ? "✓" : "Copy"}
-              </button>
-            </div>
-            <p className="text-xs text-text-tertiary">
-              Kept locally for automatic token refresh (30 days)
-            </p>
-          </div>
-
-          <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 space-y-2">
-            <h4 className="text-sm font-medium text-amber-700 dark:text-amber-300">Important: Setup Flow</h4>
-            <div className="text-xs text-amber-600 dark:text-amber-400 space-y-2">
-              <p><strong>Step 1: Initial Login</strong></p>
-              <p className="ml-2">Run: <code className="font-mono">mesha-connector login --token=&lt;your-clerk-jwt&gt;</code></p>
-              <p className="text-[11px] ml-2 italic">Use your Clerk JWT from the web app, not the token above</p>
+          <div className="rounded-lg bg-bg-surface-hover/50 border border-border-default p-4 space-y-2">
+            <h4 className="text-sm font-medium text-text-primary">Setup Flow</h4>
+            <div className="text-xs text-text-tertiary space-y-2">
+              <p><strong>Step 1: Login</strong></p>
+              <p className="ml-2">Run: <code className="font-mono">mesha-connector login --token=&lt;token-above&gt;</code></p>
 
               <p className="mt-2"><strong>Step 2: Register Agent</strong></p>
               <p className="ml-2">Run: <code className="font-mono">mesha-connector register --executor-type=docker</code></p>
 
-              <p className="mt-2"><strong>Step 3: For Direct API Calls (Advanced)</strong></p>
-              <p className="ml-2">Use the access token above: <code className="font-mono">curl -H "Authorization: Bearer &lt;access-token&gt;" https://mesha-api.onrender.com/api/agents</code></p>
-
-              <p className="mt-2"><strong>Step 4: Poll Sessions</strong></p>
+              <p className="mt-2"><strong>Step 3: Poll Sessions</strong></p>
               <p className="ml-2">Run: <code className="font-mono">mesha-connector poll</code></p>
             </div>
           </div>

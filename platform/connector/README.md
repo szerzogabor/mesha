@@ -32,8 +32,8 @@ Health check: `GET /actuator/health`
 The same Spring Boot application also runs web-less for one-off CLI invocations:
 
 ```bash
-# 1. Log in with a Mesha access token (exchanges it for connector credentials)
-./gradlew bootRun --args='login --token=<mesha-access-token>'
+# 1. Log in with the connector access token from the Mesha web app ("Connector Access Token" generator)
+./gradlew bootRun --args='login --token=<connector-access-token>'
 
 # 2. Register this machine/executor as a Mesha agent
 ./gradlew bootRun --args='register --executor-type=<type> [--capabilities=a,b,c]'
@@ -68,7 +68,7 @@ variables:
 | `CONNECTOR_CREDENTIALS_PATH` | `~/.mesha/connector/credentials.json` | Where login credentials are persisted |
 | `CONNECTOR_AGENT_REGISTRATION_PATH` | `~/.mesha/connector/agent.json` | Where the registered agent id is persisted |
 | `CONNECTOR_AUTO_CONNECT_ENABLED` | `false` | Auto-run login/register/poll on startup |
-| `CONNECTOR_AUTO_CONNECT_TOKEN` | _(empty)_ | Mesha access token used for auto-connect |
+| `CONNECTOR_AUTO_CONNECT_TOKEN` | _(empty)_ | Connector access token used for auto-connect |
 | `CONNECTOR_AUTO_CONNECT_EXECUTOR_TYPE` | _(empty)_ | Executor type used for auto-connect |
 | `CONNECTOR_AUTO_CONNECT_CAPABILITIES` | _(empty)_ | Comma-separated capabilities for auto-connect |
 | `CONNECTOR_AUTO_CONNECT_HOSTNAME` | _(empty)_ | Hostname override for auto-connect |

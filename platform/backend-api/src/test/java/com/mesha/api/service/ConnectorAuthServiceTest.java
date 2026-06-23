@@ -127,6 +127,42 @@ class ConnectorAuthServiceTest {
             .isInstanceOf(ResponseStatusException.class);
     }
 
+    @Test
+    void getAccessTokenRemainingSeconds_validToken_returnsRemainingTime() {
+        when(connectorCredentialRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        ConnectorCredential persisted = new ConnectorCredential();
+        ConnectorTokenResponse issued = captureCredentialOnSave(persisted);
+
+        when(connectorCredentialRepository.findByAccessTokenHash(persisted.getAccessTokenHash()))
+            .thenReturn(Optional.of(persisted));
+
+        Optional<Long> remaining = service.getAccessTokenRemainingSeconds(issued.accessToken());
+
+        assertThat(remaining).isPresent();
+        assertThat(remaining.get()).isLessThanOrEqualTo(ConnectorAuthService.ACCESS_TOKEN_TTL.toSeconds());
+        assertThat(remaining.get()).isGreaterThan(ConnectorAuthService.ACCESS_TOKEN_TTL.toSeconds() - 60);
+    }
+
+    @Test
+    void getAccessTokenRemainingSeconds_unknownToken_returnsEmpty() {
+        when(connectorCredentialRepository.findByAccessTokenHash(any())).thenReturn(Optional.empty());
+
+        assertThat(service.getAccessTokenRemainingSeconds("mcat_does-not-exist")).isEmpty();
+    }
+
+    @Test
+    void getAccessTokenRemainingSeconds_expiredToken_returnsEmpty() {
+        when(connectorCredentialRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        ConnectorCredential persisted = new ConnectorCredential();
+        ConnectorTokenResponse issued = captureCredentialOnSave(persisted);
+        persisted.setAccessTokenExpiresAt(Instant.now().minusSeconds(1));
+
+        when(connectorCredentialRepository.findByAccessTokenHash(persisted.getAccessTokenHash()))
+            .thenReturn(Optional.of(persisted));
+
+        assertThat(service.getAccessTokenRemainingSeconds(issued.accessToken())).isEmpty();
+    }
+
     private ConnectorTokenResponse captureCredentialOnSave(ConnectorCredential target) {
         ConnectorTokenResponse response = service.login(user);
         ArgumentCaptor<ConnectorCredential> captor = ArgumentCaptor.forClass(ConnectorCredential.class);
