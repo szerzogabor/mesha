@@ -9,6 +9,7 @@ export function AppHeader() {
     <header className="flex gap-4 justify-end items-center px-8 py-3 border-b border-border-default bg-bg-surface">
       <Link
         href="/download"
+        aria-label="Download app"
         className="inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -16,7 +17,7 @@ export function AppHeader() {
           <path d="m7 10 5 5 5-5" />
           <path d="M5 21h14" />
         </svg>
-        Download app
+        <span className="hidden sm:inline">Download app</span>
       </Link>
       <ThemeToggle />
       <Show when="signed-out">
