@@ -100,6 +100,27 @@ class DraftRepositoryTest {
     }
 
     @Test
+    fun syncPending_doesNotDropLabelsWhenLabelLookupFails() = runTest {
+        // Label lookup fails transiently → draft must NOT be created/synced (labels would
+        // be lost); it stays FAILED for a later retry.
+        coEvery { mesha.getLabels(any()) } returns Result.failure(RuntimeException("offline"))
+
+        val id = repository.saveDraft(draft, "proj-1", "ws-1", "prompt")
+        val created = repository.syncPending()
+
+        assertEquals(0, created)
+        assertEquals(SyncStatus.FAILED, dao.getById(id)!!.syncStatus)
+        io.mockk.coVerify(exactly = 0) { mesha.createIssue(any(), any()) }
+    }
+
+    @Test
+    fun hasSyncableDrafts_reflectsQueueState() = runTest {
+        assertTrue(!repository.hasSyncableDrafts())
+        repository.saveDraft(draft, "proj-1", "ws-1", "prompt")
+        assertTrue(repository.hasSyncableDrafts())
+    }
+
+    @Test
     fun syncPending_skipsDraftsThatExceededMaxAttempts() = runTest {
         coEvery { mesha.getLabels(any()) } returns Result.success(emptyList())
         coEvery { mesha.createIssue(any(), any()) } returns

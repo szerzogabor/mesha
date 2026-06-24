@@ -73,25 +73,41 @@ object IssueDraftParser {
     }
 
     /**
-     * Locate a JSON object inside arbitrary text. Handles ```json fenced blocks and
-     * leading/trailing prose by scanning for the outermost balanced braces.
+     * Locate a JSON object inside arbitrary text. Robust to ```json fences, leading/
+     * trailing prose, AND multiple fenced blocks (some models explain a command first,
+     * then emit the JSON): scans every balanced `{ … }` block and prefers one that looks
+     * like an issue draft (contains "title"/"description"), falling back to the first
+     * balanced block otherwise.
      */
     internal fun extractJsonObject(raw: String): String? {
         if (raw.isBlank()) return null
-        val withoutFences = raw
-            .replace("```json", "```")
-            .substringAfter("```", raw)
-            .substringBefore("```")
-            .ifBlank { raw }
 
-        val start = withoutFences.indexOf('{')
-        if (start < 0) return null
+        var firstBalanced: String? = null
+        var searchFrom = 0
+        while (true) {
+            val start = raw.indexOf('{', searchFrom)
+            if (start < 0) break
 
+            val end = matchingBraceEnd(raw, start)
+            if (end < 0) break // unbalanced from here on
+
+            val candidate = raw.substring(start, end + 1)
+            if (firstBalanced == null) firstBalanced = candidate
+            if (candidate.contains("\"title\"") || candidate.contains("\"description\"")) {
+                return candidate
+            }
+            searchFrom = end + 1
+        }
+        return firstBalanced
+    }
+
+    /** Index of the `}` that closes the `{` at [start], or -1 if unbalanced. */
+    private fun matchingBraceEnd(text: String, start: Int): Int {
         var depth = 0
         var inString = false
         var escaped = false
-        for (i in start until withoutFences.length) {
-            val c = withoutFences[i]
+        for (i in start until text.length) {
+            val c = text[i]
             when {
                 escaped -> escaped = false
                 c == '\\' && inString -> escaped = true
@@ -99,11 +115,11 @@ object IssueDraftParser {
                 !inString && c == '{' -> depth++
                 !inString && c == '}' -> {
                     depth--
-                    if (depth == 0) return withoutFences.substring(start, i + 1)
+                    if (depth == 0) return i
                 }
             }
         }
-        return null // unbalanced
+        return -1
     }
 
     private fun JsonObject.string(key: String): String? =

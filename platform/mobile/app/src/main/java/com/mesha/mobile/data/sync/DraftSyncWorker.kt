@@ -28,9 +28,10 @@ class DraftSyncWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result = try {
         draftRepository.syncPending()
-        Result.success()
+        // syncPending swallows per-draft errors, so ask the repository whether any
+        // drafts still need syncing; if so, let WorkManager back off and retry.
+        if (draftRepository.hasSyncableDrafts()) Result.retry() else Result.success()
     } catch (e: Exception) {
-        // Transient failure — let WorkManager back off and retry.
         Result.retry()
     }
 

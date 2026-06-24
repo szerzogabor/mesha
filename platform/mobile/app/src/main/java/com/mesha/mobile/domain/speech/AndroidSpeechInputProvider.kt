@@ -3,6 +3,8 @@ package com.mesha.mobile.domain.speech
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -31,7 +33,6 @@ class AndroidSpeechInputProvider @Inject constructor(
             return@callbackFlow
         }
 
-        val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
         val listener = object : RecognitionListener {
             override fun onReadyForSpeech(params: Bundle?) {
                 trySend(SpeechEvent.ReadyForSpeech)
@@ -60,12 +61,28 @@ class AndroidSpeechInputProvider @Inject constructor(
             override fun onEvent(eventType: Int, params: Bundle?) {}
         }
 
-        recognizer.setRecognitionListener(listener)
-        recognizer.startListening(buildIntent())
+        // SpeechRecognizer must be created, started, and destroyed on the main thread,
+        // regardless of which dispatcher collects this flow.
+        val mainHandler = Handler(Looper.getMainLooper())
+        // Only ever touched on the main thread (both posts run there), so no visibility issue.
+        var recognizer: SpeechRecognizer? = null
+        mainHandler.post {
+            try {
+                recognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
+                    setRecognitionListener(listener)
+                    startListening(buildIntent())
+                }
+            } catch (e: Exception) {
+                trySend(SpeechEvent.Error("Failed to start speech recognizer: ${e.message}"))
+                close()
+            }
+        }
 
         awaitClose {
-            recognizer.stopListening()
-            recognizer.destroy()
+            mainHandler.post {
+                recognizer?.stopListening()
+                recognizer?.destroy()
+            }
         }
     }
 

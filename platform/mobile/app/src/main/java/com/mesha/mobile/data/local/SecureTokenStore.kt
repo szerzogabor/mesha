@@ -17,13 +17,32 @@ import javax.inject.Singleton
 class SecureTokenStore @Inject constructor(
     @ApplicationContext context: Context,
 ) {
+    private val appContext = context.applicationContext
+
     private val prefs: SharedPreferences by lazy {
-        val masterKey = MasterKey.Builder(context)
+        try {
+            createEncryptedPrefs()
+        } catch (e: Exception) {
+            // The Keystore can get into an inconsistent state after app updates, backup
+            // restores, or on some OEM devices, causing create() to throw. Recover by
+            // dropping the corrupted prefs + master key and recreating once. The cost is
+            // re-authentication, which is acceptable versus a hard startup crash.
+            runCatching {
+                appContext.deleteSharedPreferences(PREFS_NAME)
+                java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+                    .deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+            }
+            createEncryptedPrefs()
+        }
+    }
+
+    private fun createEncryptedPrefs(): SharedPreferences {
+        val masterKey = MasterKey.Builder(appContext)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
-        EncryptedSharedPreferences.create(
-            context,
-            "mesha_secure_prefs",
+        return EncryptedSharedPreferences.create(
+            appContext,
+            PREFS_NAME,
             masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
@@ -41,6 +60,7 @@ class SecureTokenStore @Inject constructor(
     }
 
     private companion object {
+        const val PREFS_NAME = "mesha_secure_prefs"
         const val KEY_TOKEN = "auth_token"
     }
 }

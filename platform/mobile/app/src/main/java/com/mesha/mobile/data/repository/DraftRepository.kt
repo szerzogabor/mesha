@@ -89,6 +89,9 @@ class DraftRepository @Inject constructor(
         return created
     }
 
+    /** Whether any drafts remain eligible for a sync attempt — drives WorkManager retry. */
+    suspend fun hasSyncableDrafts(): Boolean = draftDao.getSyncable(MAX_ATTEMPTS).isNotEmpty()
+
     /** Force a sync attempt for one draft regardless of attempt count (e.g. user tap). */
     suspend fun retry(id: String): Boolean {
         val draft = draftDao.getById(id) ?: return false
@@ -98,9 +101,21 @@ class DraftRepository @Inject constructor(
     private suspend fun syncOne(draft: DraftEntity): Boolean {
         draftDao.update(draft.copy(syncStatus = SyncStatus.SYNCING, updatedAt = System.currentTimeMillis()))
 
-        // Map label names → label ids for the target workspace (best-effort; unknown
-        // names are dropped since the create endpoint takes label ids).
+        // Map label names → label ids for the target workspace. If the label lookup
+        // itself fails (e.g. transient network), abort and leave the draft for retry
+        // rather than creating an issue that silently drops the user's labels.
         val labelIds = resolveLabelIds(draft)
+        if (labelIds == null) {
+            draftDao.update(
+                draft.copy(
+                    syncStatus = SyncStatus.FAILED,
+                    syncAttempts = draft.syncAttempts + 1,
+                    lastError = "Could not load workspace labels",
+                    updatedAt = System.currentTimeMillis(),
+                )
+            )
+            return false
+        }
 
         val request = CreateIssueRequestDto(
             title = draft.title,
@@ -137,11 +152,14 @@ class DraftRepository @Inject constructor(
         )
     }
 
-    private suspend fun resolveLabelIds(draft: DraftEntity): List<String> {
+    /** @return resolved label ids, or null if the label lookup failed (caller retries). */
+    private suspend fun resolveLabelIds(draft: DraftEntity): List<String>? {
         val names = decodeList(draft.labelsJson)
         if (names.isEmpty()) return emptyList()
-        val labels = meshaRepository.getLabels(draft.workspaceId).getOrNull().orEmpty()
-        val byName = labels.associateBy { it.name.lowercase() }
+        val result = meshaRepository.getLabels(draft.workspaceId)
+        if (result.isFailure) return null
+        val byName = result.getOrNull().orEmpty().associateBy { it.name.lowercase() }
+        // Unknown label names are dropped (no matching id); a failed lookup returns null above.
         return names.mapNotNull { byName[it.lowercase()]?.id }
     }
 

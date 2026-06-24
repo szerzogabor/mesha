@@ -141,7 +141,10 @@ public class AppReleaseService {
 
     private String sanitizeFileName(String original) {
         if (original == null || original.isBlank()) return "mesha.apk";
-        String name = original.replaceAll(".*[/\\\\]", "");
+        // Strip any path segments, then restrict to a safe charset so the value cannot
+        // break out of the Content-Disposition header (quotes / CR / LF / control chars).
+        String name = original.replaceAll(".*[/\\\\]", "")
+                .replaceAll("[^a-zA-Z0-9._-]", "_");
         return name.isBlank() ? "mesha.apk" : name;
     }
 

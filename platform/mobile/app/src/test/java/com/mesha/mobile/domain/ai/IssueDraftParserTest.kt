@@ -97,6 +97,24 @@ class IssueDraftParserTest {
     }
 
     @Test
+    fun picksIssueJsonWhenMultipleFencedBlocksPresent() {
+        val raw = """
+            First, run this:
+            ```sh
+            { "cmd": "do something" }
+            ```
+            Then here is the issue:
+            ```json
+            {"title":"Real issue","description":"the actual draft","priority":"LOW"}
+            ```
+        """.trimIndent()
+
+        val draft = IssueDraftParser.parse(raw)
+        assertEquals("Real issue", draft.title)
+        assertEquals(IssuePriority.LOW, draft.priority)
+    }
+
+    @Test
     fun throwsWhenNoJsonPresent() {
         assertThrows(LocalAiException.InvalidOutput::class.java) {
             IssueDraftParser.parse("I cannot help with that.")
