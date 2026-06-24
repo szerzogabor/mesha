@@ -15,6 +15,7 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend-api: ${{ steps.filter.outputs.backend-api }}
       connector: ${{ steps.filter.outputs.connector }}
+      mobile: ${{ steps.filter.outputs.mobile }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: dorny/paths-filter@v3
@@ -27,6 +28,8 @@ jobs:
               - 'platform/backend-api/**'
             connector:
               - 'platform/connector/**'
+            mobile:
+              - 'platform/mobile/**'
 
   validate-frontend:
     needs: changes
@@ -85,6 +88,64 @@ jobs:
         working-directory: ./platform/connector
         run: ./gradlew clean build --no-daemon
 
+  validate-mobile:
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Setup Java
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+      - name: Assemble debug APK
+        working-directory: ./platform/mobile
+        run: ./gradlew :app:assembleDebug --no-daemon
+        env:
+          ORG_GRADLE_PROJECT_mesha.clerk.publishableKey.debug: ${{ secrets.MOBILE_CLERK_PUBLISHABLE_KEY_DEBUG }}
+      - name: Unit tests
+        working-directory: ./platform/mobile
+        run: ./gradlew :app:testDebugUnitTest --no-daemon
+        env:
+          ORG_GRADLE_PROJECT_mesha.clerk.publishableKey.debug: ${{ secrets.MOBILE_CLERK_PUBLISHABLE_KEY_DEBUG }}
+
+  # Publishes a debug-signed APK to the in-app update feed on every push to main. Debug
+  # signing is intentional for now (no release keystore yet) — see RELEASE_PROCESS.md.
+  publish-mobile-release:
+    needs: changes
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.mobile == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Setup Java
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+      - name: Assemble debug APK
+        working-directory: ./platform/mobile
+        run: |
+          ./gradlew :app:assembleDebug --no-daemon \
+            -Pmesha.versionCode=${{ github.run_number }} \
+            -Pmesha.versionName=0.1.${{ github.run_number }} \
+            -Pmesha.clerk.publishableKey.debug=${{ secrets.MOBILE_CLERK_PUBLISHABLE_KEY_DEBUG }}
+      - name: Upload to release feed
+        working-directory: ./platform/mobile
+        run: |
+          curl -sf -X POST "https://api.mesha.app/api/releases" \
+            -H "Authorization: Bearer ${{ secrets.APP_RELEASES_UPLOAD_TOKEN }}" \
+            -F "file=@app/build/outputs/apk/debug/app-debug.apk" \
+            -F "platform=ANDROID" \
+            -F "versionName=0.1.${{ github.run_number }}" \
+            -F "versionCode=${{ github.run_number }}" \
+            -F "minSdk=33" \
+            -F "releaseNotes=Automated build from ${{ github.sha }}"
+
   quality:
     runs-on: ubuntu-latest
     permissions:
@@ -114,7 +175,15 @@ jobs:
   # Aggregator — always runs so branch protection check "ci" is always satisfied.
   # Fails if any validation failed; passes (or skips) when no relevant paths changed.
   ci:
-    needs: [validate-frontend, validate-backend-api, validate-connector, quality]
+    needs:
+      [
+        validate-frontend,
+        validate-backend-api,
+        validate-connector,
+        validate-mobile,
+        publish-mobile-release,
+        quality,
+      ]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -124,6 +193,8 @@ jobs:
             "${{ needs.validate-frontend.result }}"
             "${{ needs.validate-backend-api.result }}"
             "${{ needs.validate-connector.result }}"
+            "${{ needs.validate-mobile.result }}"
+            "${{ needs.publish-mobile-release.result }}"
             "${{ needs.quality.result }}"
           )
           for result in "${results[@]}"; do

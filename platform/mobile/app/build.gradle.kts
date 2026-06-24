@@ -20,8 +20,10 @@ android {
         applicationId = "com.mesha.mobile"
         minSdk = 33            // Android 13+
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        // CI overrides both via -P for release builds (auto-incrementing versionCode);
+        // local/dev builds fall back to these defaults.
+        versionCode = prop("mesha.versionCode", "1").toInt()
+        versionName = prop("mesha.versionName", "0.1.0")
 
         testInstrumentationRunner = "com.mesha.mobile.HiltTestRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -35,6 +37,11 @@ android {
                 "API_BASE_URL",
                 "\"${prop("mesha.api.baseUrl.debug", "http://10.0.2.2:8080/")}\"",
             )
+            buildConfigField(
+                "String",
+                "CLERK_PUBLISHABLE_KEY",
+                "\"${prop("mesha.clerk.publishableKey.debug", "")}\"",
+            )
         }
         release {
             isMinifyEnabled = true
@@ -47,6 +54,11 @@ android {
                 "String",
                 "API_BASE_URL",
                 "\"${prop("mesha.api.baseUrl", "https://api.mesha.app/")}\"",
+            )
+            buildConfigField(
+                "String",
+                "CLERK_PUBLISHABLE_KEY",
+                "\"${prop("mesha.clerk.publishableKey", "")}\"",
             )
         }
     }
@@ -107,8 +119,8 @@ dependencies {
     ksp(libs.room.compiler)
 
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.androidx.security.crypto)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.clerk.android.ui)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.coil.compose)
 

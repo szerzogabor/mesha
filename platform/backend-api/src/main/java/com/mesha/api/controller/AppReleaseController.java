@@ -71,9 +71,13 @@ public class AppReleaseController {
         return ResponseEntity.ok(dtos);
     }
 
-    /** Admin-only upload of a new APK build. */
+    /**
+     * Upload of a new APK build. Allowed for platform admins (Clerk session) and for
+     * CI, which authenticates with the long-lived {@code relpub_} token since a human
+     * admin's Clerk session JWT is too short-lived to use from a build pipeline.
+     */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("@platformSecurity.isPlatformAdmin(authentication)")
+    @PreAuthorize("@platformSecurity.isPlatformAdmin(authentication) or hasAuthority('ROLE_CI_RELEASE_PUBLISHER')")
     public ResponseEntity<AppReleaseDto> upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "platform", defaultValue = "ANDROID") String platform,
@@ -82,7 +86,7 @@ public class AppReleaseController {
             @RequestParam(value = "minSdk", required = false) Integer minSdk,
             @RequestParam(value = "releaseNotes", required = false) String releaseNotes,
             @RequestParam(value = "published", defaultValue = "true") boolean published,
-            @CurrentUser User user) {
+            @CurrentUser(required = false) User user) {
         AppRelease release = releaseService.upload(
                 parsePlatform(platform), versionName, versionCode, minSdk, releaseNotes, published, file, user);
         return ResponseEntity.status(HttpStatus.CREATED).body(AppReleaseDto.from(release));
