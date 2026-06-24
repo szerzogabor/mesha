@@ -90,6 +90,8 @@ Current highest: **V32** (`V32__deduplicate_and_unique_github_prs.sql`)
 | V43–V44 | ConnectorAgentSessions (self-hosted connector execution tracking, workspace path) |
 | V45 | ConnectorAgentSessionMessages (follow-up chat, claim-and-deliver) |
 | V46 | Pull request fields on ConnectorAgentSessions (connector-reported, not webhook-synced) |
+| V47 | Issue attachments (bytea file storage) |
+| V49 | App releases (Android APK distribution metadata + bytes) |
 
 ---
 
@@ -124,6 +126,9 @@ All endpoints require `Authorization: Bearer <clerk-jwt>` **except** `/api/webho
 | TicketRuleController | `GET/POST /api/projects/{projectId}/ticket-rules` |
 | IssueLinkController | `GET/POST /api/issues/{issueId}/links` |
 | AuthController | `POST /api/auth/sync` (sync Clerk user) |
+| AppReleaseController | `GET /api/releases/{platform}/latest` — latest published APK (public) |
+| | `GET /api/releases/{platform}` / `/{releaseId}/download` — history / APK bytes (public) |
+| | `POST/PATCH/DELETE /api/releases/...` — admin APK management (platform admin) |
 | AgentSessionController | `GET/POST /api/agent-sessions` — web app: create/list connector agent sessions |
 | | `POST /api/agent-sessions/{sessionId}/enqueue`, `/cancel` |
 | | `GET/POST /api/agent-sessions/{sessionId}/messages` — follow-up chat |
@@ -231,6 +236,20 @@ platform/frontend/src/
 - Server state: TanStack Query (React Query 5) via custom hooks in `hooks/`
 - Client state: Zustand stores (initialized in `app/providers.tsx`)
 - Auth: Clerk (tokens injected by `api-client.ts`)
+
+---
+
+## Mobile (Android)
+
+Native Android client at `platform/mobile/` — Kotlin, Jetpack Compose, Hilt, Retrofit,
+Room, Coroutines (MVVM). Targets Android 13+. Reuses the existing REST API and adds
+**on-device AI issue creation** via a local Gemma model (Google AI Edge / MediaPipe) —
+works with no cloud AI provider. Offline drafts are queued in Room and synced via
+WorkManager. APK distribution is handled by the backend release-management system
+(`AppRelease`) and surfaced on the web `/download` page and the in-app updater.
+
+Full docs: [`platform/docs/mobile/`](./mobile/). Key abstractions: `LocalAiProvider`
+(→ `GemmaLocalAiProvider`), `SpeechInputProvider`, `DraftRepository` + `DraftSyncWorker`.
 
 ---
 

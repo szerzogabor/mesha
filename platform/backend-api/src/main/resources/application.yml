@@ -28,10 +28,22 @@ spring:
       resourceserver:
         jwt:
           jwk-set-uri: ${CLERK_JWKS_URI:https://your-clerk-instance.clerk.accounts.dev/.well-known/jwks.json}
+  servlet:
+    multipart:
+      # APK uploads for native client releases are large; issue attachments are capped
+      # separately in IssueAttachmentService (10 MB).
+      max-file-size: ${MAX_UPLOAD_FILE_SIZE:200MB}
+      max-request-size: ${MAX_UPLOAD_REQUEST_SIZE:210MB}
 
 app:
   worker:
     enabled: ${APP_WORKER_ENABLED:false}
+  # Platform-wide (non-workspace) administration. Comma-separated emails allowed to
+  # upload/manage native client releases (APKs). Empty = nobody can upload.
+  platform:
+    admin-emails: ${PLATFORM_ADMIN_EMAILS:}
+  releases:
+    max-apk-size-bytes: ${MAX_APK_SIZE_BYTES:209715200}
 
 clerk:
   jwks-uri: ${CLERK_JWKS_URI:https://your-clerk-instance.clerk.accounts.dev/.well-known/jwks.json}

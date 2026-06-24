@@ -69,12 +69,12 @@ export default function Home() {
         <div className="mt-16 grid gap-4 sm:grid-cols-3">
           {[
             {
-              title: "Installable PWA",
-              body: "Add Mesha to your Android home screen and run it full-screen.",
+              title: "Native Android app",
+              body: "Install the Mesha APK on Android 13+ for the full, touch-optimized experience.",
             },
             {
-              title: "Manage on the go",
-              body: "Issues, sessions, agents, and Kanban — all touch-optimized.",
+              title: "On-device AI",
+              body: "Draft issues with a local Gemma model — works offline, no cloud AI key required.",
             },
             {
               title: "Live AI sessions",

@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Simple "M" glyph centered in the adaptive icon safe zone. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,40 L48,40 L54,54 L60,40 L70,40 L70,70 L62,70 L62,52 L56,66 L52,66 L46,52 L46,70 L38,70 Z" />
+</vector>
