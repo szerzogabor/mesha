@@ -21,7 +21,7 @@ workManager = "2.9.1"
 hiltWork = "1.2.0"
 mediapipeGenai = "0.10.14"
 coil = "2.7.0"
-clerkAndroid = "1.0.30"
+clerkAndroid = "1.0.24"
 junit = "4.13.2"
 mockk = "1.13.13"
 turbine = "1.1.0"
@@ -70,7 +70,9 @@ androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx"
 mediapipe-tasks-genai = { group = "com.google.mediapipe", name = "tasks-genai", version.ref = "mediapipeGenai" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 
-# Clerk Android SDK — clerk-android-ui pulls clerk-android-api transitively.
+# Clerk Android SDK — clerk-android-ui pulls clerk-android-api transitively. Pinned to
+# 1.0.24 (last release before 1.0.25 bumped Clerk's internal Kotlin to 2.4.0); KSP has no
+# release supporting Kotlin 2.4.0 yet, which breaks :app:kspDebugKotlin on 1.0.25+.
 clerk-android-ui = { group = "com.clerk", name = "clerk-android-ui", version.ref = "clerkAndroid" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }
