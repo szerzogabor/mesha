@@ -4,6 +4,7 @@ import com.clerk.api.Clerk
 import com.clerk.api.network.model.error.ClerkErrorResponse
 import com.clerk.api.network.model.token.TokenResource
 import com.clerk.api.network.serialization.ClerkResult
+import com.clerk.api.session.fetchToken
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.Response
