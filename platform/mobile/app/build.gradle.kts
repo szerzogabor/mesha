@@ -14,7 +14,8 @@ fun prop(name: String, default: String): String =
 
 android {
     namespace = "com.mesha.mobile"
-    compileSdk = 35
+    // compileSdk 36 is required by the Clerk Android SDK's transitive AndroidX/Compose deps.
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.mesha.mobile"

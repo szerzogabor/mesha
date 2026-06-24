@@ -1,6 +1,6 @@
 # Gradle version catalog — single source of truth for dependency versions.
 [versions]
-agp = "8.5.2"
+agp = "8.10.0"
 kotlin = "2.0.20"
 ksp = "2.0.20-1.0.25"
 coreKtx = "1.13.1"
