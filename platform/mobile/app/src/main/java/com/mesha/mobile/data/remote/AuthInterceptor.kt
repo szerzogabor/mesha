@@ -26,7 +26,9 @@ class AuthInterceptor @Inject constructor() : Interceptor {
             .header("X-Correlation-ID", UUID.randomUUID().toString())
 
         Clerk.session?.let { session ->
-            when (val result = runBlocking { session.fetchToken() }) {
+            val result: ClerkResult<TokenResource, ClerkErrorResponse> =
+                runBlocking { session.fetchToken() }
+            when (result) {
                 is ClerkResult.Success<TokenResource> -> builder.header("Authorization", "Bearer ${result.value.jwt}")
                 is ClerkResult.Failure<ClerkErrorResponse> -> Unit
             }
