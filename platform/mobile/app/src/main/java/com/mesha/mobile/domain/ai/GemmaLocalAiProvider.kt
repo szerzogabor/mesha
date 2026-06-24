@@ -62,7 +62,7 @@ class GemmaLocalAiProvider @Inject constructor(
                 val options = LlmInferenceOptions.builder()
                     .setModelPath(modelFile.absolutePath)
                     .setMaxTokens(MAX_TOKENS)
-                    .setMaxTopK(TOP_K)
+                    .setTopK(TOP_K)
                     .build()
                 LlmInference.createFromOptions(context, options).also { engine = it }
             } catch (e: Exception) {

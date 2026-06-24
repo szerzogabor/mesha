@@ -1,6 +1,8 @@
 package com.mesha.mobile.data.remote
 
 import com.clerk.api.Clerk
+import com.clerk.api.network.model.error.ClerkErrorResponse
+import com.clerk.api.network.model.token.TokenResource
 import com.clerk.api.network.serialization.ClerkResult
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
@@ -25,8 +27,8 @@ class AuthInterceptor @Inject constructor() : Interceptor {
 
         Clerk.session?.let { session ->
             when (val result = runBlocking { session.fetchToken() }) {
-                is ClerkResult.Success -> builder.header("Authorization", "Bearer ${result.value.jwt}")
-                is ClerkResult.Failure -> Unit
+                is ClerkResult.Success<TokenResource> -> builder.header("Authorization", "Bearer ${result.value.jwt}")
+                is ClerkResult.Failure<ClerkErrorResponse> -> Unit
             }
         }
         return chain.proceed(builder.build())
