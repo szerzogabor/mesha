@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -14,7 +16,8 @@ fun prop(name: String, default: String): String =
 
 android {
     namespace = "com.mesha.mobile"
-    compileSdk = 35
+    // compileSdk 36 is required by the Clerk Android SDK's transitive AndroidX/Compose deps.
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.mesha.mobile"
@@ -67,7 +70,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
 
     buildFeatures {
         compose = true
@@ -75,7 +77,11 @@ android {
     }
 
     packaging {
-        resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            // okhttp3:logging-interceptor and jspecify both ship this multi-release path.
+            excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+        }
     }
 
     testOptions {
@@ -83,6 +89,12 @@ android {
             isReturnDefaultValues = true
             isIncludeAndroidResources = true
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 

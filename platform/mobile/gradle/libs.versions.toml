@@ -1,27 +1,27 @@
 # Gradle version catalog — single source of truth for dependency versions.
 [versions]
-agp = "8.5.2"
-kotlin = "2.0.20"
-ksp = "2.0.20-1.0.25"
+agp = "8.10.0"
+kotlin = "2.3.20"
+ksp = "2.3.9"
 coreKtx = "1.13.1"
 lifecycle = "2.8.6"
 activityCompose = "1.9.2"
 composeBom = "2024.09.03"
 navigationCompose = "2.8.2"
-hilt = "2.52"
+hilt = "2.58"
 hiltNavigationCompose = "1.2.0"
 retrofit = "2.11.0"
 okhttp = "4.12.0"
 kotlinxSerialization = "1.7.3"
 retrofitSerialization = "1.0.0"
-room = "2.6.1"
+room = "2.8.4"
 coroutines = "1.9.0"
 datastore = "1.1.1"
 workManager = "2.9.1"
 hiltWork = "1.2.0"
 mediapipeGenai = "0.10.14"
 coil = "2.7.0"
-clerkAndroid = "1.0.30"
+clerkAndroid = "1.0.24"
 junit = "4.13.2"
 mockk = "1.13.13"
 turbine = "1.1.0"
@@ -45,6 +45,10 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3" 
 androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 
+# Hilt 2.52's Gradle plugin can't detect KSP 2.3.x's task class (different classloader,
+# google/dagger#3965-style failure); 2.57.1+ decoupled the Hilt Gradle Plugin from a pinned
+# internal Kotlin version, fixing it. Capped at 2.58 — 2.59 raises the minimum to AGP 9/Gradle
+# 9.1, which we don't use yet.
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 hilt-android-testing = { group = "com.google.dagger", name = "hilt-android-testing", version.ref = "hilt" }
@@ -70,7 +74,11 @@ androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx"
 mediapipe-tasks-genai = { group = "com.google.mediapipe", name = "tasks-genai", version.ref = "mediapipeGenai" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 
-# Clerk Android SDK — clerk-android-ui pulls clerk-android-api transitively.
+# Clerk Android SDK — clerk-android-ui pulls clerk-android-api transitively. Pinned to
+# 1.0.24 (last release before 1.0.25 bumped Clerk's internal Kotlin to 2.4.0, which has no
+# matching KSP release yet). 1.0.24 itself is built against Kotlin 2.3.x/KSP 2.3.9, which is
+# why our own kotlin/ksp versions above are bumped to match — otherwise :app:kspDebugKotlin
+# fails reading Clerk's (and its transitive deps') newer Kotlin metadata.
 clerk-android-ui = { group = "com.clerk", name = "clerk-android-ui", version.ref = "clerkAndroid" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }
