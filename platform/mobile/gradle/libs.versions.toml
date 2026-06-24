@@ -1,8 +1,8 @@
 # Gradle version catalog — single source of truth for dependency versions.
 [versions]
 agp = "8.10.0"
-kotlin = "2.0.20"
-ksp = "2.0.20-1.0.25"
+kotlin = "2.3.20"
+ksp = "2.3.9"
 coreKtx = "1.13.1"
 lifecycle = "2.8.6"
 activityCompose = "1.9.2"
@@ -71,8 +71,10 @@ mediapipe-tasks-genai = { group = "com.google.mediapipe", name = "tasks-genai", 
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 
 # Clerk Android SDK — clerk-android-ui pulls clerk-android-api transitively. Pinned to
-# 1.0.24 (last release before 1.0.25 bumped Clerk's internal Kotlin to 2.4.0); KSP has no
-# release supporting Kotlin 2.4.0 yet, which breaks :app:kspDebugKotlin on 1.0.25+.
+# 1.0.24 (last release before 1.0.25 bumped Clerk's internal Kotlin to 2.4.0, which has no
+# matching KSP release yet). 1.0.24 itself is built against Kotlin 2.3.x/KSP 2.3.9, which is
+# why our own kotlin/ksp versions above are bumped to match — otherwise :app:kspDebugKotlin
+# fails reading Clerk's (and its transitive deps') newer Kotlin metadata.
 clerk-android-ui = { group = "com.clerk", name = "clerk-android-ui", version.ref = "clerkAndroid" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }
