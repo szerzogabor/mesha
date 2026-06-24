@@ -44,6 +44,9 @@ app:
     admin-emails: ${PLATFORM_ADMIN_EMAILS:}
   releases:
     max-apk-size-bytes: ${MAX_APK_SIZE_BYTES:209715200}
+    # Long-lived bearer token CI uses to publish APK builds via POST /api/releases,
+    # since a Clerk-admin session JWT is too short-lived for that. Empty = disabled.
+    upload-token: ${APP_RELEASES_UPLOAD_TOKEN:}
 
 clerk:
   jwks-uri: ${CLERK_JWKS_URI:https://your-clerk-instance.clerk.accounts.dev/.well-known/jwks.json}

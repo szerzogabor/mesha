@@ -59,7 +59,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="bg-bg-app text-text-primary">
-        <ClerkProvider>
+        <ClerkProvider signInUrl="/sign-in" afterSignOutUrl="/sign-in">
           <Providers>
             <AppHeader />
             {children}

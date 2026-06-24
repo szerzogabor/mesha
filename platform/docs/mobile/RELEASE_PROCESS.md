@@ -2,33 +2,49 @@
 
 How a new Android version goes from code to users' devices.
 
-## 1. Bump versions
+## Automated (current): CI publishes on every push to `main`
 
-In `platform/mobile/app/build.gradle.kts`:
+The `publish-mobile-release` job in [`ci.yml`](../../../.github/workflows/ci.yml) runs on
+every push to `main` that touches `platform/mobile/**`:
 
-- increment `versionCode` (monotonic int — the updater compares this);
-- set the user-facing `versionName` (semantic).
+1. Assembles a **debug-signed** APK (`:app:assembleDebug`) — no release keystore exists
+   yet, so debug signing is intentional for now, not an oversight.
+2. Sets `versionCode` to `github.run_number` (monotonic, auto-incrementing) and
+   `versionName` to `0.1.<run_number>` via the `-Pmesha.versionCode` /
+   `-Pmesha.versionName` Gradle properties (see `defaultConfig` in `app/build.gradle.kts`).
+3. Uploads the APK to `POST /api/releases` against the production API
+   (`https://api.mesha.app`), authenticated with a static CI token —
+   `Authorization: Bearer relpub_<token>` — read from the `APP_RELEASES_UPLOAD_TOKEN`
+   GitHub Actions secret (validated by `ReleaseUploadTokenAuthenticationFilter`, granting
+   `ROLE_CI_RELEASE_PUBLISHER`; the same endpoint platform admins can also call manually,
+   see below). The build is published immediately (`published=true` default).
 
-## 2. Build a signed release APK
+No human action is required for a normal release: merging to `main` is the release.
 
-```bash
-cd platform/mobile
-./gradlew :app:assembleRelease \
-  -Pmesha.api.baseUrl=https://api.mesha.app/
-```
+### One-time setup (manual, not done by CI)
 
-Sign with the Mesha upload key (configure a `signingConfig` / keystore in CI; never commit
-keystores). Release builds are minified + resource-shrunk (`proguard-rules.pro` keeps
-serialization and MediaPipe classes).
+- `APP_RELEASES_UPLOAD_TOKEN` — a `relpub_`-prefixed secret, set as both a GitHub Actions
+  secret and the `APP_RELEASES_UPLOAD_TOKEN` Render env var (already scaffolded in
+  `render.yaml` with `sync: false`).
+- `MOBILE_CLERK_PUBLISHABLE_KEY_DEBUG` — the Clerk **test** publishable key
+  (`pk_test_...`), set as a GitHub Actions secret so `validate-mobile` and
+  `publish-mobile-release` can compile against a real Clerk environment.
 
-## 3. Publish via the release-management API
+### Switching to a signed release build later
 
-As a platform admin (email in `PLATFORM_ADMIN_EMAILS`):
+When a real upload keystore exists, swap `:app:assembleDebug` for `:app:assembleRelease`
+in both mobile CI jobs, configure a `signingConfig` reading the keystore from a CI secret
+(never commit keystores), and point `-Pmesha.api.baseUrl`/`-Pmesha.clerk.publishableKey`
+at the release variant's properties instead of the `.debug` ones.
+
+## Manual publish (e.g. backfilling a build, or off the automated path)
+
+As a platform admin (email in `PLATFORM_ADMIN_EMAILS`) or with the CI token:
 
 ```bash
 curl -X POST "$API/api/releases" \
   -H "Authorization: Bearer $CLERK_JWT" \
-  -F "file=@app/build/outputs/apk/release/app-release.apk" \
+  -F "file=@app/build/outputs/apk/debug/app-debug.apk" \
   -F "versionName=1.2.0" \
   -F "versionCode=5" \
   -F "releaseNotes=$(cat RELEASE_NOTES.md)" \

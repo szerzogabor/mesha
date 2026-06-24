@@ -1,6 +1,8 @@
 package com.mesha.mobile.data.remote
 
-import com.mesha.mobile.data.local.SecureTokenStore
+import com.clerk.api.Clerk
+import com.clerk.api.network.serialization.ClerkResult
+import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.Response
 import java.util.UUID
@@ -10,17 +12,22 @@ import javax.inject.Inject
  * Attaches the bearer token to every request and a per-request correlation id (the
  * backend honors `X-Correlation-ID` for trace stitching). Release endpoints are public
  * but sending the header when present is harmless.
+ *
+ * The token is fetched fresh from the Clerk session on each request rather than read
+ * from storage: Clerk JWTs are short-lived (~1 min) and the SDK transparently caches /
+ * refreshes them, so this is cheap when valid and correct when expired.
  */
-class AuthInterceptor @Inject constructor(
-    private val tokenStore: SecureTokenStore,
-) : Interceptor {
+class AuthInterceptor @Inject constructor() : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val builder = chain.request().newBuilder()
             .header("X-Correlation-ID", UUID.randomUUID().toString())
 
-        tokenStore.getToken()?.let { token ->
-            builder.header("Authorization", "Bearer $token")
+        Clerk.session?.let { session ->
+            when (val result = runBlocking { session.fetchToken() }) {
+                is ClerkResult.Success -> builder.header("Authorization", "Bearer ${result.value.jwt}")
+                is ClerkResult.Failure -> Unit
+            }
         }
         return chain.proceed(builder.build())
     }

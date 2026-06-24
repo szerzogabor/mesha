@@ -13,10 +13,11 @@ queuing locally when offline and syncing automatically when connectivity returns
 
 ```bash
 cd platform/mobile
-# Generate the Gradle wrapper jar if not present (requires a local Gradle):
-gradle wrapper --gradle-version 8.9
+# Set your Clerk publishable key (get one from the Clerk dashboard → API Keys),
+# either via -P below or in a local (untracked) gradle.properties:
+#   mesha.clerk.publishableKey.debug=pk_test_...
 # Build the debug APK (requires the Android SDK; set sdk.dir in local.properties)
-./gradlew :app:assembleDebug
+./gradlew :app:assembleDebug -Pmesha.clerk.publishableKey.debug=pk_test_...
 # Run JVM unit tests (no device needed)
 ./gradlew :app:testDebugUnitTest
 ```
@@ -24,6 +25,11 @@ gradle wrapper --gradle-version 8.9
 Debug builds point at `http://10.0.2.2:8080` (host loopback from the emulator);
 release builds point at `https://api.mesha.app`. Override via
 `-Pmesha.api.baseUrl=` (see `app/build.gradle.kts`).
+
+Sign-in is handled by the [Clerk Android SDK](https://clerk.com/docs/android) — `AuthView`
+renders the full hosted auth flow and the SDK persists the session itself, so a
+publishable key is required for the app to start (`mesha.clerk.publishableKey` /
+`.debug` in `gradle.properties`; CI supplies it as a secret).
 
 ## Module layout
 
@@ -33,7 +39,7 @@ app/src/main/java/com/mesha/mobile/
 ├── di/                  # Hilt modules (network, database, providers)
 ├── data/
 │   ├── remote/          # Retrofit MeshaApi, DTOs, AuthInterceptor
-│   ├── local/           # Room (drafts), SecureTokenStore (Keystore)
+│   ├── local/           # Room (drafts)
 │   ├── repository/      # Auth, Mesha (issues/projects/sessions), Draft, Selection
 │   └── sync/            # DraftSyncWorker (offline queue drain)
 ├── domain/

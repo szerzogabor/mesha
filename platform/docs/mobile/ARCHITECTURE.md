@@ -14,7 +14,7 @@ on-device AI so issues can be created without any cloud AI provider.
 | DI | Hilt |
 | Networking | Retrofit + OkHttp + kotlinx.serialization |
 | Persistence | Room (offline draft queue) |
-| Secrets | Android Keystore via `EncryptedSharedPreferences` |
+| Auth | Clerk Android SDK (`com.clerk:clerk-android-ui`) — hosted sign-in UI + session storage |
 | Background | WorkManager (`DraftSyncWorker`) |
 | Async | Coroutines / Flow |
 | On-device LLM | Google AI Edge / MediaPipe `tasks-genai` (Gemma) |
@@ -29,7 +29,7 @@ data.repository (Auth, Mesha, Draft, Selection)
         │
  ┌──────┴───────┐
  remote          local
- (MeshaApi)      (Room drafts, SecureTokenStore)
+ (MeshaApi)      (Room drafts)
         │
 domain (LocalAiProvider/Gemma, SpeechInputProvider) — pure, swappable
 ```
@@ -43,15 +43,18 @@ domain (LocalAiProvider/Gemma, SpeechInputProvider) — pure, swappable
 
 ## Authentication
 
-Mesha auth is unchanged: every request carries `Authorization: Bearer <clerk-jwt>`,
-added by `AuthInterceptor`. The token is a Clerk session JWT stored at rest in the
-Android Keystore (`SecureTokenStore`).
+Mesha auth is unchanged: every request carries `Authorization: Bearer <clerk-jwt>`. The
+**Clerk Android SDK** (`Clerk.initialize` in `MeshaApplication`) owns sign-in/sign-up UI
+and session persistence — `LoginScreen` is a thin wrapper around Clerk's `AuthView`,
+which renders the full hosted flow (email, OAuth, passkeys, MFA) with no app-specific
+deep link or manifest entries required.
 
-In production the token is obtained via the **Clerk Android SDK** hosted sign-in flow;
-`AuthRepository.signIn(token)` persists it and verifies it against `POST /api/auth/sync`
-before flipping auth state. The current `LoginScreen` also accepts a pasted session
-token, which is the integration point where the Clerk SDK callback supplies the JWT.
-No mobile-specific auth endpoints were added.
+`AuthRepository` observes `Clerk.userFlow`: whenever it emits a non-null user it calls
+`POST /api/auth/sync` to keep the backend's user record current and flips `AuthState` to
+`Authenticated`; when it's null, `AuthState` flips to `Unauthenticated`. `AuthInterceptor`
+fetches a fresh JWT from `Clerk.session?.fetchToken()` on every request (Clerk tokens are
+short-lived and the SDK caches/refreshes them internally) rather than reading one from
+storage. No mobile-specific auth endpoints were added.
 
 ## Backend integration
 

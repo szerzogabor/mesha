@@ -89,6 +89,10 @@ services:
         sync: false
       - key: BLOCKS_ENCRYPTION_SECRET
         sync: false
+      - key: PLATFORM_ADMIN_EMAILS
+        sync: false
+      - key: APP_RELEASES_UPLOAD_TOKEN
+        sync: false
 
   - type: worker
     name: mesha-worker

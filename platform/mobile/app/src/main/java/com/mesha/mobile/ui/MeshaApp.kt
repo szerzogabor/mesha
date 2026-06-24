@@ -39,7 +39,7 @@ fun MeshaApp(appViewModel: AppViewModel = hiltViewModel()) {
     val authState by appViewModel.authState.collectAsStateWithLifecycle()
 
     if (authState == AuthState.Unauthenticated) {
-        LoginScreen(onSignedIn = { /* authState flips automatically */ })
+        LoginScreen()
         return
     }
 

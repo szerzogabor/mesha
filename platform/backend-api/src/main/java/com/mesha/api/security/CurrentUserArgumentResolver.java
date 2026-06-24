@@ -34,14 +34,17 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
                                   ModelAndViewContainer mavContainer,
                                   NativeWebRequest webRequest,
                                   WebDataBinderFactory binderFactory) {
+        boolean required = parameter.getParameterAnnotation(CurrentUser.class).required();
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof Jwt jwt)) {
+            if (!required) return null;
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authenticated");
         }
         String clerkUserId = jwt.getSubject();
         try {
             return userService.getByClerkUserId(clerkUserId);
         } catch (IllegalStateException e) {
+            if (!required) return null;
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found, please sync your account");
         }
     }

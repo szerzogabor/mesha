@@ -33,6 +33,9 @@ public class SecurityConfig {
     @Value("${cors.allowed-origins:http://localhost:3000}")
     private String allowedOrigins;
 
+    @Value("${app.releases.upload-token:}")
+    private String releaseUploadToken;
+
     /**
      * Authenticates the opaque connector access token (issued via the Clerk-protected
      * /api/connector/auth/login exchange) instead of a Clerk JWT. Matched by the
@@ -59,8 +62,31 @@ public class SecurityConfig {
             .build();
     }
 
+    /**
+     * Authenticates CI's APK-publishing calls via the static {@code relpub_} bearer
+     * token (see {@link ReleaseUploadTokenAuthenticationFilter}) instead of a Clerk JWT.
+     */
     @Bean
     @Order(2)
+    public SecurityFilterChain releaseUploadFilterChain(HttpSecurity http) throws Exception {
+        return http
+            .securityMatcher(request -> {
+                String auth = request.getHeader(HttpHeaders.AUTHORIZATION);
+                return auth != null && auth.startsWith("Bearer " + ReleaseUploadTokenAuthenticationFilter.TOKEN_PREFIX);
+            })
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .addFilterBefore(new ReleaseUploadTokenAuthenticationFilter(releaseUploadToken), UsernamePasswordAuthenticationFilter.class)
+            .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+            .exceptionHandling(eh -> eh.authenticationEntryPoint(
+                (request, response, authException) -> response.sendError(HttpServletResponse.SC_UNAUTHORIZED)
+            ))
+            .build();
+    }
+
+    @Bean
+    @Order(3)
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
