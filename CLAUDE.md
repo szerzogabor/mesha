@@ -101,6 +101,7 @@ mesha/
 │   ├── backend-api/        # REST API service (Java 21, Spring Boot) — no scheduled jobs
 │   ├── backend-worker/     # Background worker service (Java 21, Spring Boot) — runs schedulers
 │   ├── frontend/           # Next.js 15 web app (TypeScript)
+│   ├── mobile/             # Native Android app (Kotlin, Compose, on-device Gemma AI)
 │   ├── infrastructure/     # Docker Compose files
 │   ├── docs/               # Architecture documentation
 │   └── scripts/            # Dev convenience scripts
@@ -120,6 +121,7 @@ For deeper module-specific context, read these before making changes:
 | Backend API | [`platform/backend-api/CLAUDE.md`](platform/backend-api/CLAUDE.md) |
 | Backend Worker | [`platform/backend-worker/CLAUDE.md`](platform/backend-worker/CLAUDE.md) |
 | Frontend | [`platform/frontend/CLAUDE.md`](platform/frontend/CLAUDE.md) |
+| Mobile (Android) | [`platform/mobile/README.md`](platform/mobile/README.md) · [`platform/docs/mobile/`](platform/docs/mobile/) |
 | Full codebase map | [`platform/docs/CODEBASE.md`](platform/docs/CODEBASE.md) |
 
 ---

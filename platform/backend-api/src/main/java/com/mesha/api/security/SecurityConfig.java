@@ -68,6 +68,14 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health").permitAll()
+                // Public client-release distribution: marketing site + in-app update checks.
+                // Admin endpoints (/api/releases/admin/**, POST/PATCH/DELETE) remain authenticated
+                // and are additionally guarded by @platformSecurity.isPlatformAdmin.
+                .requestMatchers(HttpMethod.GET,
+                        "/api/releases/*",
+                        "/api/releases/*/latest",
+                        "/api/releases/*/latest/download",
+                        "/api/releases/*/download").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/github/webhooks").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/webhooks/blocks").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/connector/auth/refresh").permitAll()

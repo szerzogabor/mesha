@@ -468,3 +468,19 @@ export interface AutomationRule {
   createdAt: string;
   updatedAt: string;
 }
+
+// --- Native client releases (Android APK distribution) ---
+export interface AppRelease {
+  id: string;
+  platform: string;
+  versionName: string;
+  versionCode: number;
+  releaseNotes?: string;
+  minSdk: number;
+  fileName: string;
+  fileSize: number;
+  checksumSha256: string;
+  published: boolean;
+  downloadUrl: string;
+  createdAt: string;
+}
