@@ -9,7 +9,10 @@ const isPublicRoute = createRouteMatcher([
 
 export default clerkMiddleware(async (auth, req) => {
   if (!isPublicRoute(req)) {
-    await auth.protect();
+    // Pass unauthenticatedUrl explicitly so this never falls back to Clerk's
+    // hosted Account Portal (*.accounts.dev) if NEXT_PUBLIC_CLERK_SIGN_IN_URL
+    // isn't inlined into the middleware bundle at build time.
+    await auth.protect({ unauthenticatedUrl: new URL("/sign-in", req.url).toString() });
   }
 });
 
