@@ -8,7 +8,7 @@ lifecycle = "2.8.6"
 activityCompose = "1.9.2"
 composeBom = "2024.09.03"
 navigationCompose = "2.8.2"
-hilt = "2.52"
+hilt = "2.58"
 hiltNavigationCompose = "1.2.0"
 retrofit = "2.11.0"
 okhttp = "4.12.0"
@@ -45,6 +45,10 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3" 
 androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 
+# Hilt 2.52's Gradle plugin can't detect KSP 2.3.x's task class (different classloader,
+# google/dagger#3965-style failure); 2.57.1+ decoupled the Hilt Gradle Plugin from a pinned
+# internal Kotlin version, fixing it. Capped at 2.58 — 2.59 raises the minimum to AGP 9/Gradle
+# 9.1, which we don't use yet.
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 hilt-android-testing = { group = "com.google.dagger", name = "hilt-android-testing", version.ref = "hilt" }
