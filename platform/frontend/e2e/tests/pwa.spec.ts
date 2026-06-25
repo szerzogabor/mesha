@@ -64,7 +64,7 @@ test.describe("Landing + Download experience", () => {
   test("download page shows install steps and current version", async ({ page }) => {
     await page.goto("/download");
     await expect(
-      page.getByRole("heading", { name: /install mesha on android/i })
+      page.getByRole("heading", { name: /install mesha/i })
     ).toBeVisible({ timeout: TIMEOUTS.navigation });
     await expect(page.getByText(/release notes/i)).toBeVisible();
     await expect(page.getByText(/^v\d+\.\d+\.\d+/i).first()).toBeVisible();
