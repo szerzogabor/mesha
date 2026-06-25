@@ -56,7 +56,7 @@ android {
             buildConfigField(
                 "String",
                 "API_BASE_URL",
-                "\"${prop("mesha.api.baseUrl", "https://api.mesha.app/")}\"",
+                "\"${prop("mesha.api.baseUrl", "https://mesha-api.onrender.com/")}\"",
             )
             buildConfigField(
                 "String",
