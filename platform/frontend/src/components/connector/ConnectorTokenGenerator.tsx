@@ -96,6 +96,11 @@ export function ConnectorTokenGenerator() {
 
               <p className="mt-2"><strong>Step 3: Poll Sessions</strong></p>
               <p className="ml-2">Run: <code className="font-mono">mesha-connector poll</code></p>
+
+              <div className="mt-4 pt-2 border-t border-amber-200/50 dark:border-amber-800/50">
+                <p><strong>Direct API Calls (Advanced)</strong></p>
+                <p className="ml-2 mt-1">Use the access token above: <code className="font-mono">curl -H &quot;Authorization: Bearer &lt;access-token&gt;&quot; https://mesha-api.onrender.com/api/agents</code></p>
+              </div>
             </div>
           </div>
         </div>
