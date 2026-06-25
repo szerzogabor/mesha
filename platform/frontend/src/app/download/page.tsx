@@ -138,56 +138,60 @@ export default function DownloadPage() {
         </div>
 
         {showPwaPromo && (
-        <div className={isIOS ? "grid gap-6 md:grid-cols-2 md:items-start" : ""}>
-          {/* Steps — iOS only; Android has the native app, desktop device is unknown */}
-          {isIOS && (
-            <section className="bg-bg-surface border border-border-default rounded-xl p-5">
-              <h2 className="text-sm font-semibold text-text-primary mb-3">
-                Add to Home Screen (iOS)
-              </h2>
-              <ol className="space-y-3">
-                {iosSteps.map((step, i) => (
-                  <li key={i} className="flex gap-3">
-                    <span className="shrink-0 h-6 w-6 rounded-full bg-accent/10 text-accent text-xs font-semibold flex items-center justify-center">
-                      {i + 1}
-                    </span>
-                    <span className="text-sm text-text-secondary leading-relaxed">
-                      {step}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </section>
-          )}
-
-          {/* Desktop: QR to scan and continue setup on a phone. iOS: reassurance. */}
-          <section className="bg-bg-surface border border-border-default rounded-xl p-5">
-            {!isMobile ? (
-              <>
+          <div
+            className={
+              isIOS ? "grid gap-6 md:grid-cols-2 md:items-start" : "max-w-md mx-auto"
+            }
+          >
+            {/* Steps — iOS only; Android has the native app, desktop device is unknown */}
+            {isIOS && (
+              <section className="bg-bg-surface border border-border-default rounded-xl p-5">
                 <h2 className="text-sm font-semibold text-text-primary mb-3">
-                  Scan to continue on your phone
+                  Add to Home Screen (iOS)
                 </h2>
-                <QrCode value={installUrl} />
-                <p className="text-xs text-text-tertiary mt-3 text-center">
-                  Scan with your phone&apos;s camera to open this page — Android
-                  gets the native app, iPhone gets the install steps.
-                </p>
-              </>
-            ) : (
-              <>
-                <h2 className="text-sm font-semibold text-text-primary mb-3">
-                  Why install?
-                </h2>
-                <ul className="space-y-2 text-sm text-text-secondary">
-                  <li>• Full-screen, app-like experience (no browser chrome)</li>
-                  <li>• Launch straight from your home screen</li>
-                  <li>• Offline-aware app shell</li>
-                  <li>• Ready for push notifications (coming soon)</li>
-                </ul>
-              </>
+                <ol className="space-y-3">
+                  {iosSteps.map((step, i) => (
+                    <li key={i} className="flex gap-3">
+                      <span className="shrink-0 h-6 w-6 rounded-full bg-accent/10 text-accent text-xs font-semibold flex items-center justify-center">
+                        {i + 1}
+                      </span>
+                      <span className="text-sm text-text-secondary leading-relaxed">
+                        {step}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </section>
             )}
-          </section>
-        </div>
+
+            {/* Desktop: QR to scan and continue setup on a phone. iOS: reassurance. */}
+            <section className="bg-bg-surface border border-border-default rounded-xl p-5">
+              {!isMobile ? (
+                <>
+                  <h2 className="text-sm font-semibold text-text-primary mb-3">
+                    Scan to continue on your phone
+                  </h2>
+                  <QrCode value={installUrl} />
+                  <p className="text-xs text-text-tertiary mt-3 text-center">
+                    Scan with your phone&apos;s camera to open this page — Android
+                    gets the native app, iPhone gets the install steps.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-sm font-semibold text-text-primary mb-3">
+                    Why install?
+                  </h2>
+                  <ul className="space-y-2 text-sm text-text-secondary">
+                    <li>• Full-screen, app-like experience (no browser chrome)</li>
+                    <li>• Launch straight from your home screen</li>
+                    <li>• Offline-aware app shell</li>
+                    <li>• Ready for push notifications (coming soon)</li>
+                  </ul>
+                </>
+              )}
+            </section>
+          </div>
         )}
 
         {/* Version + release notes */}
