@@ -49,4 +49,5 @@ app/src/main/java/com/mesha/mobile/
 └── ui/                  # Compose theme, navigation, screens + ViewModels
 ```
 
-Full documentation lives in [`../docs/mobile/`](../docs/mobile/).
+Full documentation lives in [`../docs/mobile/`](../docs/mobile/), including how
+every push to `main` builds and publishes a release ([`RELEASE_PROCESS.md`](../docs/mobile/RELEASE_PROCESS.md)).
