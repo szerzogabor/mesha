@@ -77,4 +77,3 @@ jobs:
             -F "versionCode=${VERSION_CODE}" \
             -F "minSdk=33" \
             -F "releaseNotes=Automated build from ${GITHUB_SHA}"
-```
