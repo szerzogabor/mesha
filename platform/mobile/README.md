@@ -51,3 +51,6 @@ app/src/main/java/com/mesha/mobile/
 
 Full documentation lives in [`../docs/mobile/`](../docs/mobile/), including how
 every push to `main` builds and publishes a release ([`RELEASE_PROCESS.md`](../docs/mobile/RELEASE_PROCESS.md)).
+If `publish-mobile-release` fails with a 401, check that `APP_RELEASES_UPLOAD_TOKEN`
+matches byte-for-byte between the GitHub Actions secret and the Render env var, and
+that `mesha-api` has redeployed since the env var was last saved.
