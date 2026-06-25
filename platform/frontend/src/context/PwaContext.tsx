@@ -43,9 +43,13 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
-  const [platform, setPlatform] = useState<{ android: boolean; ios: boolean }>({
-    android: false,
-    ios: false,
+  // Computed synchronously on first render (not in an effect) so the
+  // Android/iOS branch is correct from the first paint — detecting it in an
+  // effect renders the wrong (desktop) branch first, causing a visible flash.
+  const [platform] = useState<{ android: boolean; ios: boolean }>(() => {
+    if (typeof navigator === "undefined") return { android: false, ios: false };
+    const ua = navigator.userAgent || "";
+    return { android: /android/i.test(ua), ios: /iphone|ipad|ipod/i.test(ua) };
   });
 
   // Register the service worker for offline app-shell support.
@@ -69,14 +73,8 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
     else window.addEventListener("load", register, { once: true });
   }, []);
 
-  // Detect platform + standalone display mode.
+  // Detect standalone display mode (can change at runtime, unlike platform).
   useEffect(() => {
-    const ua = navigator.userAgent || "";
-    setPlatform({
-      android: /android/i.test(ua),
-      ios: /iphone|ipad|ipod/i.test(ua),
-    });
-
     const mql = window.matchMedia("(display-mode: standalone)");
     const update = () =>
       setIsStandalone(

@@ -1,13 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useConnectorAgents } from "@/hooks/useConnectorAgents";
 import { useAgentSessions } from "@/hooks/useAgentSessions";
 import { useProjects } from "@/hooks/useProjects";
 import { Spinner } from "@/components/ui/Spinner";
-import { InstallAppCard } from "@/components/pwa/InstallAppCard";
 import { ConnectorAgentSession, ConnectorAgentSessionStatus } from "@/types";
 import { formatRelativeTime } from "@/lib/utils";
+
+// Gated on isAndroid, which depends on navigator.userAgent (unavailable
+// during SSR) — load client-only to avoid a server/client hydration mismatch.
+const InstallAppCard = dynamic(
+  () => import("@/components/pwa/InstallAppCard").then((mod) => mod.InstallAppCard),
+  { ssr: false }
+);
 
 const TERMINAL_STATES: ConnectorAgentSessionStatus[] = [
   "COMPLETED",
