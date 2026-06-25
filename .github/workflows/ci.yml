@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   changes:
@@ -116,7 +117,7 @@ jobs:
   # signing is intentional for now (no release keystore yet) — see RELEASE_PROCESS.md.
   publish-mobile-release:
     needs: changes
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.mobile == 'true'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.mobile == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
