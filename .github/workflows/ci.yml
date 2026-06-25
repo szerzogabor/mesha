@@ -137,7 +137,7 @@ jobs:
       - name: Upload to release feed
         working-directory: ./platform/mobile
         run: |
-          curl -sf -X POST "https://api.mesha.app/api/releases" \
+          curl -sf -X POST "https://mesha-api.onrender.com/api/releases" \
             -H "Authorization: Bearer ${{ secrets.APP_RELEASES_UPLOAD_TOKEN }}" \
             -F "file=@app/build/outputs/apk/debug/app-debug.apk" \
             -F "platform=ANDROID" \

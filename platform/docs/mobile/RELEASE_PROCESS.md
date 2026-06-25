@@ -13,7 +13,7 @@ every push to `main` that touches `platform/mobile/**`:
    `versionName` to `0.1.<run_number>` via the `-Pmesha.versionCode` /
    `-Pmesha.versionName` Gradle properties (see `defaultConfig` in `app/build.gradle.kts`).
 3. Uploads the APK to `POST /api/releases` against the production API
-   (`https://api.mesha.app`), authenticated with a static CI token —
+   (`https://mesha-api.onrender.com`), authenticated with a static CI token —
    `Authorization: Bearer relpub_<token>` — read from the `APP_RELEASES_UPLOAD_TOKEN`
    GitHub Actions secret (validated by `ReleaseUploadTokenAuthenticationFilter`, granting
    `ROLE_CI_RELEASE_PUBLISHER`; the same endpoint platform admins can also call manually,

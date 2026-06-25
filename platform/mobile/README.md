@@ -23,7 +23,7 @@ cd platform/mobile
 ```
 
 Debug builds point at `http://10.0.2.2:8080` (host loopback from the emulator);
-release builds point at `https://api.mesha.app`. Override via
+release builds point at `https://mesha-api.onrender.com`. Override via
 `-Pmesha.api.baseUrl=` (see `app/build.gradle.kts`).
 
 Sign-in is handled by the [Clerk Android SDK](https://clerk.com/docs/android) — `AuthView`
