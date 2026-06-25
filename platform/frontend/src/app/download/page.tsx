@@ -19,13 +19,6 @@ const apkSteps = [
   "Launch Mesha, sign in, and start creating issues with the on-device Gemma model.",
 ];
 
-const androidSteps = [
-  "Open this page in Chrome on your Android phone.",
-  'Tap the "Install app" button below, or open Chrome\'s ⋮ menu.',
-  'Choose "Install app" / "Add to Home screen".',
-  "Confirm — Mesha appears on your home screen and opens full-screen.",
-];
-
 const iosSteps = [
   "Open this page in Safari on your iPhone or iPad.",
   "Tap the Share button (the square with an arrow).",
@@ -35,15 +28,17 @@ const iosSteps = [
 
 export default function DownloadPage() {
   const { isAndroid, isIOS, isStandalone } = usePwa();
-  const [installUrl, setInstallUrl] = useState("https://mesha.app/workspaces");
+  const [installUrl, setInstallUrl] = useState("https://mesha.app/download");
   const { data: release, isLoading: releaseLoading } = useLatestRelease("android");
 
   useEffect(() => {
-    setInstallUrl(`${window.location.origin}/workspaces`);
+    setInstallUrl(`${window.location.origin}/download`);
   }, []);
 
   const isMobile = isAndroid || isIOS;
-  const steps = isIOS ? iosSteps : androidSteps;
+  // Android has a native app, so the PWA install path is only promoted on iOS
+  // (no native app exists there) and on desktop (device unknown until scanned).
+  const showPwaPromo = !isAndroid;
 
   return (
     <div className="min-h-screen bg-bg-app">
@@ -110,14 +105,22 @@ export default function DownloadPage() {
             className="rounded-2xl shadow-sm mb-5"
           />
           <h1 className="text-2xl md:text-3xl font-bold text-text-primary">
-            Install Mesha on Android
+            {isAndroid ? "Get Mesha for Android" : "Install Mesha"}
           </h1>
           <p className="text-sm md:text-base text-text-secondary mt-2 max-w-md">
-            Get the full Mesha experience on your phone — a fast, full-screen,
-            installable app for managing AI agents, issues, and sessions on the go.
+            {isAndroid
+              ? "Download the native app above for on-device AI, voice input, and offline draft sync."
+              : "Get the full Mesha experience on your phone — a fast, full-screen, installable app for managing AI agents, issues, and sessions on the go."}
           </p>
 
-          {isStandalone ? (
+          {isAndroid ? (
+            <Link
+              href="/workspaces"
+              className="mt-6 text-sm text-text-tertiary hover:text-text-primary transition-colors"
+            >
+              Continue in browser →
+            </Link>
+          ) : isStandalone ? (
             <div className="mt-6 px-4 py-3 rounded-lg bg-success-muted text-success text-sm font-medium">
               ✓ Mesha is installed — you&apos;re running the app.
             </div>
@@ -134,37 +137,40 @@ export default function DownloadPage() {
           )}
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 md:items-start">
-          {/* Steps */}
-          <section className="bg-bg-surface border border-border-default rounded-xl p-5">
-            <h2 className="text-sm font-semibold text-text-primary mb-3">
-              {isIOS ? "Add to Home Screen (iOS)" : "Install on Android"}
-            </h2>
-            <ol className="space-y-3">
-              {steps.map((step, i) => (
-                <li key={i} className="flex gap-3">
-                  <span className="shrink-0 h-6 w-6 rounded-full bg-accent/10 text-accent text-xs font-semibold flex items-center justify-center">
-                    {i + 1}
-                  </span>
-                  <span className="text-sm text-text-secondary leading-relaxed">
-                    {step}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </section>
+        {showPwaPromo && (
+        <div className={isIOS ? "grid gap-6 md:grid-cols-2 md:items-start" : ""}>
+          {/* Steps — iOS only; Android has the native app, desktop device is unknown */}
+          {isIOS && (
+            <section className="bg-bg-surface border border-border-default rounded-xl p-5">
+              <h2 className="text-sm font-semibold text-text-primary mb-3">
+                Add to Home Screen (iOS)
+              </h2>
+              <ol className="space-y-3">
+                {iosSteps.map((step, i) => (
+                  <li key={i} className="flex gap-3">
+                    <span className="shrink-0 h-6 w-6 rounded-full bg-accent/10 text-accent text-xs font-semibold flex items-center justify-center">
+                      {i + 1}
+                    </span>
+                    <span className="text-sm text-text-secondary leading-relaxed">
+                      {step}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
 
-          {/* Desktop: QR to scan. Mobile: reassurance + version. */}
+          {/* Desktop: QR to scan and continue setup on a phone. iOS: reassurance. */}
           <section className="bg-bg-surface border border-border-default rounded-xl p-5">
             {!isMobile ? (
               <>
                 <h2 className="text-sm font-semibold text-text-primary mb-3">
-                  Scan to install on your phone
+                  Scan to continue on your phone
                 </h2>
                 <QrCode value={installUrl} />
                 <p className="text-xs text-text-tertiary mt-3 text-center">
-                  Scan with your Android camera, then follow the install prompt
-                  in Chrome.
+                  Scan with your phone&apos;s camera to open this page — Android
+                  gets the native app, iPhone gets the install steps.
                 </p>
               </>
             ) : (
@@ -182,6 +188,7 @@ export default function DownloadPage() {
             )}
           </section>
         </div>
+        )}
 
         {/* Version + release notes */}
         <section className="mt-8">
