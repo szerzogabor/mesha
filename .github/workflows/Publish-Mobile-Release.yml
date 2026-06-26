@@ -61,6 +61,21 @@ jobs:
           path: platform/mobile/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
+      - name: Wait for Backend
+        run: |
+          echo "Waiting for backend to be healthy..."
+          for i in $(seq 1 10); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://mesha-api.onrender.com/actuator/health)
+            if [ "$STATUS" = "200" ]; then
+              echo "Backend is healthy (attempt $i)"
+              exit 0
+            fi
+            echo "Attempt $i: status=$STATUS, retrying in 15s..."
+            sleep 15
+          done
+          echo "Backend did not become healthy in time"
+          exit 1
+
       - name: Upload APK to Mesha Backend
         working-directory: platform/mobile
         run: |
@@ -68,6 +83,9 @@ jobs:
             --verbose \
             --show-error \
             --fail-with-body \
+            --retry 3 \
+            --retry-delay 30 \
+            --retry-all-errors \
             --write-out "\nHTTP_STATUS=%{http_code}\n" \
             -X POST "https://mesha-api.onrender.com/api/releases" \
             -H "Authorization: Bearer ${RELEASE_UPLOAD_TOKEN}" \
