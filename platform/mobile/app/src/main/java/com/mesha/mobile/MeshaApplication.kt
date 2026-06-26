@@ -1,6 +1,7 @@
 package com.mesha.mobile
 
 import android.app.Application
+import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.clerk.api.Clerk
@@ -23,11 +24,25 @@ class MeshaApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        Clerk.initialize(
-            this,
-            BuildConfig.CLERK_PUBLISHABLE_KEY,
-            options = ClerkConfigurationOptions(enableDebugMode = BuildConfig.DEBUG),
-        )
+        if (BuildConfig.CLERK_PUBLISHABLE_KEY.isBlank()) {
+            Log.e(TAG, "CLERK_PUBLISHABLE_KEY is blank; this build can't sign in.")
+            return
+        }
+        runCatching {
+            Clerk.initialize(
+                this,
+                BuildConfig.CLERK_PUBLISHABLE_KEY,
+                options = ClerkConfigurationOptions(enableDebugMode = BuildConfig.DEBUG),
+            )
+        }.onSuccess {
+            ClerkBootstrap.isReady = true
+        }.onFailure { e ->
+            Log.e(TAG, "Clerk.initialize failed", e)
+        }
+    }
+
+    private companion object {
+        const val TAG = "MeshaApplication"
     }
 
     override val workManagerConfiguration: Configuration

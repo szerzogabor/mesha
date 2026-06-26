@@ -1,5 +1,7 @@
 package com.mesha.mobile.ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -8,7 +10,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -17,6 +21,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.mesha.mobile.ClerkBootstrap
+import com.mesha.mobile.R
 import com.mesha.mobile.data.repository.AuthState
 import com.mesha.mobile.ui.navigation.Routes
 import com.mesha.mobile.ui.navigation.TopLevelDestination
@@ -33,9 +39,20 @@ import com.mesha.mobile.ui.screens.settings.SettingsScreen
 /**
  * Root composable. Gates on auth state: unauthenticated users see the login screen,
  * authenticated users get the bottom-nav scaffold and the full navigation graph.
+ *
+ * Also gates on [ClerkBootstrap.isReady] first: [AppViewModel] pulls in
+ * [com.mesha.mobile.data.repository.AuthRepository], which touches the Clerk SDK as
+ * soon as it's constructed, so a build with a missing/invalid publishable key must
+ * never reach that — it shows a configuration error instead of crashing.
  */
 @Composable
-fun MeshaApp(appViewModel: AppViewModel = hiltViewModel()) {
+fun MeshaApp() {
+    if (!ClerkBootstrap.isReady) {
+        ConfigurationErrorScreen()
+        return
+    }
+
+    val appViewModel: AppViewModel = hiltViewModel()
     val authState by appViewModel.authState.collectAsStateWithLifecycle()
 
     if (authState == AuthState.Unauthenticated) {
@@ -119,5 +136,12 @@ fun MeshaApp(appViewModel: AppViewModel = hiltViewModel()) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ConfigurationErrorScreen() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(stringResource(R.string.clerk_configuration_error))
     }
 }
