@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -21,6 +22,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.mesha.mobile.ClerkBootstrap
+import com.mesha.mobile.R
 import com.mesha.mobile.data.repository.AuthState
 import com.mesha.mobile.ui.navigation.Routes
 import com.mesha.mobile.ui.navigation.TopLevelDestination
@@ -140,6 +142,6 @@ fun MeshaApp() {
 @Composable
 private fun ConfigurationErrorScreen() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("This build is missing its Clerk configuration and can't sign in.")
+        Text(stringResource(R.string.clerk_configuration_error))
     }
 }

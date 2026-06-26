@@ -5,6 +5,7 @@ import com.clerk.api.network.model.error.ClerkErrorResponse
 import com.clerk.api.network.model.token.TokenResource
 import com.clerk.api.network.serialization.ClerkResult
 import com.clerk.api.session.fetchToken
+import com.mesha.mobile.ClerkBootstrap
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.Response
@@ -26,7 +27,7 @@ class AuthInterceptor @Inject constructor() : Interceptor {
         val builder = chain.request().newBuilder()
             .header("X-Correlation-ID", UUID.randomUUID().toString())
 
-        Clerk.session?.let { session ->
+        if (ClerkBootstrap.isReady) Clerk.session?.let { session ->
             val result: ClerkResult<TokenResource, ClerkErrorResponse> =
                 runBlocking { session.fetchToken() }
             when (result) {

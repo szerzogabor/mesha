@@ -1,6 +1,7 @@
 package com.mesha.mobile.data.repository
 
 import com.clerk.api.Clerk
+import com.mesha.mobile.ClerkBootstrap
 import com.mesha.mobile.data.remote.MeshaApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,25 +27,33 @@ class AuthRepository @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _authState = MutableStateFlow(
-        if (Clerk.userFlow.value != null) AuthState.Authenticated else AuthState.Unauthenticated
+        if (ClerkBootstrap.isReady && Clerk.userFlow.value != null) {
+            AuthState.Authenticated
+        } else {
+            AuthState.Unauthenticated
+        }
     )
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
     init {
-        scope.launch {
-            Clerk.userFlow.collect { user ->
-                if (user != null) {
-                    runCatching { api.syncUser() }
-                    _authState.value = AuthState.Authenticated
-                } else {
-                    _authState.value = AuthState.Unauthenticated
+        if (ClerkBootstrap.isReady) {
+            scope.launch {
+                Clerk.userFlow.collect { user ->
+                    if (user != null) {
+                        runCatching { api.syncUser() }
+                        _authState.value = AuthState.Authenticated
+                    } else {
+                        _authState.value = AuthState.Unauthenticated
+                    }
                 }
             }
         }
     }
 
     fun signOut() {
-        scope.launch { Clerk.auth.signOut() }
+        if (ClerkBootstrap.isReady) {
+            scope.launch { Clerk.auth.signOut() }
+        }
     }
 }
 

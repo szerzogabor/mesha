@@ -10,6 +10,7 @@ package com.mesha.mobile
  * error screen instead of crashing on launch.
  */
 object ClerkBootstrap {
+    @Volatile
     var isReady: Boolean = false
         internal set
 }
