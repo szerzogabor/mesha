@@ -9,7 +9,7 @@ on:
       - "platform/mobile/**"
 
 permissions:
-  contents: write
+  contents: write  # needed to create GitHub Releases
 
 jobs:
   publish:
@@ -61,17 +61,18 @@ jobs:
           path: platform/mobile/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-      - name: Commit APK to repo
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          cp platform/mobile/app/build/outputs/apk/debug/app-debug.apk releases/android/app-debug.apk
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add releases/android/app-debug.apk
-          git diff --cached --quiet || {
-            git commit -m "chore(release): Android debug APK v${VERSION_NAME} [skip ci]"
-            git pull --rebase origin main
-            git push origin HEAD:main
-          }
+          TAG="android-debug-v${VERSION_NAME}"
+          gh release delete "${TAG}" --repo ${{ github.repository }} --yes 2>/dev/null || true
+          gh release create "${TAG}" \
+            --repo ${{ github.repository }} \
+            --title "Android Debug v${VERSION_NAME}" \
+            --notes "Automated debug build from commit ${GITHUB_SHA}" \
+            --prerelease \
+            platform/mobile/app/build/outputs/apk/debug/app-debug.apk#mesha-android-debug.apk
 
       - name: Wait for Backend
         run: |
