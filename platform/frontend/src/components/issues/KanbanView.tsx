@@ -39,7 +39,6 @@ const kanbanCollision: CollisionDetection = (args) => {
 };
 
 // Resolve the target status name from a drag-over or drag-end event.
-// Column droppable IDs equal the status name string; card droppable IDs are UUIDs.
 function resolveTargetStatus(
   overId: string,
   statuses: ProjectStatus[],
@@ -208,7 +207,15 @@ export function KanbanView({
     );
   }
 
-  const columnIds = localStatuses.map((s) => `col-${s.id}`);
+  // Determine which statuses (columns) are active: a column is rendered if it contains issues OR if we have an explicit callback function to create new issues for that status in the view.
+  const activeStatuses = localStatuses.filter((status) => {
+    const issuesInStatus = localIssues.filter((i) => i.status === status.name);
+    return issuesInStatus.length > 0 || !!onCreateIssueForStatus;
+  });
+
+  // Use the filtered, active statuses for rendering columns and DndContext items
+  const activeColumnIds = activeStatuses.map((s) => `col-${s.id}`);
+
 
   return (
     <DndContext
@@ -220,8 +227,8 @@ export function KanbanView({
       onDragCancel={handleDragCancel}
     >
       <div className="flex gap-4 px-6 py-4 overflow-x-auto flex-1 pb-6 min-h-0">
-        <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
-          {localStatuses.map((status) => (
+        <SortableContext items={activeColumnIds} strategy={horizontalListSortingStrategy}>
+          {activeStatuses.map((status) => (
             <KanbanColumn
               key={status.id}
               status={status}
@@ -236,7 +243,7 @@ export function KanbanView({
         </SortableContext>
 
         <AddStatusColumn projectId={projectId} />
-      </div>
+      </div >
 
       <DragOverlay>
         {activeIssue ? (
