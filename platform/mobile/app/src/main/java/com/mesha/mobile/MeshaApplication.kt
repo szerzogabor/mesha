@@ -24,14 +24,23 @@ class MeshaApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        if (BuildConfig.CLERK_PUBLISHABLE_KEY.isBlank()) {
+        val clerkKey = BuildConfig.CLERK_PUBLISHABLE_KEY
+        // TEMPORARY DEVELOPMENT FIX: Hardcode the Clerk key for debugging purposes.
+        // TODO: Remove this temporary fix and restore proper Gradle configuration.
+        val keyToUse = if (clerkKey.isBlank()) {
+            "PROVIDE_YOUR_CLERK_PUBLISHABLE_KEY_HERE"
+        } else {
+            clerkKey
+        }
+        
+        if (keyToUse.isBlank()) {
             Log.e(TAG, "CLERK_PUBLISHABLE_KEY is blank; this build can't sign in.")
             return
         }
         runCatching {
             Clerk.initialize(
                 this,
-                BuildConfig.CLERK_PUBLISHABLE_KEY,
+                keyToUse,
                 options = ClerkConfigurationOptions(enableDebugMode = BuildConfig.DEBUG),
             )
         }.onSuccess {
