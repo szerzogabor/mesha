@@ -14,9 +14,5 @@ import com.clerk.ui.auth.AuthView
  */
 @Composable
 fun LoginScreen() {
-    AuthView(
-        modifier = Modifier.fillMaxSize(),
-        isDismissible = true,
-        mode = com.clerk.ui.auth.AuthMode.SIGN_IN_OR_UP
-    )
+    AuthView(modifier = Modifier.fillMaxSize())
 }
