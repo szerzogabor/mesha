@@ -28,7 +28,7 @@ class MeshaApplication : Application(), Configuration.Provider {
         // TEMPORARY DEVELOPMENT FIX: Hardcode the Clerk key for debugging purposes.
         // TODO: Remove this temporary fix and restore proper Gradle configuration.
         val keyToUse = if (clerkKey.isBlank()) {
-            "PROVIDE_YOUR_CLERK_PUBLISHABLE_KEY_HERE"
+            "pk_test_ZGlzdGluY3QtZ3VsbC03Mi5jbGVyay5hY2NvdW50cy5kZXYk"
         } else {
             clerkKey
         }
