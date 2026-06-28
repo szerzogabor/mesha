@@ -45,11 +45,13 @@ app/src/main/java/com/mesha/mobile/
 ├── domain/
 │   ├── ai/              # LocalAiProvider, GemmaLocalAiProvider, IssueDraftParser
 │   └── speech/          # SpeechInputProvider, AndroidSpeechInputProvider
+├── localai/            # Local AI model management (catalog, download, storage, repo, UI)
 ├── update/              # UpdateChecker, ApkInstaller (in-app updates)
 └── ui/                  # Compose theme, navigation, screens + ViewModels
 ```
 
-Full documentation lives in [`../docs/mobile/`](../docs/mobile/), including how
+Full documentation lives in [`../docs/mobile/`](../docs/mobile/), including native on-device
+model management ([`LOCAL_AI.md`](../docs/mobile/LOCAL_AI.md)) and how
 every push to `main` builds and publishes a release ([`RELEASE_PROCESS.md`](../docs/mobile/RELEASE_PROCESS.md)).
 If `publish-mobile-release` fails with a 401, check that `APP_RELEASES_UPLOAD_TOKEN`
 matches byte-for-byte between the GitHub Actions secret and the Render env var, and

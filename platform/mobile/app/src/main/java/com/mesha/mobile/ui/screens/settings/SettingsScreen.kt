@@ -29,6 +29,7 @@ import com.mesha.mobile.update.UpdateStatus
 @Composable
 fun SettingsScreen(
     onOpenAgents: () -> Unit,
+    onOpenLocalAi: () -> Unit,
     onSignOut: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -46,17 +47,18 @@ fun SettingsScreen(
             // On-device AI model status
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("On-device AI (Gemma)", fontWeight = FontWeight.SemiBold)
+                    Text("On-device AI", fontWeight = FontWeight.SemiBold)
                     Text(
                         if (state.modelInstalled) "✓ Model installed — ready for offline drafts"
-                        else "Model not installed. Place a Gemma .task model in the folder below " +
-                            "(e.g. via the Google AI Edge Gallery app), then refresh.",
+                        else "No on-device model installed. Open Local AI to download a supported " +
+                            "model directly from Mesha.",
                         style = MaterialTheme.typography.bodySmall,
                         color = if (state.modelInstalled) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Text(state.modelDirectory, style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Button(onClick = onOpenLocalAi, modifier = Modifier.fillMaxWidth()) {
+                        Text("Manage Local AI models")
+                    }
                     OutlinedButton(onClick = viewModel::refreshModelStatus) { Text("Refresh status") }
                 }
             }

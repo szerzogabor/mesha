@@ -30,6 +30,7 @@ import com.mesha.mobile.ui.navigation.TopLevelDestination
 import com.mesha.mobile.ui.screens.agents.AgentsScreen
 import com.mesha.mobile.ui.screens.createissue.CreateIssueAiScreen
 import com.mesha.mobile.ui.screens.dashboard.DashboardScreen
+import com.mesha.mobile.localai.ui.LocalAiScreen
 import com.mesha.mobile.ui.screens.issues.IssuesScreen
 import com.mesha.mobile.ui.screens.login.LoginScreen
 import com.mesha.mobile.ui.screens.projects.ProjectsScreen
@@ -127,10 +128,14 @@ fun MeshaApp() {
             composable(Routes.SETTINGS) {
                 SettingsScreen(
                     onOpenAgents = { navController.navigate("agents") },
+                    onOpenLocalAi = { navController.navigate(Routes.LOCAL_AI) },
                     onSignOut = { appViewModel.signOut() },
                 )
             }
             composable("agents") { AgentsScreen(onBack = { navController.popBackStack() }) }
+            composable(Routes.LOCAL_AI) {
+                LocalAiScreen(onBack = { navController.popBackStack() })
+            }
             composable(Routes.CREATE_ISSUE_AI) {
                 CreateIssueAiScreen(onClose = { navController.popBackStack() })
             }
