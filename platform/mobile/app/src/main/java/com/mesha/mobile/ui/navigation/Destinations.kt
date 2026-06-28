@@ -18,6 +18,7 @@ object Routes {
     const val SETTINGS = "settings"
 
     const val CREATE_ISSUE_AI = "create_issue_ai"
+    const val LOCAL_AI = "local_ai"
     const val SESSION_DETAIL = "session_detail/{sessionId}"
 
     fun sessionDetail(sessionId: String) = "session_detail/$sessionId"

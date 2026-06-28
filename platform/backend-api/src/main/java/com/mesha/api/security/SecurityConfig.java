@@ -102,6 +102,11 @@ public class SecurityConfig {
                         "/api/releases/*/latest",
                         "/api/releases/*/latest/download",
                         "/api/releases/*/download").permitAll()
+                // Public Local AI model catalog: non-sensitive reference data the mobile
+                // app reads to discover and download supported on-device models.
+                .requestMatchers(HttpMethod.GET,
+                        "/api/local-ai/models",
+                        "/api/local-ai/models/*").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/github/webhooks").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/webhooks/blocks").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/connector/auth/refresh").permitAll()
