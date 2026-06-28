@@ -36,6 +36,14 @@ public class LocalAiCatalogProperties {
     /** Operator-supplied models, merged with (and overriding by id) the built-in defaults. */
     private List<LocalAiModelDto> models = new ArrayList<>();
 
+    /**
+     * Service-account Hugging Face access token used to fetch gated model artifacts (e.g.
+     * the Gemma 3n litert-preview repos) on the user's behalf via the download proxy, so the
+     * mobile client never needs its own Hugging Face credentials. Blank disables the
+     * Authorization header — fine for ungated sources, a 401 for gated ones.
+     */
+    private String huggingFaceToken = "";
+
     public boolean isIncludeDefaults() {
         return includeDefaults;
     }
@@ -50,5 +58,13 @@ public class LocalAiCatalogProperties {
 
     public void setModels(List<LocalAiModelDto> models) {
         this.models = models;
+    }
+
+    public String getHuggingFaceToken() {
+        return huggingFaceToken;
+    }
+
+    public void setHuggingFaceToken(String huggingFaceToken) {
+        this.huggingFaceToken = huggingFaceToken;
     }
 }

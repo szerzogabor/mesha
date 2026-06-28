@@ -106,7 +106,8 @@ public class SecurityConfig {
                 // app reads to discover and download supported on-device models.
                 .requestMatchers(HttpMethod.GET,
                         "/api/local-ai/models",
-                        "/api/local-ai/models/*").permitAll()
+                        "/api/local-ai/models/*",
+                        "/api/local-ai/models/*/download").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/github/webhooks").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/webhooks/blocks").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/connector/auth/refresh").permitAll()

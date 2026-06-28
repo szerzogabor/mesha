@@ -101,6 +101,8 @@ mesha:
     cli-path: ${QWEN_CLI_PATH:qwen}
     working-directory: ${QWEN_WORKING_DIRECTORY:}
     timeout-seconds: ${QWEN_TIMEOUT_SECONDS:1800}
+  local-ai:
+    hugging-face-token: ${LOCAL_AI_HUGGINGFACE_TOKEN:}
   polling:
     interval-ms: 5000
     max-session-age-hours: 24
