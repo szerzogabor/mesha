@@ -3,6 +3,7 @@ package com.mesha.mobile.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Icon
@@ -54,6 +55,11 @@ fun MeshaApp() {
 
     val appViewModel: AppViewModel = hiltViewModel()
     val authState by appViewModel.authState.collectAsStateWithLifecycle()
+
+    if (authState == AuthState.Loading) {
+        AuthLoadingScreen()
+        return
+    }
 
     if (authState == AuthState.Unauthenticated) {
         LoginScreen()
@@ -143,5 +149,12 @@ fun MeshaApp() {
 private fun ConfigurationErrorScreen() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(stringResource(R.string.clerk_configuration_error))
+    }
+}
+
+@Composable
+private fun AuthLoadingScreen() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator()
     }
 }
