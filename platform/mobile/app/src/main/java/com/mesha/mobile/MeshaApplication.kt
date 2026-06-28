@@ -24,23 +24,10 @@ class MeshaApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        val clerkKey = BuildConfig.CLERK_PUBLISHABLE_KEY
-        // TEMPORARY DEVELOPMENT FIX: Hardcode the Clerk key for debugging purposes.
-        // TODO: Remove this temporary fix and restore proper Gradle configuration.
-        val keyToUse = if (clerkKey.isBlank()) {
-            "pk_test_ZGlzdGluY3QtZ3VsbC03Mi5jbGVyay5hY2NvdW50cy5kZXYk"
-        } else {
-            clerkKey
-        }
-        
-        if (keyToUse.isBlank()) {
-            Log.e(TAG, "CLERK_PUBLISHABLE_KEY is blank; this build can't sign in.")
-            return
-        }
         runCatching {
             Clerk.initialize(
                 this,
-                keyToUse,
+                CLERK_PUBLISHABLE_KEY,
                 options = ClerkConfigurationOptions(enableDebugMode = BuildConfig.DEBUG),
             )
         }.onSuccess {
@@ -52,6 +39,8 @@ class MeshaApplication : Application(), Configuration.Provider {
 
     private companion object {
         const val TAG = "MeshaApplication"
+        // Clerk publishable keys are not secret -- they ship in the client bundle by design.
+        const val CLERK_PUBLISHABLE_KEY = "pk_test_ZGlzdGluY3QtZ3VsbC03Mi5jbGVyay5hY2NvdW50cy5kZXYk" // gitleaks:allow
     }
 
     override val workManagerConfiguration: Configuration
