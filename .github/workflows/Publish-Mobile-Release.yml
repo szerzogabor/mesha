@@ -89,6 +89,7 @@ jobs:
           exit 1
 
       - name: Upload APK to Mesha Backend
+        if: false # disabled: APK upload to Mesha backend is turned off
         working-directory: platform/mobile
         run: |
           curl \
