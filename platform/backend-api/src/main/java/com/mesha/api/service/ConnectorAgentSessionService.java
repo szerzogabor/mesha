@@ -178,6 +178,7 @@ public class ConnectorAgentSessionService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
     }
 
+    @Transactional(readOnly = true)
     public ConnectorAgentSessionDto toDto(ConnectorAgentSession session) {
         Issue issue = session.getIssueId() != null
             ? issueRepository.findById(session.getIssueId()).orElse(null)
@@ -185,6 +186,7 @@ public class ConnectorAgentSessionService {
         return ConnectorAgentSessionDto.from(session, issue);
     }
 
+    @Transactional(readOnly = true)
     public List<ConnectorAgentSessionDto> toDtos(List<ConnectorAgentSession> sessions) {
         Set<UUID> issueIds = sessions.stream()
             .map(ConnectorAgentSession::getIssueId)
