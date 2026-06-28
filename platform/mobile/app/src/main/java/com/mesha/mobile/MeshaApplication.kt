@@ -24,15 +24,10 @@ class MeshaApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        val clerkKey = BuildConfig.CLERK_PUBLISHABLE_KEY
-        if (clerkKey.isBlank()) {
-            Log.e(TAG, "CLERK_PUBLISHABLE_KEY is blank; this build can't sign in.")
-            return
-        }
         runCatching {
             Clerk.initialize(
                 this,
-                clerkKey,
+                CLERK_PUBLISHABLE_KEY,
                 options = ClerkConfigurationOptions(enableDebugMode = BuildConfig.DEBUG),
             )
         }.onSuccess {
@@ -44,6 +39,7 @@ class MeshaApplication : Application(), Configuration.Provider {
 
     private companion object {
         const val TAG = "MeshaApplication"
+        const val CLERK_PUBLISHABLE_KEY = "pk_test_ZGlzdGluY3QtZ3VsbC03Mi5jbGVyay5hY2NvdW50cy5kZXYk"
     }
 
     override val workManagerConfiguration: Configuration
