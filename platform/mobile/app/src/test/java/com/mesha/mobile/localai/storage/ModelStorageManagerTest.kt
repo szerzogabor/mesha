@@ -14,6 +14,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
+import kotlin.io.path.createTempDirectory
 
 class ModelStorageManagerTest {
 
@@ -22,7 +23,7 @@ class ModelStorageManagerTest {
 
     @Before
     fun setUp() {
-        root = createTempDir(prefix = "models-test")
+        root = createTempDirectory("models-test").toFile()
         val context = mockk<Context>()
         every { context.getExternalFilesDir("models") } returns File(root, "models")
         every { context.filesDir } returns root

@@ -5,8 +5,6 @@ import com.mesha.mobile.localai.model.DownloadState
 import com.mesha.mobile.localai.model.LocalAiModel
 import com.mesha.mobile.localai.storage.ModelStorageManager
 import com.mesha.mobile.localai.util.Sha256
-import com.sun.net.httpserver.HttpExchange
-import com.sun.net.httpserver.HttpServer
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -21,12 +19,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
-import java.net.InetSocketAddress
+import java.net.ServerSocket
+import java.net.Socket
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.io.path.createTempDirectory
 
 class ModelDownloadManagerTest {
 
-    private lateinit var server: HttpServer
+    private lateinit var server: TinyRangeServer
     private lateinit var modelDir: File
     private lateinit var storage: ModelStorageManager
     private lateinit var manager: ModelDownloadManager
@@ -36,15 +36,12 @@ class ModelDownloadManagerTest {
         val tmp = File.createTempFile("expected", ".bin").apply { writeBytes(content) }
         Sha256.ofFile(tmp).also { tmp.delete() }
     }
-    private val rangeHeaders = CopyOnWriteArrayList<String?>()
 
     @Before
     fun setUp() {
-        server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
-        server.createContext("/model.task") { exchange -> serve(exchange, rangeSupported = true) }
-        server.start()
+        server = TinyRangeServer(content).also { it.start() }
 
-        modelDir = createTempDir(prefix = "dl-test")
+        modelDir = createTempDirectory("dl-test").toFile()
         storage = mockk(relaxed = true)
         every { storage.modelDir(any()) } returns modelDir
         every { storage.hasSpaceFor(any()) } returns true
@@ -54,33 +51,16 @@ class ModelDownloadManagerTest {
 
     @After
     fun tearDown() {
-        server.stop(0)
+        server.stop()
         modelDir.deleteRecursively()
-    }
-
-    private fun serve(exchange: HttpExchange, rangeSupported: Boolean) {
-        val range = exchange.requestHeaders.getFirst("Range")
-        rangeHeaders.add(range)
-        if (rangeSupported && range != null) {
-            val start = range.removePrefix("bytes=").substringBefore("-").toInt()
-            val slice = content.copyOfRange(start, content.size)
-            exchange.responseHeaders.add("Content-Range", "bytes $start-${content.size - 1}/${content.size}")
-            exchange.sendResponseHeaders(206, slice.size.toLong())
-            exchange.responseBody.use { it.write(slice) }
-        } else {
-            exchange.sendResponseHeaders(200, content.size.toLong())
-            exchange.responseBody.use { it.write(content) }
-        }
     }
 
     private fun model(sha: String) = LocalAiModel(
         id = "gemma-3n-e2b", name = "Gemma 3n E2B", provider = "Google", source = "huggingface",
         version = "1.0", engine = "mediapipe", fileName = "model.task",
         sizeBytes = content.size.toLong(), sha256 = sha,
-        downloadUrl = url(),
+        downloadUrl = "http://127.0.0.1:${server.port}/model.task",
     )
-
-    private fun url() = "http://127.0.0.1:${server.address.port}/model.task"
 
     @Test
     fun download_verifiesChecksumAndInstalls() = runTest {
@@ -141,6 +121,69 @@ class ModelDownloadManagerTest {
         assertTrue(states.last() is DownloadState.Completed)
         assertArrayEquals(content, File(modelDir, "model.task").readBytes())
         // The server must have received a Range request to continue from the prefix.
-        assertTrue(rangeHeaders.any { it == "bytes=$half-" })
+        assertTrue(server.rangeHeadersSeen.any { it == "bytes=$half-" })
+    }
+
+    /**
+     * Minimal HTTP/1.1 server backed by a raw [ServerSocket] — Android's unit-test toolchain
+     * excludes `com.sun.net.httpserver`, so we hand-roll just enough to serve bytes with
+     * `Range` support for the resume test.
+     */
+    private class TinyRangeServer(private val content: ByteArray) {
+        private val socket = ServerSocket(0)
+        val port: Int get() = socket.localPort
+        val rangeHeadersSeen = CopyOnWriteArrayList<String?>()
+
+        @Volatile private var running = true
+        private val thread = Thread {
+            while (running) {
+                val client = try { socket.accept() } catch (e: Exception) { break }
+                runCatching { handle(client) }
+            }
+        }.apply { isDaemon = true }
+
+        fun start() = thread.start()
+
+        fun stop() {
+            running = false
+            runCatching { socket.close() }
+        }
+
+        private fun handle(client: Socket) {
+            client.use {
+                val reader = it.getInputStream().bufferedReader()
+                reader.readLine() ?: return // request line
+                var range: String? = null
+                while (true) {
+                    val line = reader.readLine() ?: break
+                    if (line.isEmpty()) break
+                    if (line.startsWith("Range:", ignoreCase = true)) {
+                        range = line.substringAfter(":").trim()
+                    }
+                }
+                rangeHeadersSeen.add(range)
+
+                val out = it.getOutputStream()
+                if (range != null) {
+                    val start = range.removePrefix("bytes=").substringBefore("-").toInt()
+                    val slice = content.copyOfRange(start, content.size)
+                    out.write(
+                        ("HTTP/1.1 206 Partial Content\r\n" +
+                            "Content-Length: ${slice.size}\r\n" +
+                            "Content-Range: bytes $start-${content.size - 1}/${content.size}\r\n" +
+                            "Connection: close\r\n\r\n").toByteArray(),
+                    )
+                    out.write(slice)
+                } else {
+                    out.write(
+                        ("HTTP/1.1 200 OK\r\n" +
+                            "Content-Length: ${content.size}\r\n" +
+                            "Connection: close\r\n\r\n").toByteArray(),
+                    )
+                    out.write(content)
+                }
+                out.flush()
+            }
+        }
     }
 }
