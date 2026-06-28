@@ -50,7 +50,9 @@ class AuthRepository @Inject constructor(
                             !initialized -> AuthState.Loading
                             user == null -> AuthState.Unauthenticated
                             else -> {
-                                syncUser(user)
+                                if (_authState.value != AuthState.Authenticated) {
+                                    syncUser(user)
+                                }
                                 AuthState.Authenticated
                             }
                         }
