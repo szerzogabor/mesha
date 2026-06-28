@@ -12,6 +12,7 @@ import com.mesha.mobile.data.remote.dto.LabelDto
 import com.mesha.mobile.data.remote.dto.PagedResponseDto
 import com.mesha.mobile.data.remote.dto.ProjectDto
 import com.mesha.mobile.data.remote.dto.SendMessageRequestDto
+import com.mesha.mobile.data.remote.dto.SyncUserRequestDto
 import com.mesha.mobile.data.remote.dto.WorkspaceDto
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -28,7 +29,7 @@ interface MeshaApi {
 
     // --- Auth: sync the Clerk user into Mesha after login ---
     @POST("api/auth/sync")
-    suspend fun syncUser(): Unit
+    suspend fun syncUser(@Body body: SyncUserRequestDto): Unit
 
     // --- Workspaces ---
     @GET("api/workspaces")

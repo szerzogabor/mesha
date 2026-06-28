@@ -136,6 +136,12 @@ data class AgentSessionMessageDto(
 )
 
 @Serializable
+data class SyncUserRequestDto(
+    val email: String,
+    val name: String? = null,
+)
+
+@Serializable
 data class SendMessageRequestDto(val content: String)
 
 /** Mirrors backend `AppReleaseDto` for the in-app update check. */

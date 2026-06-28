@@ -3,6 +3,7 @@ package com.mesha.mobile.data.repository
 import com.clerk.api.Clerk
 import com.mesha.mobile.ClerkBootstrap
 import com.mesha.mobile.data.remote.MeshaApi
+import com.mesha.mobile.data.remote.dto.SyncUserRequestDto
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -40,7 +41,16 @@ class AuthRepository @Inject constructor(
             scope.launch {
                 Clerk.userFlow.collect { user ->
                     if (user != null) {
-                        runCatching { api.syncUser() }
+                        val primaryEmail = user.emailAddresses
+                            ?.firstOrNull { it.id == user.primaryEmailAddressId }
+                            ?.emailAddress
+                            ?: user.emailAddresses?.firstOrNull()?.emailAddress
+                        if (primaryEmail != null) {
+                            val name = listOfNotNull(user.firstName, user.lastName)
+                                .joinToString(" ")
+                                .ifBlank { null }
+                            runCatching { api.syncUser(SyncUserRequestDto(email = primaryEmail, name = name)) }
+                        }
                         _authState.value = AuthState.Authenticated
                     } else {
                         _authState.value = AuthState.Unauthenticated

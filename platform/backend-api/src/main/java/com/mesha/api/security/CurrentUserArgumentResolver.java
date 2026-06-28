@@ -43,7 +43,7 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
         String clerkUserId = jwt.getSubject();
         try {
             return userService.getByClerkUserId(clerkUserId);
-        } catch (IllegalStateException e) {
+        } catch (ResponseStatusException | IllegalStateException e) {
             if (!required) return null;
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found, please sync your account");
         }
