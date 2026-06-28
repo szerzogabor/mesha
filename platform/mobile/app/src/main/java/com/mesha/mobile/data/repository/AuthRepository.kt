@@ -50,7 +50,7 @@ class AuthRepository @Inject constructor(
                             !initialized -> AuthState.Loading
                             user == null -> AuthState.Unauthenticated
                             else -> {
-                                syncUser(user)
+                                scope.launch { syncUser(user) }
                                 AuthState.Authenticated
                             }
                         }
