@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 
 /**
  * Streams Local AI model artifacts through the backend instead of letting the mobile client
@@ -37,7 +39,10 @@ public class LocalAiModelDownloadProxyService {
     private static final String HUGGING_FACE_SOURCE = "huggingface";
 
     private final LocalAiCatalogProperties properties;
-    private final HttpClient httpClient = HttpClient.newHttpClient();
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
 
     public LocalAiModelDownloadProxyService(LocalAiCatalogProperties properties) {
         this.properties = properties;
@@ -57,16 +62,20 @@ public class LocalAiModelDownloadProxyService {
         HttpResponse<InputStream> upstream;
         try {
             upstream = httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
             log.warn("Local AI model download proxy failed modelId={}", model.id(), e);
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to reach model host");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Local AI model download proxy interrupted modelId={}", model.id(), e);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Download interrupted");
         }
 
         int status = upstream.statusCode();
         if (status != 200 && status != 206) {
             closeQuietly(upstream.body());
             log.warn("Local AI model host returned HTTP {} modelId={}", status, model.id());
-            throw new ResponseStatusException(HttpStatus.valueOf(status), "Model host returned HTTP " + status);
+            throw new ResponseStatusException(HttpStatusCode.valueOf(status), "Model host returned HTTP " + status);
         }
 
         StreamingResponseBody body = output -> {

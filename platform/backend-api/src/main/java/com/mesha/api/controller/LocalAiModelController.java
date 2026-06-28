@@ -81,9 +81,8 @@ public class LocalAiModelController {
         if (!HUGGING_FACE_SOURCE.equals(model.source())) {
             return model;
         }
-        String proxyUrl = ServletUriComponentsBuilder.fromRequestUri(request)
-                .replacePath("/api/local-ai/models/" + model.id() + "/download")
-                .replaceQuery(null)
+        String proxyUrl = ServletUriComponentsBuilder.fromContextPath(request)
+                .path("/api/local-ai/models/" + model.id() + "/download")
                 .build()
                 .toUriString();
         return new LocalAiModelDto(

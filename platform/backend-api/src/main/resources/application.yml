@@ -56,6 +56,7 @@ cors:
 
 server:
   port: ${PORT:8080}
+  forward-headers-strategy: framework
   tomcat:
     threads:
       max: ${TOMCAT_MAX_THREADS:20}
