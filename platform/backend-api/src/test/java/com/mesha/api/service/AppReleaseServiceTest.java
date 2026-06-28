@@ -7,10 +7,11 @@ import com.mesha.api.repository.AppReleaseRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -20,11 +21,13 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
 
 class AppReleaseServiceTest {
 
     @Mock private AppReleaseRepository releaseRepository;
+    @Mock private JdbcTemplate jdbcTemplate;
 
     private AppReleaseService service;
     private AutoCloseable mocks;
@@ -32,7 +35,7 @@ class AppReleaseServiceTest {
     @BeforeEach
     void setUp() {
         mocks = MockitoAnnotations.openMocks(this);
-        service = new AppReleaseService(releaseRepository, 200L * 1024 * 1024);
+        service = new AppReleaseService(releaseRepository, jdbcTemplate, 200L * 1024 * 1024);
     }
 
     @AfterEach
@@ -45,7 +48,7 @@ class AppReleaseServiceTest {
     @Test
     void upload_savesReleaseWithComputedChecksumAndFields() {
         when(releaseRepository.existsByPlatformAndVersionCode(AppPlatform.ANDROID, 5)).thenReturn(false);
-        when(releaseRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(jdbcTemplate.update(any(PreparedStatementCreator.class))).thenReturn(1);
 
         MockMultipartFile apk = new MockMultipartFile("file", "mesha.apk",
                 "application/vnd.android.package-archive", new byte[2048]);
@@ -53,30 +56,26 @@ class AppReleaseServiceTest {
         AppRelease result = service.upload(AppPlatform.ANDROID, "1.2.0", 5, 34,
                 "Notes", true, apk, new User());
 
-        ArgumentCaptor<AppRelease> captor = ArgumentCaptor.forClass(AppRelease.class);
-        verify(releaseRepository).save(captor.capture());
-        AppRelease saved = captor.getValue();
-        assertThat(saved.getVersionName()).isEqualTo("1.2.0");
-        assertThat(saved.getVersionCode()).isEqualTo(5);
-        assertThat(saved.getMinSdk()).isEqualTo(34);
-        assertThat(saved.getFileSize()).isEqualTo(2048);
-        assertThat(saved.getContentType()).isEqualTo("application/vnd.android.package-archive");
-        // SHA-256 of 2048 zero bytes is a fixed 64-char hex string.
-        assertThat(saved.getChecksumSha256()).hasSize(64);
-        assertThat(result).isSameAs(saved);
+        verify(jdbcTemplate).update(any(PreparedStatementCreator.class));
+        assertThat(result.getVersionName()).isEqualTo("1.2.0");
+        assertThat(result.getVersionCode()).isEqualTo(5);
+        assertThat(result.getMinSdk()).isEqualTo(34);
+        assertThat(result.getFileSize()).isEqualTo(2048);
+        assertThat(result.getContentType()).isEqualTo("application/vnd.android.package-archive");
+        assertThat(result.getChecksumSha256()).hasSize(64);
+        assertThat(result.getId()).isNotNull();
+        assertThat(result.getCreatedAt()).isNotNull();
     }
 
     @Test
     void upload_defaultsMinSdkTo33WhenNull() {
         when(releaseRepository.existsByPlatformAndVersionCode(any(), anyInt())).thenReturn(false);
-        when(releaseRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(jdbcTemplate.update(any(PreparedStatementCreator.class))).thenReturn(1);
 
         MockMultipartFile apk = new MockMultipartFile("file", "mesha.apk", null, new byte[16]);
-        service.upload(AppPlatform.ANDROID, "1.0.0", 1, null, null, true, apk, new User());
+        AppRelease result = service.upload(AppPlatform.ANDROID, "1.0.0", 1, null, null, true, apk, new User());
 
-        ArgumentCaptor<AppRelease> captor = ArgumentCaptor.forClass(AppRelease.class);
-        verify(releaseRepository).save(captor.capture());
-        assertThat(captor.getValue().getMinSdk()).isEqualTo(33);
+        assertThat(result.getMinSdk()).isEqualTo(33);
     }
 
     @Test

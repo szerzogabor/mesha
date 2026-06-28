@@ -73,6 +73,7 @@ public class AppRelease {
     private Instant createdAt = Instant.now();
 
     public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
     public AppPlatform getPlatform() { return platform; }
     public void setPlatform(AppPlatform platform) { this.platform = platform; }
     public String getVersionName() { return versionName; }
