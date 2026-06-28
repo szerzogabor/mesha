@@ -74,6 +74,7 @@ jobs:
           }
 
       - name: Wait for Backend
+        if: false # APK-to-backend upload disabled
         run: |
           echo "Waiting for backend to be healthy..."
           for i in $(seq 1 10); do
@@ -89,6 +90,7 @@ jobs:
           exit 1
 
       - name: Upload APK to Mesha Backend
+        if: false # APK-to-backend upload disabled
         working-directory: platform/mobile
         run: |
           curl \
