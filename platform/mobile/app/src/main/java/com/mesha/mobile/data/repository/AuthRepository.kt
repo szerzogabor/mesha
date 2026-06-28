@@ -42,9 +42,9 @@ class AuthRepository @Inject constructor(
                 Clerk.userFlow.collect { user ->
                     if (user != null) {
                         val primaryEmail = user.emailAddresses
-                            .firstOrNull { it.id == user.primaryEmailAddressId }
+                            ?.firstOrNull { it.id == user.primaryEmailAddressId }
                             ?.emailAddress
-                            ?: user.emailAddresses.firstOrNull()?.emailAddress
+                            ?: user.emailAddresses?.firstOrNull()?.emailAddress
                         if (primaryEmail != null) {
                             val name = listOfNotNull(user.firstName, user.lastName)
                                 .joinToString(" ")

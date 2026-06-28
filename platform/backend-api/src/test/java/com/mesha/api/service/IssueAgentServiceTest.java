@@ -67,7 +67,7 @@ class IssueAgentServiceTest {
 
         when(issueRepository.findById(issueId)).thenReturn(Optional.of(issue));
         when(agentDefinitionRepository.findById(agentId)).thenReturn(Optional.of(agent));
-        when(issueAgentRepository.existsByIssueIdAndAgentDefinitionId(issueId, agentId)).thenReturn(false);
+        when(issueAgentRepository.findByIssueIdAndAgentDefinitionId(issueId, agentId)).thenReturn(Optional.empty());
         when(issueAgentRepository.save(any())).thenAnswer(inv -> {
             IssueAgent ia = inv.getArgument(0);
             ReflectionTestUtils.setField(ia, "id", UUID.randomUUID());
@@ -98,20 +98,26 @@ class IssueAgentServiceTest {
     }
 
     @Test
-    void assign_alreadyAssigned_throwsConflict() {
+    void assign_alreadyAssigned_returnsExisting() {
         UUID issueId = UUID.randomUUID();
         UUID agentId = UUID.randomUUID();
 
         Issue issue = issueInWorkspace(issueId);
         AgentDefinition agent = agentInWorkspace(agentId, true);
 
+        IssueAgent existingAssignment = new IssueAgent();
+        ReflectionTestUtils.setField(existingAssignment, "id", UUID.randomUUID());
+        existingAssignment.setIssue(issue);
+        existingAssignment.setAgentDefinition(agent);
+
         when(issueRepository.findById(issueId)).thenReturn(Optional.of(issue));
         when(agentDefinitionRepository.findById(agentId)).thenReturn(Optional.of(agent));
-        when(issueAgentRepository.existsByIssueIdAndAgentDefinitionId(issueId, agentId)).thenReturn(true);
+        when(issueAgentRepository.findByIssueIdAndAgentDefinitionId(issueId, agentId)).thenReturn(Optional.of(existingAssignment));
 
-        assertThatThrownBy(() -> service.assign(issueId, agentId, new User()))
-            .isInstanceOf(ResponseStatusException.class)
-            .hasMessageContaining("already assigned");
+        IssueAgent result = service.assign(issueId, agentId, new User());
+
+        assertThat(result).isSameAs(existingAssignment);
+        verify(issueAgentRepository, never()).save(any());
     }
 
     @Test
