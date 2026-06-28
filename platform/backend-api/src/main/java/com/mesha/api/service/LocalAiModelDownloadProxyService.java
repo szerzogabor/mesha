@@ -81,6 +81,9 @@ public class LocalAiModelDownloadProxyService {
         StreamingResponseBody body = output -> {
             try (InputStream in = upstream.body()) {
                 in.transferTo(output);
+            } catch (IOException e) {
+                log.warn("Local AI model download proxy stream interrupted modelId={}", model.id(), e);
+                throw e;
             }
         };
 
