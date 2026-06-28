@@ -50,7 +50,9 @@ class AuthRepository @Inject constructor(
                             !initialized -> AuthState.Loading
                             user == null -> AuthState.Unauthenticated
                             else -> {
-                                scope.launch { syncUser(user) }
+                                if (_authState.value != AuthState.Authenticated) {
+                                    syncUser(user)
+                                }
                                 AuthState.Authenticated
                             }
                         }
@@ -59,6 +61,9 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    // Awaited inline, not fire-and-forget: the backend rejects every other endpoint with 401
+    // ("User not found, please sync your account") until this sync has created the user row,
+    // so screens that fetch data right after AuthState.Authenticated need that row to exist.
     private suspend fun syncUser(user: User) {
         val primaryEmail = user.emailAddresses
             ?.firstOrNull { it.id == user.primaryEmailAddressId }
