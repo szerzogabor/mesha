@@ -39,7 +39,8 @@ class MeshaApplication : Application(), Configuration.Provider {
 
     private companion object {
         const val TAG = "MeshaApplication"
-        const val CLERK_PUBLISHABLE_KEY = "pk_test_ZGlzdGluY3QtZ3VsbC03Mi5jbGVyay5hY2NvdW50cy5kZXYk"
+        // Clerk publishable keys are not secret -- they ship in the client bundle by design.
+        const val CLERK_PUBLISHABLE_KEY = "pk_test_ZGlzdGluY3QtZ3VsbC03Mi5jbGVyay5hY2NvdW50cy5kZXYk" // gitleaks:allow
     }
 
     override val workManagerConfiguration: Configuration
