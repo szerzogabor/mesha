@@ -136,6 +136,7 @@ jobs:
             -Pmesha.versionName=0.1.${{ github.run_number }} \
             -Pmesha.clerk.publishableKey.debug=${{ secrets.MOBILE_CLERK_PUBLISHABLE_KEY_DEBUG }}
       - name: Upload to release feed
+        if: false # APK-to-backend upload disabled
         working-directory: ./platform/mobile
         run: |
           curl \
