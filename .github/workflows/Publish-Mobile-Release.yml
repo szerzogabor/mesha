@@ -42,7 +42,8 @@ jobs:
           ./gradlew :app:assembleDebug \
             --no-daemon \
             -Pmesha.versionCode=${VERSION_CODE} \
-            -Pmesha.versionName=${VERSION_NAME}
+            -Pmesha.versionName=${VERSION_NAME} \
+            -Pmesha.api.baseUrl.debug=https://mesha-api.onrender.com/
 
       - name: Verify APK
         working-directory: platform/mobile
