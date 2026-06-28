@@ -53,7 +53,11 @@ class ModelStorageManager @Inject constructor(
         if (!file.exists()) return null
         return runCatching { json.decodeFromString<InstalledModel>(file.readText()) }
             .getOrNull()
-            ?.takeIf { File(modelDir(id), it.fileName).exists() }
+            ?.takeIf {
+                // A present-but-empty artifact (interrupted/truncated download) is not installed.
+                val artifact = File(modelDir(id), it.fileName)
+                artifact.exists() && artifact.length() > 0
+            }
     }
 
     /** All currently installed models, discovered by scanning the models root. */
@@ -93,7 +97,9 @@ class ModelStorageManager @Inject constructor(
      * margin so the device is never driven completely out of space.
      */
     fun hasSpaceFor(requiredBytes: Long): Boolean =
-        availableStorageBytes() >= requiredBytes + SAFETY_MARGIN_BYTES
+        // Subtract the margin from the available side so a huge (corrupt/malicious) requiredBytes
+        // can't overflow the addition into a negative — which would wrongly report space.
+        requiredBytes >= 0 && availableStorageBytes() - SAFETY_MARGIN_BYTES >= requiredBytes
 
     companion object {
         const val METADATA_FILE = "metadata.json"

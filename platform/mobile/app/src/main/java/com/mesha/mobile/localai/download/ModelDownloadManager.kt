@@ -8,6 +8,7 @@ import com.mesha.mobile.localai.storage.ModelStorageManager
 import com.mesha.mobile.localai.storage.ModelStorageManager.Companion.PART_SUFFIX
 import com.mesha.mobile.localai.util.Sha256
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -127,39 +128,56 @@ class ModelDownloadManager @Inject constructor(
             requestBuilder.header("Range", "bytes=$existing-")
         }
 
-        client.newCall(requestBuilder.build()).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw IOException("HTTP ${response.code}")
-            }
-            val body = response.body ?: throw IOException("Empty response body")
+        // execute()/read() are blocking; cancel the Call when the coroutine is cancelled so a
+        // pause/cancel unblocks the IO thread immediately instead of waiting for a timeout.
+        val call = client.newCall(requestBuilder.build())
+        val cancelOnCompletion = coroutineContext[Job]?.invokeOnCompletion { call.cancel() }
+        try {
+            call.execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw IOException("HTTP ${response.code}")
+                }
+                val body = response.body ?: throw IOException("Empty response body")
 
-            // 206 => server honoured the range and we append; otherwise restart from scratch.
-            val resumed = response.code == 206 && existing > 0
-            val startOffset = if (resumed) existing else 0L
-            val reportedLength = body.contentLength()
-            val total = when {
-                model.sizeBytes > 0 -> model.sizeBytes
-                reportedLength > 0 -> startOffset + reportedLength
-                else -> -1L
-            }
+                // 206 => server honoured the range and we append; otherwise restart from scratch.
+                val resumed = response.code == 206 && existing > 0
+                val startOffset = if (resumed) existing else 0L
+                val reportedLength = body.contentLength()
+                val total = when {
+                    model.sizeBytes > 0 -> model.sizeBytes
+                    reportedLength > 0 -> startOffset + reportedLength
+                    else -> -1L
+                }
 
-            partFile.parentFile?.mkdirs()
-            val output = java.io.RandomAccessFile(partFile, "rw")
-            output.use { raf ->
-                if (resumed) raf.seek(existing) else raf.setLength(0)
-                var downloaded = startOffset
-                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                body.byteStream().use { input ->
-                    while (true) {
-                        coroutineContext.ensureActive()
-                        val read = input.read(buffer)
-                        if (read < 0) break
-                        raf.write(buffer, 0, read)
-                        downloaded += read
-                        onProgress(downloaded, total)
+                partFile.parentFile?.mkdirs()
+                val output = java.io.RandomAccessFile(partFile, "rw")
+                output.use { raf ->
+                    if (resumed) raf.seek(existing) else raf.setLength(0)
+                    var downloaded = startOffset
+                    // Throttle progress: a multi-GB model would otherwise emit hundreds of
+                    // thousands of updates and flood the UI with recompositions.
+                    var lastProgressMs = 0L
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    body.byteStream().use { input ->
+                        while (true) {
+                            coroutineContext.ensureActive()
+                            val read = input.read(buffer)
+                            if (read < 0) break
+                            raf.write(buffer, 0, read)
+                            downloaded += read
+                            val now = System.currentTimeMillis()
+                            if (now - lastProgressMs >= PROGRESS_THROTTLE_MS) {
+                                onProgress(downloaded, total)
+                                lastProgressMs = now
+                            }
+                        }
                     }
+                    // Always emit the final, exact progress once the transfer completes.
+                    onProgress(downloaded, total)
                 }
             }
+        } finally {
+            cancelOnCompletion?.dispose()
         }
     }
 
@@ -168,5 +186,10 @@ class ModelDownloadManager @Inject constructor(
         is InterruptedIOException -> DownloadError.DOWNLOAD_TIMEOUT
         is IOException -> DownloadError.DOWNLOAD_INTERRUPTED
         else -> DownloadError.UNKNOWN
+    }
+
+    private companion object {
+        /** Minimum gap between progress emissions, to avoid flooding the UI. */
+        const val PROGRESS_THROTTLE_MS = 100L
     }
 }
