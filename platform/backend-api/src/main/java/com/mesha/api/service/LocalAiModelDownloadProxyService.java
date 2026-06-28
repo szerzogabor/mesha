@@ -82,7 +82,11 @@ public class LocalAiModelDownloadProxyService {
             try (InputStream in = upstream.body()) {
                 in.transferTo(output);
             } catch (IOException e) {
-                log.warn("Local AI model download proxy stream interrupted modelId={}", model.id(), e);
+                if (isClientDisconnect(e)) {
+                    log.info("Local AI model download client disconnected modelId={}", model.id());
+                } else {
+                    log.warn("Local AI model download proxy stream interrupted modelId={}", model.id(), e);
+                }
                 throw e;
             }
         };
@@ -101,5 +105,13 @@ public class LocalAiModelDownloadProxyService {
         } catch (IOException ignored) {
             // Best-effort cleanup of a stream we're discarding anyway.
         }
+    }
+
+    private boolean isClientDisconnect(IOException e) {
+        if (e.getClass().getSimpleName().equals("ClientAbortException")) {
+            return true;
+        }
+        String message = e.getMessage();
+        return message != null && (message.contains("Broken pipe") || message.contains("Connection reset"));
     }
 }
