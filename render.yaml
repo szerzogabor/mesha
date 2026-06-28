@@ -93,6 +93,8 @@ services:
         sync: false
       - key: APP_RELEASES_UPLOAD_TOKEN
         sync: false
+      - key: LOCAL_AI_HUGGINGFACE_TOKEN
+        sync: false
 
   - type: worker
     name: mesha-worker
