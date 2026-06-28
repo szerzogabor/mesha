@@ -1,0 +1,8 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Publishable keys are designed to ship in client bundles and are not secrets"
+regexes = [
+  '''pk_(test|live)_[A-Za-z0-9+/=]+''',
+]
