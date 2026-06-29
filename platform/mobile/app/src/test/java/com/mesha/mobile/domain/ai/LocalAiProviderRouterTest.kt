@@ -5,6 +5,7 @@ import com.mesha.mobile.localai.storage.ModelStorageManager
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -85,5 +86,37 @@ class LocalAiProviderRouterTest {
         val router = LocalAiProviderRouter(mapOf("litertlm" to litertProvider), storageManager)
 
         assertEquals(expectedDraft, router.generateIssueDraft(request))
+    }
+
+    @Test
+    fun isAvailable_closesPreviouslyActiveProvider_whenInstalledEngineChanges() = runTest {
+        val mediapipeProvider = mockk<LocalAiProvider>(relaxed = true)
+        val litertProvider = mockk<LocalAiProvider>(relaxed = true)
+        val storageManager = mockk<ModelStorageManager>()
+        every { storageManager.installedModels() } returns listOf(model("mediapipe"))
+        val router = LocalAiProviderRouter(
+            mapOf("mediapipe" to mediapipeProvider, "litertlm" to litertProvider),
+            storageManager,
+        )
+        router.isAvailable()
+
+        every { storageManager.installedModels() } returns listOf(model("litertlm"))
+        router.isAvailable()
+
+        verify(exactly = 1) { mediapipeProvider.close() }
+        verify(exactly = 0) { litertProvider.close() }
+    }
+
+    @Test
+    fun isAvailable_doesNotCloseProvider_whenInstalledEngineUnchanged() = runTest {
+        val mediapipeProvider = mockk<LocalAiProvider>(relaxed = true)
+        val storageManager = mockk<ModelStorageManager>()
+        every { storageManager.installedModels() } returns listOf(model("mediapipe"))
+        val router = LocalAiProviderRouter(mapOf("mediapipe" to mediapipeProvider), storageManager)
+
+        router.isAvailable()
+        router.isAvailable()
+
+        verify(exactly = 0) { mediapipeProvider.close() }
     }
 }

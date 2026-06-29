@@ -21,6 +21,8 @@ class LocalAiProviderRouter @Inject constructor(
     override val id: String = "router"
     override val displayName: String = "On-device AI"
 
+    @Volatile private var activeEngineKey: String? = null
+
     override suspend fun isAvailable(): Boolean = resolveProvider()?.isAvailable() == true
 
     override suspend fun generateIssueDraft(request: GenerateIssueRequest): IssueDraft {
@@ -31,9 +33,20 @@ class LocalAiProviderRouter @Inject constructor(
         return provider.generateIssueDraft(request)
     }
 
-    private fun resolveProvider(): LocalAiProvider? =
-        modelStorageManager.installedModels()
+    /**
+     * Resolves the provider for the currently installed model, closing the previously active
+     * provider first if the installed engine changed since the last call — otherwise switching
+     * models without an app restart would leak the old provider's native resources forever.
+     */
+    private fun resolveProvider(): LocalAiProvider? {
+        val installedEngine = modelStorageManager.installedModels()
             .asSequence()
-            .mapNotNull { providers[it.engine] }
-            .firstOrNull()
+            .map { it.engine }
+            .firstOrNull { providers.containsKey(it) }
+        if (installedEngine != activeEngineKey) {
+            activeEngineKey?.let { providers[it]?.close() }
+            activeEngineKey = installedEngine
+        }
+        return installedEngine?.let { providers[it] }
+    }
 }
