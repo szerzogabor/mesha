@@ -151,6 +151,12 @@ class CreateIssueAiViewModel @Inject constructor(
                 _state.update {
                     it.copy(step = CreateStep.INPUT, error = friendlyMessage(e))
                 }
+            } catch (e: Exception) {
+                // Defensive: any provider failure that doesn't go through LocalAiException
+                // should still surface as an error rather than leave the UI stuck or crash.
+                _state.update {
+                    it.copy(step = CreateStep.INPUT, error = "On-device generation failed. ${e.message ?: ""}".trim())
+                }
             }
         }
     }
