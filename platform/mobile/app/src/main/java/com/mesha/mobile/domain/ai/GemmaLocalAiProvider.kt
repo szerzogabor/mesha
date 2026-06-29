@@ -108,11 +108,12 @@ class GemmaLocalAiProvider @Inject constructor(
     }
 
     private fun checkMemoryAvailable(modelFile: File) {
-        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val activityManager = context.getSystemService(ActivityManager::class.java) ?: return
         val info = ActivityManager.MemoryInfo()
         activityManager.getMemoryInfo(info)
-        if (!hasSufficientMemoryToLoadModel(info.availMem, info.lowMemory, modelFile.length())) {
-            val neededMb = (modelFile.length() * MODEL_MEMORY_OVERHEAD_FACTOR / BYTES_PER_MB).toLong()
+        val modelBytes = modelFile.length()
+        if (!hasSufficientMemoryToLoadModel(info.availMem, info.lowMemory, modelBytes)) {
+            val neededMb = (modelBytes * MODEL_MEMORY_OVERHEAD_FACTOR / BYTES_PER_MB).toLong()
             val availableMb = info.availMem / BYTES_PER_MB
             throw LocalAiException.InferenceFailed(
                 "Not enough free memory to load the on-device model (~$neededMb MB needed, " +
