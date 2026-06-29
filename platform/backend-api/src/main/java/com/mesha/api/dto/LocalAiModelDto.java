@@ -18,7 +18,11 @@ package com.mesha.api.dto;
  * @param fileName         on-disk filename to store the downloaded artifact as
  * @param sizeBytes        download size in bytes (for storage pre-checks and progress)
  * @param sha256           lowercase hex SHA-256 of the file; empty if not verified
- * @param downloadUrl      absolute URL to fetch the model artifact from
+ * @param downloadUrl      absolute URL to fetch the model artifact from (the full-proxy
+ *                         endpoint for gated sources, the direct host otherwise)
+ * @param resolveUrl       absolute URL that resolves a fresh direct download URL without
+ *                         transferring the body; {@code null} when there's nothing to resolve
+ *                         (non-gated sources can already be fetched directly via downloadUrl)
  * @param licenseUrl       optional URL to the model license/terms
  * @param minimumRamGb     minimum device RAM (GB) recommended to run the model
  * @param minimumStorageGb minimum free storage (GB) required to install the model
@@ -35,6 +39,7 @@ public record LocalAiModelDto(
         long sizeBytes,
         String sha256,
         String downloadUrl,
+        String resolveUrl,
         String licenseUrl,
         int minimumRamGb,
         int minimumStorageGb,

@@ -1,10 +1,13 @@
 package com.mesha.mobile.localai.download
 
+import com.mesha.mobile.localai.catalog.ModelCatalogRepository
 import com.mesha.mobile.localai.model.DownloadError
 import com.mesha.mobile.localai.model.DownloadState
 import com.mesha.mobile.localai.model.LocalAiModel
 import com.mesha.mobile.localai.storage.ModelStorageManager
 import com.mesha.mobile.localai.util.Sha256
+import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -22,6 +25,7 @@ import java.io.File
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.io.path.createTempDirectory
 
 class ModelDownloadManagerTest {
@@ -29,6 +33,7 @@ class ModelDownloadManagerTest {
     private lateinit var server: TinyRangeServer
     private lateinit var modelDir: File
     private lateinit var storage: ModelStorageManager
+    private lateinit var catalogRepository: ModelCatalogRepository
     private lateinit var manager: ModelDownloadManager
 
     private val content = ByteArray(64 * 1024) { (it % 256).toByte() }
@@ -46,7 +51,9 @@ class ModelDownloadManagerTest {
         every { storage.modelDir(any()) } returns modelDir
         every { storage.hasSpaceFor(any()) } returns true
 
-        manager = ModelDownloadManager(OkHttpClient(), storage)
+        catalogRepository = mockk()
+
+        manager = ModelDownloadManager(OkHttpClient(), storage, catalogRepository)
     }
 
     @After
@@ -55,11 +62,12 @@ class ModelDownloadManagerTest {
         modelDir.deleteRecursively()
     }
 
-    private fun model(sha: String) = LocalAiModel(
+    private fun model(sha: String, resolveUrl: String? = null) = LocalAiModel(
         id = "gemma-3n-e2b", name = "Gemma 3n E2B", provider = "Google", source = "huggingface",
         version = "1.0", engine = "mediapipe", fileName = "model.task",
         sizeBytes = content.size.toLong(), sha256 = sha,
         downloadUrl = "http://127.0.0.1:${server.port}/model.task",
+        resolveUrl = resolveUrl,
     )
 
     @Test
@@ -124,6 +132,99 @@ class ModelDownloadManagerTest {
         assertTrue(server.rangeHeadersSeen.any { it == "bytes=$half-" })
     }
 
+    @Test
+    fun download_resolvesAndUsesCdnUrlFirst_whenResolveUrlIsSet() = runTest {
+        val cdnServer = TinyRangeServer(content).also { it.start() }
+        try {
+            coEvery { catalogRepository.resolveDownloadUrl("gemma-3n-e2b") } returns
+                Result.success("http://127.0.0.1:${cdnServer.port}/model.task")
+
+            val states = manager.download(model(contentSha, resolveUrl = "https://backend/resolve")).toList()
+
+            assertTrue(states.last() is DownloadState.Completed)
+            assertTrue(cdnServer.requestCount.get() > 0)
+            assertEquals(0, server.requestCount.get())
+        } finally {
+            cdnServer.stop()
+        }
+    }
+
+    @Test
+    fun download_fallsBackToProxyUrl_whenResolveFails() = runTest {
+        coEvery { catalogRepository.resolveDownloadUrl("gemma-3n-e2b") } returns
+            Result.failure(RuntimeException("resolve unavailable"))
+
+        val states = manager.download(model(contentSha, resolveUrl = "https://backend/resolve")).toList()
+
+        assertTrue(states.last() is DownloadState.Completed)
+        assertTrue(server.requestCount.get() > 0)
+    }
+
+    @Test
+    fun download_doesNotReResolve_whenInitialResolveFailsAndProxyAlsoReturns401() = runTest {
+        // Initial resolve already failed, so we're on the proxy URL from the very first attempt.
+        // A 401 from the proxy itself must not trigger a redundant re-resolve attempt.
+        coEvery { catalogRepository.resolveDownloadUrl("gemma-3n-e2b") } returns
+            Result.failure(RuntimeException("resolve unavailable"))
+        server.unauthorizedRequestsRemaining.set(1)
+
+        val states = manager.download(model(contentSha, resolveUrl = "https://backend/resolve")).toList()
+
+        assertTrue(states.last() is DownloadState.Failed)
+        coVerify(exactly = 1) { catalogRepository.resolveDownloadUrl("gemma-3n-e2b") }
+    }
+
+    @Test
+    fun download_reResolvesOnceOn401AndResumesFromExistingPartFile() = runTest {
+        val cdnServer = TinyRangeServer(content).also { it.start() }
+        try {
+            cdnServer.unauthorizedRequestsRemaining.set(1)
+            coEvery { catalogRepository.resolveDownloadUrl("gemma-3n-e2b") } returns
+                Result.success("http://127.0.0.1:${cdnServer.port}/model.task")
+
+            val half = content.size / 2
+            File(modelDir, "model.task.part").writeBytes(content.copyOfRange(0, half))
+
+            val states = manager.download(model(contentSha, resolveUrl = "https://backend/resolve")).toList()
+
+            assertTrue(states.last() is DownloadState.Completed)
+            assertArrayEquals(content, File(modelDir, "model.task").readBytes())
+            assertEquals(2, cdnServer.requestCount.get())
+            assertEquals("bytes=$half-", cdnServer.rangeHeadersSeen.last())
+            coVerify(exactly = 2) { catalogRepository.resolveDownloadUrl("gemma-3n-e2b") }
+            assertEquals(0, server.requestCount.get())
+        } finally {
+            cdnServer.stop()
+        }
+    }
+
+    @Test
+    fun download_fallsBackToProxyPermanently_afterSecondConsecutive401() = runTest {
+        val cdnServer = TinyRangeServer(content).also { it.start() }
+        try {
+            cdnServer.unauthorizedRequestsRemaining.set(2)
+            coEvery { catalogRepository.resolveDownloadUrl("gemma-3n-e2b") } returns
+                Result.success("http://127.0.0.1:${cdnServer.port}/model.task")
+
+            val states = manager.download(model(contentSha, resolveUrl = "https://backend/resolve")).toList()
+
+            assertTrue(states.last() is DownloadState.Completed)
+            assertEquals(2, cdnServer.requestCount.get())
+            assertTrue(server.requestCount.get() > 0)
+            coVerify(exactly = 2) { catalogRepository.resolveDownloadUrl("gemma-3n-e2b") }
+        } finally {
+            cdnServer.stop()
+        }
+    }
+
+    @Test
+    fun download_doesNotCallResolve_whenResolveUrlIsNull() = runTest {
+        val states = manager.download(model(contentSha, resolveUrl = null)).toList()
+
+        assertTrue(states.last() is DownloadState.Completed)
+        coVerify(exactly = 0) { catalogRepository.resolveDownloadUrl(any()) }
+    }
+
     /**
      * Minimal HTTP/1.1 server backed by a raw [ServerSocket] — Android's unit-test toolchain
      * excludes `com.sun.net.httpserver`, so we hand-roll just enough to serve bytes with
@@ -133,6 +234,10 @@ class ModelDownloadManagerTest {
         private val socket = ServerSocket(0)
         val port: Int get() = socket.localPort
         val rangeHeadersSeen = CopyOnWriteArrayList<String?>()
+        val requestCount = AtomicInteger(0)
+
+        /** Number of upcoming requests to answer with a bare 401, simulating an expired signed URL. */
+        val unauthorizedRequestsRemaining = AtomicInteger(0)
 
         @Volatile private var running = true
         private val thread = Thread {
@@ -162,8 +267,19 @@ class ModelDownloadManagerTest {
                     }
                 }
                 rangeHeadersSeen.add(range)
+                requestCount.incrementAndGet()
 
                 val out = it.getOutputStream()
+                if (unauthorizedRequestsRemaining.get() > 0) {
+                    unauthorizedRequestsRemaining.decrementAndGet()
+                    out.write(
+                        ("HTTP/1.1 401 Unauthorized\r\n" +
+                            "Content-Length: 0\r\n" +
+                            "Connection: close\r\n\r\n").toByteArray(),
+                    )
+                    out.flush()
+                    return
+                }
                 if (range != null) {
                     val start = range.removePrefix("bytes=").substringBefore("-").toInt()
                     val slice = content.copyOfRange(start, content.size)

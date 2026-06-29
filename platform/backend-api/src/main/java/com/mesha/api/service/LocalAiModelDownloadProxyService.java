@@ -99,6 +99,52 @@ public class LocalAiModelDownloadProxyService {
         return responseBuilder.body(body);
     }
 
+    /**
+     * Resolves [model]'s actual fetch location without transferring its body, so the mobile
+     * client can download large artifacts directly from the source instead of relaying every
+     * byte through this backend. For gated Hugging Face repos, the {@code resolve/main} URL
+     * 302s to a time-limited signed CDN URL once authenticated; a {@code Range: bytes=0-0}
+     * request follows that redirect chain while transferring at most one byte, and
+     * {@link HttpResponse#uri()} reports the URI the response actually came from — the signed
+     * CDN link. If Hugging Face doesn't redirect (no CDN hop for this artifact), the returned
+     * URL is simply the original gated URL unchanged; that's expected, not an error, and the
+     * mobile client falls back to the full proxy endpoint when a direct fetch fails. Sources
+     * other than Hugging Face already hand mobile a directly-fetchable URL, so there's nothing
+     * to resolve and no upstream request is made.
+     */
+    public String resolveDownloadUrl(LocalAiModelDto model) {
+        if (!HUGGING_FACE_SOURCE.equals(model.source())) {
+            return model.downloadUrl();
+        }
+
+        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(URI.create(model.downloadUrl()))
+                .header(HttpHeaders.RANGE, "bytes=0-0")
+                .GET();
+        String token = properties.getHuggingFaceToken();
+        if (token != null && !token.isBlank()) {
+            requestBuilder.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+        }
+
+        HttpResponse<Void> upstream;
+        try {
+            upstream = httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.discarding());
+        } catch (IOException e) {
+            log.warn("Local AI model resolve failed modelId={}", model.id(), e);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to reach model host");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Local AI model resolve interrupted modelId={}", model.id(), e);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Resolve interrupted");
+        }
+
+        int status = upstream.statusCode();
+        if (status != 200 && status != 206) {
+            log.warn("Local AI model host returned HTTP {} during resolve modelId={}", status, model.id());
+            throw new ResponseStatusException(HttpStatusCode.valueOf(status), "Model host returned HTTP " + status);
+        }
+        return upstream.uri().toString();
+    }
+
     private void closeQuietly(InputStream in) {
         try {
             in.close();

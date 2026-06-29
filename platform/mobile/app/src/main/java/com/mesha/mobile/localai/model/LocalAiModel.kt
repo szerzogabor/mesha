@@ -19,6 +19,7 @@ data class LocalAiModel(
     val sizeBytes: Long,
     val sha256: String,
     val downloadUrl: String,
+    val resolveUrl: String? = null,
     val licenseUrl: String? = null,
     val minimumRamGb: Int = 0,
     val minimumStorageGb: Int = 0,

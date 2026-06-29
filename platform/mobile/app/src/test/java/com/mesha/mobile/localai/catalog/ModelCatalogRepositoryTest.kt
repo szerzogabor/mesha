@@ -2,6 +2,7 @@ package com.mesha.mobile.localai.catalog
 
 import com.mesha.mobile.localai.api.LocalAiApi
 import com.mesha.mobile.localai.api.LocalAiModelDto
+import com.mesha.mobile.localai.api.ResolveDownloadUrlDto
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -72,5 +73,41 @@ class ModelCatalogRepositoryTest {
         val result = repo.getCatalog()
 
         assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun resolveDownloadUrl_returnsResolvedUrlOnSuccess() = runTest {
+        coEvery { api.resolveDownloadUrl("gemma-3n-e2b") } returns
+            ResolveDownloadUrlDto("https://cdn-lfs.hf.co/signed-url")
+        val repo = ModelCatalogRepository(api)
+
+        val result = repo.resolveDownloadUrl("gemma-3n-e2b")
+
+        assertTrue(result.isSuccess)
+        assertEquals("https://cdn-lfs.hf.co/signed-url", result.getOrThrow())
+    }
+
+    @Test
+    fun resolveDownloadUrl_propagatesFailure() = runTest {
+        coEvery { api.resolveDownloadUrl("gemma-3n-e2b") } throws RuntimeException("offline")
+        val repo = ModelCatalogRepository(api)
+
+        val result = repo.resolveDownloadUrl("gemma-3n-e2b")
+
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun resolveDownloadUrl_alwaysHitsApiEvenWhenCatalogIsCached() = runTest {
+        coEvery { api.getModels() } returns listOf(dto("gemma-3n-e2b"))
+        coEvery { api.resolveDownloadUrl("gemma-3n-e2b") } returns
+            ResolveDownloadUrlDto("https://cdn-lfs.hf.co/signed-url")
+        val repo = ModelCatalogRepository(api)
+        repo.getCatalog() // seed cache
+
+        repo.resolveDownloadUrl("gemma-3n-e2b")
+        repo.resolveDownloadUrl("gemma-3n-e2b")
+
+        coVerify(exactly = 2) { api.resolveDownloadUrl("gemma-3n-e2b") }
     }
 }

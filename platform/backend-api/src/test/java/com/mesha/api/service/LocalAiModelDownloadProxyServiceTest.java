@@ -32,7 +32,7 @@ class LocalAiModelDownloadProxyServiceTest {
         return new LocalAiModelDto(
                 "gemma-3n-e2b", "Gemma 3n E2B", "Google", source, "1.0", "mediapipe",
                 "model.task", 1024L, "", "http://localhost:" + server.getAddress().getPort() + path,
-                null, 6, 5, true);
+                null, null, 6, 5, true);
     }
 
     @Test
@@ -91,6 +91,84 @@ class LocalAiModelDownloadProxyServiceTest {
         LocalAiModelDownloadProxyService service = new LocalAiModelDownloadProxyService(props);
 
         assertThatThrownBy(() -> service.proxy(modelPointingAt("/model.task", "huggingface"), null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("401");
+    }
+
+    @Test
+    void resolveDownloadUrlReturnsFinalRedirectUriForHuggingFaceSources() throws Exception {
+        AtomicReference<String> receivedAuth = new AtomicReference<>();
+        AtomicReference<String> receivedRange = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/model.task", exchange -> {
+            exchange.getResponseHeaders().add("Location", "/cdn/signed-model.task");
+            exchange.sendResponseHeaders(302, -1);
+            exchange.close();
+        });
+        server.createContext("/cdn/signed-model.task", exchange -> {
+            receivedAuth.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            receivedRange.set(exchange.getRequestHeaders().getFirst("Range"));
+            exchange.sendResponseHeaders(206, -1);
+            exchange.close();
+        });
+        server.start();
+
+        LocalAiCatalogProperties props = new LocalAiCatalogProperties();
+        props.setHuggingFaceToken("secret-token");
+        LocalAiModelDownloadProxyService service = new LocalAiModelDownloadProxyService(props);
+
+        String resolved = service.resolveDownloadUrl(modelPointingAt("/model.task", "huggingface"));
+
+        assertThat(resolved).endsWith("/cdn/signed-model.task");
+        assertThat(receivedAuth.get()).isEqualTo("Bearer secret-token");
+        assertThat(receivedRange.get()).isEqualTo("bytes=0-0");
+    }
+
+    @Test
+    void resolveDownloadUrlReturnsOriginalUrlUnchangedWhenNoRedirectOccurs() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/model.task", exchange -> {
+            exchange.sendResponseHeaders(206, -1);
+            exchange.close();
+        });
+        server.start();
+
+        LocalAiCatalogProperties props = new LocalAiCatalogProperties();
+        props.setHuggingFaceToken("secret-token");
+        LocalAiModelDownloadProxyService service = new LocalAiModelDownloadProxyService(props);
+
+        String resolved = service.resolveDownloadUrl(modelPointingAt("/model.task", "huggingface"));
+
+        assertThat(resolved).endsWith("/model.task");
+    }
+
+    @Test
+    void resolveDownloadUrlShortCircuitsWithoutNetworkCallForNonHuggingFaceSources() {
+        LocalAiCatalogProperties props = new LocalAiCatalogProperties();
+        LocalAiModelDownloadProxyService service = new LocalAiModelDownloadProxyService(props);
+        LocalAiModelDto model = new LocalAiModelDto(
+                "custom-model", "Custom", "Mesha", "mesha-cdn", "1.0", "mediapipe",
+                "custom.task", 123L, "", "https://cdn.mesha.dev/custom.task",
+                null, null, 4, 3, false);
+
+        String resolved = service.resolveDownloadUrl(model);
+
+        assertThat(resolved).isEqualTo("https://cdn.mesha.dev/custom.task");
+    }
+
+    @Test
+    void resolveDownloadUrlSurfacesUpstreamErrorStatusAsResponseStatusException() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/model.task", exchange -> {
+            exchange.sendResponseHeaders(401, -1);
+            exchange.close();
+        });
+        server.start();
+
+        LocalAiCatalogProperties props = new LocalAiCatalogProperties();
+        LocalAiModelDownloadProxyService service = new LocalAiModelDownloadProxyService(props);
+
+        assertThatThrownBy(() -> service.resolveDownloadUrl(modelPointingAt("/model.task", "huggingface")))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("401");
     }

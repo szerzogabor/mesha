@@ -37,4 +37,13 @@ class ModelCatalogRepository @Inject constructor(
 
     /** Last loaded catalog without hitting the network, or empty if never loaded. */
     fun cachedCatalog(): List<LocalAiModel> = cached.orEmpty()
+
+    /**
+     * Resolves a fresh direct download URL for [modelId], bypassing the catalog cache: the
+     * cached [LocalAiModel.resolveUrl] is just this stable backend endpoint, not the CDN URL
+     * it ultimately resolves to, so every call is a fresh round-trip.
+     */
+    suspend fun resolveDownloadUrl(modelId: String): Result<String> = withContext(Dispatchers.IO) {
+        runCatching { api.resolveDownloadUrl(modelId).url }
+    }
 }
