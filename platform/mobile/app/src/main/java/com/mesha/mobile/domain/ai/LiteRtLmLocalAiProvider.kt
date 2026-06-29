@@ -95,7 +95,16 @@ class LiteRtLmLocalAiProvider @Inject constructor(
             checkMemoryAvailable(modelFile)
             try {
                 val config = EngineConfig(modelPath = modelFile.absolutePath, backend = Backend.CPU())
-                Engine(config).also { it.initialize(); engine = it }
+                val newEngine = Engine(config)
+                try {
+                    newEngine.initialize()
+                } catch (e: Throwable) {
+                    // initialize() failed after the native engine was allocated — close it
+                    // before rethrowing so we don't leak native memory on a failed load.
+                    newEngine.close()
+                    throw e
+                }
+                newEngine.also { engine = it }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
