@@ -8,7 +8,7 @@ package com.mesha.mobile.domain.ai
  * so the inference backend can be swapped (a different local model, a remote fallback,
  * or a fake for tests) without touching feature code.
  */
-interface LocalAiProvider {
+interface LocalAiProvider : AutoCloseable {
 
     /** Stable identifier used in logs and settings (e.g. "gemma"). */
     val id: String
@@ -33,6 +33,9 @@ interface LocalAiProvider {
      * @throws LocalAiException when the model is unavailable or output cannot be repaired.
      */
     suspend fun generateIssueDraft(request: GenerateIssueRequest): IssueDraft
+
+    /** Releases native resources, if any. Default no-op for providers with nothing to free. */
+    override fun close() {}
 }
 
 /** Failure modes surfaced to the UI as user-friendly messages. */

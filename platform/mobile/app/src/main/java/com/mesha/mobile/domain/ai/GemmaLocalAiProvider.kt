@@ -123,7 +123,7 @@ class GemmaLocalAiProvider @Inject constructor(
     }
 
     /** Releases native resources. Call when the app no longer needs inference. */
-    fun close() {
+    override fun close() {
         engine?.close()
         engine = null
     }

@@ -20,6 +20,10 @@ datastore = "1.1.1"
 workManager = "2.9.1"
 hiltWork = "1.2.0"
 mediapipeGenai = "0.10.14"
+# Best-known published version at time of writing — re-verify against Google's Maven repo
+# (https://maven.google.com or mavenrepository search for com.google.ai.edge.litertlm)
+# before relying on this in a release build; this sandbox could not reach that repo to confirm.
+litertLm = "0.13.1"
 coil = "2.7.0"
 clerkAndroid = "1.0.24"
 junit = "4.13.2"
@@ -72,6 +76,7 @@ androidx-datastore-preferences = { group = "androidx.datastore", name = "datasto
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
 
 mediapipe-tasks-genai = { group = "com.google.mediapipe", name = "tasks-genai", version.ref = "mediapipeGenai" }
+litertlm-android = { group = "com.google.ai.edge.litertlm", name = "litertlm-android", version.ref = "litertLm" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 
 # Clerk Android SDK — clerk-android-ui pulls clerk-android-api transitively. Pinned to
