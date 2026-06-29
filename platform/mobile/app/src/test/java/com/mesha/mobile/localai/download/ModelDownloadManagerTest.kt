@@ -161,6 +161,20 @@ class ModelDownloadManagerTest {
     }
 
     @Test
+    fun download_doesNotReResolve_whenInitialResolveFailsAndProxyAlsoReturns401() = runTest {
+        // Initial resolve already failed, so we're on the proxy URL from the very first attempt.
+        // A 401 from the proxy itself must not trigger a redundant re-resolve attempt.
+        coEvery { catalogRepository.resolveDownloadUrl("gemma-3n-e2b") } returns
+            Result.failure(RuntimeException("resolve unavailable"))
+        server.unauthorizedRequestsRemaining.set(1)
+
+        val states = manager.download(model(contentSha, resolveUrl = "https://backend/resolve")).toList()
+
+        assertTrue(states.last() is DownloadState.Failed)
+        coVerify(exactly = 1) { catalogRepository.resolveDownloadUrl("gemma-3n-e2b") }
+    }
+
+    @Test
     fun download_reResolvesOnceOn401AndResumesFromExistingPartFile() = runTest {
         val cdnServer = TinyRangeServer(content).also { it.start() }
         try {

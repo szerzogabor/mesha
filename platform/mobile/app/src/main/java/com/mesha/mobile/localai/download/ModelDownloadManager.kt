@@ -79,9 +79,11 @@ class ModelDownloadManager @Inject constructor(
 
         try {
             var attempt = 0
-            var activeUrl = model.resolveUrl?.let { resolveOrNull(model.id) } ?: model.downloadUrl
+            val initialResolvedUrl = model.resolveUrl?.let { resolveOrNull(model.id) }
+            var activeUrl = initialResolvedUrl ?: model.downloadUrl
             var hasReResolved = false
-            var hasFallenBackToProxy = model.resolveUrl == null
+            // Already on the proxy if there was no resolveUrl to try, or the initial resolve failed.
+            var hasFallenBackToProxy = model.resolveUrl == null || initialResolvedUrl == null
             while (true) {
                 try {
                     streamToPartFile(activeUrl, model, partFile) { downloaded, total ->
@@ -97,7 +99,9 @@ class ModelDownloadManager @Inject constructor(
                     if ((e.code == 401 || e.code == 403) && !hasFallenBackToProxy) {
                         if (!hasReResolved) {
                             hasReResolved = true
-                            activeUrl = resolveOrNull(model.id) ?: model.downloadUrl
+                            val reResolvedUrl = resolveOrNull(model.id)
+                            activeUrl = reResolvedUrl ?: model.downloadUrl
+                            if (reResolvedUrl == null) hasFallenBackToProxy = true
                         } else {
                             hasFallenBackToProxy = true
                             activeUrl = model.downloadUrl
