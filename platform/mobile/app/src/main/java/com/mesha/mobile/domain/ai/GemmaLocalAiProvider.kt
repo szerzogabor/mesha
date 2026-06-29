@@ -5,6 +5,7 @@ import android.util.Log
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.tasks.genai.llminference.LlmInference.LlmInferenceOptions
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -44,6 +45,8 @@ class GemmaLocalAiProvider @Inject constructor(
         val inference = obtainEngine()
         try {
             inference.generateResponse(prompt).orEmpty()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Throwable) {
             // Catches OutOfMemoryError too: loading/running the model is the most
             // memory-intensive step in the app, and an uncaught Error here would
@@ -68,6 +71,8 @@ class GemmaLocalAiProvider @Inject constructor(
                     .setTopK(TOP_K)
                     .build()
                 LlmInference.createFromOptions(context, options).also { engine = it }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Throwable) {
                 // Same OutOfMemoryError concern as runInference(): the model load itself
                 // is the likeliest place to exhaust memory on constrained devices.

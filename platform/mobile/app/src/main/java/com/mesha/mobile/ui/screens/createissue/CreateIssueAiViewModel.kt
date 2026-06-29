@@ -17,6 +17,7 @@ import com.mesha.mobile.domain.speech.SpeechEvent
 import com.mesha.mobile.domain.speech.SpeechInputProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -151,6 +152,8 @@ class CreateIssueAiViewModel @Inject constructor(
                 _state.update {
                     it.copy(step = CreateStep.INPUT, error = friendlyMessage(e))
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 // Defensive: any provider failure that doesn't go through LocalAiException
                 // should still surface as an error rather than leave the UI stuck or crash.
