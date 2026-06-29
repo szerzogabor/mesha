@@ -47,4 +47,22 @@ class GemmaLocalAiProviderTest {
         assertEquals("gemma", provider.id)
         assertTrue(provider.displayName.contains("Gemma"))
     }
+
+    @Test
+    fun hasSufficientMemoryToLoadModel_falseWhenSystemReportsLowMemory() {
+        assertFalse(hasSufficientMemoryToLoadModel(availableBytes = Long.MAX_VALUE, lowMemory = true, modelFileBytes = 1))
+    }
+
+    @Test
+    fun hasSufficientMemoryToLoadModel_falseWhenAvailableBelowModelSizeWithOverhead() {
+        val modelBytes = 2_000_000_000L
+        assertFalse(hasSufficientMemoryToLoadModel(availableBytes = modelBytes, lowMemory = false, modelFileBytes = modelBytes))
+    }
+
+    @Test
+    fun hasSufficientMemoryToLoadModel_trueWhenAvailableCoversModelSizeWithOverhead() {
+        val modelBytes = 2_000_000_000L
+        val ample = (modelBytes * 2)
+        assertTrue(hasSufficientMemoryToLoadModel(availableBytes = ample, lowMemory = false, modelFileBytes = modelBytes))
+    }
 }
