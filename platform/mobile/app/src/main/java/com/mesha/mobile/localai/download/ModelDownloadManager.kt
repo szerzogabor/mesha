@@ -1,5 +1,6 @@
 package com.mesha.mobile.localai.download
 
+import com.mesha.mobile.localai.catalog.ModelCatalogRepository
 import com.mesha.mobile.localai.model.DownloadError
 import com.mesha.mobile.localai.model.DownloadState
 import com.mesha.mobile.localai.model.InstalledModel
@@ -9,11 +10,13 @@ import com.mesha.mobile.localai.storage.ModelStorageManager.Companion.PART_SUFFI
 import com.mesha.mobile.localai.util.Sha256
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
 import okhttp3.Request
 import java.io.File
 import java.io.IOException
@@ -41,11 +44,16 @@ import kotlin.coroutines.coroutineContext
 class ModelDownloadManager @Inject constructor(
     private val baseClient: OkHttpClient,
     private val storage: ModelStorageManager,
+    private val catalogRepository: ModelCatalogRepository,
 ) {
     // Model files are large; allow generous read timeouts independent of the API client.
+    // HTTP/1.1 only: multi-GB streamed responses through the Render edge proxy have been
+    // observed tearing down the HTTP/2 stream mid-transfer ("stream was reset: INTERNAL_ERROR"),
+    // which a same-request retry can't work around since the underlying condition is unchanged.
     private val client: OkHttpClient = baseClient.newBuilder()
         .readTimeout(5, TimeUnit.MINUTES)
         .callTimeout(0, TimeUnit.MILLISECONDS)
+        .protocols(listOf(Protocol.HTTP_1_1))
         .build()
 
     /**
@@ -70,8 +78,44 @@ class ModelDownloadManager @Inject constructor(
         val finalFile = File(dir, model.fileName)
 
         try {
-            streamToPartFile(model, partFile) { downloaded, total ->
-                emit(DownloadState.Downloading(downloaded, total))
+            var attempt = 0
+            var activeUrl = model.resolveUrl?.let { resolveOrNull(model.id) } ?: model.downloadUrl
+            var hasReResolved = false
+            var hasFallenBackToProxy = model.resolveUrl == null
+            while (true) {
+                try {
+                    streamToPartFile(activeUrl, model, partFile) { downloaded, total ->
+                        emit(DownloadState.Downloading(downloaded, total))
+                    }
+                    break
+                } catch (e: HttpStatusException) {
+                    // Auth/expiry on the resolved CDN URL is a different failure class from a
+                    // transient network error: re-resolve once (the signed URL may have just
+                    // expired), then fall back permanently to the full proxy. Neither attempt
+                    // consumes the transient-retry budget below, and resume is unaffected since
+                    // it's keyed off the .part file length, not the URL.
+                    if ((e.code == 401 || e.code == 403) && !hasFallenBackToProxy) {
+                        if (!hasReResolved) {
+                            hasReResolved = true
+                            activeUrl = resolveOrNull(model.id) ?: model.downloadUrl
+                        } else {
+                            hasFallenBackToProxy = true
+                            activeUrl = model.downloadUrl
+                        }
+                        continue
+                    }
+                    attempt++
+                    if (attempt > MAX_TRANSIENT_RETRIES || !isTransient(e)) throw e
+                    emit(DownloadState.Connecting)
+                    delay(RETRY_BACKOFF_BASE_MS * (1L shl (attempt - 1)))
+                } catch (e: IOException) {
+                    attempt++
+                    if (attempt > MAX_TRANSIENT_RETRIES || !isTransient(e)) throw e
+                    // Same-request retries against a freshly reset stream just hit the same
+                    // condition again; back off so the connection/proxy has a chance to recover.
+                    emit(DownloadState.Connecting)
+                    delay(RETRY_BACKOFF_BASE_MS * (1L shl (attempt - 1)))
+                }
             }
 
             emit(DownloadState.Verifying)
@@ -116,14 +160,15 @@ class ModelDownloadManager @Inject constructor(
         }
     }.flowOn(Dispatchers.IO)
 
-    /** Streams the body into [partFile], resuming from its current length when possible. */
+    /** Streams the body into [partFile] from [url], resuming from its current length when possible. */
     private suspend inline fun streamToPartFile(
+        url: String,
         model: LocalAiModel,
         partFile: File,
         crossinline onProgress: suspend (downloaded: Long, total: Long) -> Unit,
     ) {
         val existing = if (partFile.exists()) partFile.length() else 0L
-        val requestBuilder = Request.Builder().url(model.downloadUrl)
+        val requestBuilder = Request.Builder().url(url)
         if (existing > 0) {
             requestBuilder.header("Range", "bytes=$existing-")
         }
@@ -135,7 +180,7 @@ class ModelDownloadManager @Inject constructor(
         try {
             call.execute().use { response ->
                 if (!response.isSuccessful) {
-                    throw IOException("HTTP ${response.code}")
+                    throw HttpStatusException(response.code)
                 }
                 val body = response.body ?: throw IOException("Empty response body")
 
@@ -188,8 +233,30 @@ class ModelDownloadManager @Inject constructor(
         else -> DownloadError.UNKNOWN
     }
 
+    /**
+     * Whether [e] is worth retrying automatically without user intervention: connection drops,
+     * resets and server-side (5xx) failures, but not "this will never succeed" cases like a
+     * missing host, a 4xx (auth/not-found) response, or a checksum mismatch.
+     */
+    private fun isTransient(e: IOException): Boolean = when (e) {
+        is UnknownHostException -> false
+        is HttpStatusException -> e.code >= 500
+        else -> true
+    }
+
+    private class HttpStatusException(val code: Int) : IOException("HTTP $code")
+
+    private suspend fun resolveOrNull(modelId: String): String? =
+        catalogRepository.resolveDownloadUrl(modelId).getOrNull()
+
     private companion object {
         /** Minimum gap between progress emissions, to avoid flooding the UI. */
         const val PROGRESS_THROTTLE_MS = 100L
+
+        /** Automatic retries for transient errors (stream resets, timeouts) before surfacing Failed. */
+        const val MAX_TRANSIENT_RETRIES = 3
+
+        /** Backoff before each automatic retry: 1s, 2s, 4s. */
+        const val RETRY_BACKOFF_BASE_MS = 1000L
     }
 }

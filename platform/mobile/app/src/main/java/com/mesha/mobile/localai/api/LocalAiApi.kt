@@ -17,4 +17,8 @@ interface LocalAiApi {
     /** A single catalog entry by id. */
     @GET("api/local-ai/models/{id}")
     suspend fun getModel(@Path("id") id: String): LocalAiModelDto
+
+    /** Resolves a fresh direct download URL for the artifact without transferring its body. */
+    @GET("api/local-ai/models/{id}/resolve")
+    suspend fun resolveDownloadUrl(@Path("id") id: String): ResolveDownloadUrlDto
 }

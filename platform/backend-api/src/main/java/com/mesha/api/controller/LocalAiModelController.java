@@ -1,6 +1,7 @@
 package com.mesha.api.controller;
 
 import com.mesha.api.dto.LocalAiModelDto;
+import com.mesha.api.dto.ResolveDownloadUrlDto;
 import com.mesha.api.service.LocalAiCatalogService;
 import com.mesha.api.service.LocalAiModelDownloadProxyService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -77,17 +78,36 @@ public class LocalAiModelController {
         return downloadProxyService.proxy(model, range);
     }
 
+    /**
+     * Resolves a fresh direct download URL for the artifact without transferring its body —
+     * lets mobile fetch large models straight from the source CDN instead of through
+     * {@link #download}, falling back to the latter only if a direct fetch fails.
+     */
+    @GetMapping("/{id}/resolve")
+    public ResponseEntity<ResolveDownloadUrlDto> resolve(@PathVariable String id) {
+        LocalAiModelDto model = catalogService.findModel(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Unknown model: " + id));
+        return ResponseEntity.ok(new ResolveDownloadUrlDto(downloadProxyService.resolveDownloadUrl(model)));
+    }
+
     private LocalAiModelDto withPublicDownloadUrl(LocalAiModelDto model, HttpServletRequest request) {
         if (!HUGGING_FACE_SOURCE.equals(model.source())) {
             return model;
         }
-        String proxyUrl = ServletUriComponentsBuilder.fromContextPath(request)
+        ServletUriComponentsBuilder base = ServletUriComponentsBuilder.fromContextPath(request);
+        String proxyUrl = base.cloneBuilder()
                 .path("/api/local-ai/models/" + model.id() + "/download")
+                .build()
+                .toUriString();
+        String resolveUrl = base.cloneBuilder()
+                .path("/api/local-ai/models/" + model.id() + "/resolve")
                 .build()
                 .toUriString();
         return new LocalAiModelDto(
                 model.id(), model.name(), model.provider(), model.source(), model.version(),
                 model.engine(), model.fileName(), model.sizeBytes(), model.sha256(), proxyUrl,
-                model.licenseUrl(), model.minimumRamGb(), model.minimumStorageGb(), model.recommended());
+                resolveUrl, model.licenseUrl(), model.minimumRamGb(), model.minimumStorageGb(),
+                model.recommended());
     }
 }

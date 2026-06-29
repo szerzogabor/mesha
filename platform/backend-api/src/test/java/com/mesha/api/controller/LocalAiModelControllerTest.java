@@ -2,6 +2,7 @@ package com.mesha.api.controller;
 
 import com.mesha.api.config.LocalAiCatalogProperties;
 import com.mesha.api.dto.LocalAiModelDto;
+import com.mesha.api.dto.ResolveDownloadUrlDto;
 import com.mesha.api.service.LocalAiCatalogService;
 import com.mesha.api.service.LocalAiModelDownloadProxyService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,12 +36,37 @@ class LocalAiModelControllerTest {
     }
 
     @Test
+    void rewritesResolveUrlToResolveEndpointForHuggingFaceModels() {
+        LocalAiModelController controller = new LocalAiModelController(
+                new LocalAiCatalogService(new LocalAiCatalogProperties()),
+                new LocalAiModelDownloadProxyService(new LocalAiCatalogProperties()));
+
+        LocalAiModelDto model = controller.get("gemma-3n-e2b", requestTo("/api/local-ai/models/gemma-3n-e2b")).getBody();
+
+        assertThat(model.resolveUrl()).isEqualTo("https://api.mesha.dev/api/local-ai/models/gemma-3n-e2b/resolve");
+    }
+
+    @Test
+    void resolveEndpointDelegatesToDownloadProxyService() {
+        LocalAiModelDownloadProxyService downloadProxyService = mock(LocalAiModelDownloadProxyService.class);
+        when(downloadProxyService.resolveDownloadUrl(org.mockito.ArgumentMatchers.any()))
+                .thenReturn("https://cdn-lfs.hf.co/signed-url");
+        LocalAiModelController controller = new LocalAiModelController(
+                new LocalAiCatalogService(new LocalAiCatalogProperties()),
+                downloadProxyService);
+
+        ResolveDownloadUrlDto result = controller.resolve("gemma-3n-e2b").getBody();
+
+        assertThat(result.url()).isEqualTo("https://cdn-lfs.hf.co/signed-url");
+    }
+
+    @Test
     void leavesDownloadUrlUntouchedForNonHuggingFaceModels() {
         LocalAiCatalogProperties props = new LocalAiCatalogProperties();
         props.setModels(java.util.List.of(new LocalAiModelDto(
                 "custom-model", "Custom", "Mesha", "mesha-cdn", "1.0", "mediapipe",
                 "custom.task", 123L, "", "https://cdn.mesha.dev/custom.task",
-                null, 4, 3, false)));
+                null, null, 4, 3, false)));
         LocalAiCatalogService catalogService = new LocalAiCatalogService(props);
         LocalAiModelController controller = new LocalAiModelController(
                 catalogService, new LocalAiModelDownloadProxyService(props));
@@ -48,5 +74,6 @@ class LocalAiModelControllerTest {
         LocalAiModelDto model = controller.get("custom-model", requestTo("/api/local-ai/models/custom-model")).getBody();
 
         assertThat(model.downloadUrl()).isEqualTo("https://cdn.mesha.dev/custom.task");
+        assertThat(model.resolveUrl()).isNull();
     }
 }

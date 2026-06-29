@@ -48,7 +48,7 @@ class LocalAiCatalogServiceTest {
         props.setModels(List.of(new LocalAiModelDto(
                 "gemma-3n-e2b", "Custom Gemma", "Google", "mesha-cdn", "2.0", "mediapipe",
                 "custom.task", 123L, "deadbeef", "https://cdn.mesha.dev/custom.task",
-                null, 6, 5, true)));
+                null, null, 6, 5, true)));
 
         LocalAiCatalogService service = serviceWith(props);
 
@@ -65,7 +65,7 @@ class LocalAiCatalogServiceTest {
         props.setModels(List.of(new LocalAiModelDto(
                 "qwen-2-5", "Qwen 2.5", "Alibaba", "huggingface", "1.0", "llama.cpp",
                 "qwen.gguf", 456L, "", "https://example.com/qwen.gguf",
-                null, 4, 3, false)));
+                null, null, 4, 3, false)));
 
         LocalAiCatalogService service = serviceWith(props);
 
