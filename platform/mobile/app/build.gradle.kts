@@ -139,6 +139,10 @@ dependencies {
     // On-device Gemma via Google AI Edge / MediaPipe LLM Inference.
     implementation(libs.mediapipe.tasks.genai)
 
+    // On-device inference via Google's LiteRT-LM runtime (separate engine/.litertlm format
+    // from MediaPipe above) — used for models that don't fit MediaPipe's memory footprint.
+    implementation(libs.litertlm.android)
+
     // Unit tests
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

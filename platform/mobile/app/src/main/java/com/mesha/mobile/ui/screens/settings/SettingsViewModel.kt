@@ -4,8 +4,8 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mesha.mobile.BuildConfig
-import com.mesha.mobile.domain.ai.GemmaModelManager
 import com.mesha.mobile.domain.ai.LocalAiProvider
+import com.mesha.mobile.localai.storage.ModelStorageManager
 import com.mesha.mobile.update.ApkInstaller
 import com.mesha.mobile.update.UpdateChecker
 import com.mesha.mobile.update.UpdateStatus
@@ -33,7 +33,7 @@ data class SettingsUiState(
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val localAi: LocalAiProvider,
-    private val modelManager: GemmaModelManager,
+    private val modelStorageManager: ModelStorageManager,
     private val updateChecker: UpdateChecker,
     private val apkInstaller: ApkInstaller,
 ) : ViewModel() {
@@ -48,7 +48,7 @@ class SettingsViewModel @Inject constructor(
             _state.update {
                 it.copy(
                     modelInstalled = localAi.isAvailable(),
-                    modelDirectory = modelManager.expectedModelDirectory().absolutePath,
+                    modelDirectory = modelStorageManager.modelsRoot().absolutePath,
                 )
             }
         }
