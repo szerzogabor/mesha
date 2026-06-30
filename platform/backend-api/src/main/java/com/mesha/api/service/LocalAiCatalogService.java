@@ -65,6 +65,23 @@ public class LocalAiCatalogService {
     private List<LocalAiModelDto> defaultCatalog() {
         return List.of(
                 new LocalAiModelDto(
+                        "gemma-4-e2b",
+                        "Gemma 4 E2B",
+                        "Google",
+                        "huggingface",
+                        "1.0",
+                        "litertlm",
+                        "gemma-4-E2B-it.litertlm",
+                        2_771_918_438L,
+                        "",
+                        "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm",
+                        null,
+                        "https://ai.google.dev/gemma/terms",
+                        4,
+                        4,
+                        true
+                ),
+                new LocalAiModelDto(
                         "gemma-3n-e2b",
                         "Gemma 3n E2B",
                         "Google",
@@ -79,7 +96,7 @@ public class LocalAiCatalogService {
                         "https://ai.google.dev/gemma/terms",
                         6,
                         5,
-                        true
+                        false
                 ),
                 new LocalAiModelDto(
                         "gemma-3n-e4b",
