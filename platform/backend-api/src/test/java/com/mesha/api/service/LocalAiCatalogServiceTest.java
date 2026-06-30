@@ -21,7 +21,21 @@ class LocalAiCatalogServiceTest {
         List<LocalAiModelDto> models = service.listModels();
 
         assertThat(models).isNotEmpty();
+        assertThat(models).anyMatch(m -> m.id().equals("gemma-4-e2b"));
         assertThat(models).anyMatch(m -> m.id().equals("gemma-3n-e2b"));
+    }
+
+    @Test
+    void gemma4E2BUsesLiteRtLmEngine() {
+        LocalAiCatalogService service = serviceWith(new LocalAiCatalogProperties());
+
+        LocalAiModelDto model = service.findModel("gemma-4-e2b").orElseThrow();
+
+        assertThat(model.engine()).isEqualTo("litertlm");
+        assertThat(model.fileName()).isEqualTo("gemma-4-E2B-it.litertlm");
+        assertThat(model.recommended()).isTrue();
+        assertThat(model.sizeBytes()).isPositive();
+        assertThat(model.downloadUrl()).startsWith("https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/");
     }
 
     @Test
