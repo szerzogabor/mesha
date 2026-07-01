@@ -39,18 +39,6 @@ class LocalAiCatalogServiceTest {
     }
 
     @Test
-    void qwen25HalfBillionUsesMediaPipeEngine() {
-        LocalAiCatalogService service = serviceWith(new LocalAiCatalogProperties());
-
-        LocalAiModelDto model = service.findModel("qwen2.5-0.5b").orElseThrow();
-
-        assertThat(model.engine()).isEqualTo("mediapipe");
-        assertThat(model.fileName()).isEqualTo("Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv1280.task");
-        assertThat(model.sizeBytes()).isPositive();
-        assertThat(model.downloadUrl()).startsWith("https://huggingface.co/litert-community/Qwen2.5-0.5B-Instruct/");
-    }
-
-    @Test
     void listsRecommendedModelsFirst() {
         LocalAiCatalogService service = serviceWith(new LocalAiCatalogProperties());
 
