@@ -145,6 +145,23 @@ public class LocalAiCatalogService {
                         8,
                         6,
                         false
+                ),
+                new LocalAiModelDto(
+                        "qwen2.5-0.5b",
+                        "Qwen2.5 0.5B Instruct",
+                        "Alibaba",
+                        "huggingface",
+                        "1.0",
+                        "mediapipe",
+                        "Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv1280.task",
+                        546_660_344L,
+                        "",
+                        "https://huggingface.co/litert-community/Qwen2.5-0.5B-Instruct/resolve/main/Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv1280.task",
+                        null,
+                        "https://www.apache.org/licenses/LICENSE-2.0",
+                        3,
+                        1,
+                        false
                 )
         );
     }
