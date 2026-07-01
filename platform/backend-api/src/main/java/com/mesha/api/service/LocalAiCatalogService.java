@@ -2,12 +2,15 @@ package com.mesha.api.service;
 
 import com.mesha.api.config.LocalAiCatalogProperties;
 import com.mesha.api.dto.LocalAiModelDto;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Source of truth for the Local AI model catalog the mobile app downloads from.
@@ -21,6 +24,18 @@ import java.util.Optional;
  */
 @Service
 public class LocalAiCatalogService {
+
+    private static final Logger log = LoggerFactory.getLogger(LocalAiCatalogService.class);
+
+    /**
+     * Engines the mobile app actually has a {@code LocalAiProvider} for today (see
+     * {@code ProviderModule} in the mobile app). The catalog itself stays engine-agnostic on
+     * purpose — an operator may configure a model for an engine the app will support tomorrow
+     * (e.g. {@code llama.cpp}) — but a model built-in or configured for an engine that's
+     * unsupported *right now* can't be run on any device and should be caught here rather than
+     * discovered as a silent, unusable install.
+     */
+    private static final Set<String> SUPPORTED_ENGINES = Set.of("mediapipe", "litertlm");
 
     private final LocalAiCatalogProperties properties;
 
@@ -42,6 +57,7 @@ public class LocalAiCatalogService {
                 byId.put(model.id(), model);
             }
         }
+        byId.values().forEach(this::warnIfEngineUnsupported);
         return byId.values().stream()
                 .sorted((a, b) -> {
                     if (a.recommended() != b.recommended()) {
@@ -50,6 +66,21 @@ public class LocalAiCatalogService {
                     return String.valueOf(a.name()).compareToIgnoreCase(String.valueOf(b.name()));
                 })
                 .toList();
+    }
+
+    private void warnIfEngineUnsupported(LocalAiModelDto model) {
+        if (!isEngineSupported(model.engine())) {
+            log.warn(
+                    "Local AI catalog entry '{}' declares engine '{}', which no client provider "
+                            + "currently implements (supported: {}) — installs of this model will "
+                            + "fail with a clear error, but won't crash the app.",
+                    model.id(), model.engine(), SUPPORTED_ENGINES);
+        }
+    }
+
+    /** True when the mobile app has a {@code LocalAiProvider} implementation for this engine. */
+    static boolean isEngineSupported(String engine) {
+        return SUPPORTED_ENGINES.contains(engine);
     }
 
     /** A single catalog entry by id, or empty if unknown. */

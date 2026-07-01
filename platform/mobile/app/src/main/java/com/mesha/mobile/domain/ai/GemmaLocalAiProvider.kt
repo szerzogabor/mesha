@@ -38,6 +38,24 @@ internal fun hasSufficientMemoryToLoadModel(
 private const val MODEL_MEMORY_OVERHEAD_FACTOR = 1.3
 private const val BYTES_PER_MB = 1024 * 1024L
 
+/** ZIP local-file-header signature ("PK") that every MediaPipe `.task` bundle starts with. */
+private val TASK_BUNDLE_MAGIC = byteArrayOf(0x50, 0x4B, 0x03, 0x04)
+
+/**
+ * Whether [file] looks like a genuine MediaPipe `.task` bundle (a ZIP archive) rather than some
+ * other artifact (e.g. a raw GGUF model) that happens to be installed under the `mediapipe`
+ * engine. This can't validate that the *contents* are a model MediaPipe's pinned runtime can
+ * actually run — only that it's the right container format — but a container mismatch is
+ * exactly the kind of thing that would otherwise reach [LlmInference.createFromOptions] and
+ * abort the process instead of throwing.
+ */
+internal fun isValidTaskBundle(file: File): Boolean {
+    if (file.length() < TASK_BUNDLE_MAGIC.size) return false
+    val header = ByteArray(TASK_BUNDLE_MAGIC.size)
+    val read = file.inputStream().use { it.read(header) }
+    return read == header.size && header.contentEquals(TASK_BUNDLE_MAGIC)
+}
+
 /**
  * {@link LocalAiProvider} backed by a local Gemma model running through MediaPipe's
  * LLM Inference API (Google AI Edge). Fully offline — no network, no cloud key.
@@ -90,6 +108,11 @@ class GemmaLocalAiProvider @Inject constructor(
                     "Gemma model not found. Install it from the AI Edge Gallery or Settings."
                 )
             checkMemoryAvailable(modelFile)
+            if (!isValidTaskBundle(modelFile)) {
+                throw LocalAiException.UnsupportedModel(
+                    "This model file isn't a valid MediaPipe bundle and can't be loaded."
+                )
+            }
             try {
                 val options = LlmInferenceOptions.builder()
                     .setModelPath(modelFile.absolutePath)
