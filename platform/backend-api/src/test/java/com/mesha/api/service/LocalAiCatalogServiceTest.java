@@ -39,13 +39,16 @@ class LocalAiCatalogServiceTest {
     }
 
     @Test
-    void qwen25HalfBillionUsesMediaPipeEngine() {
+    void qwen25HalfBillionUsesLiteRtLmEngine() {
         LocalAiCatalogService service = serviceWith(new LocalAiCatalogProperties());
 
         LocalAiModelDto model = service.findModel("qwen2.5-0.5b").orElseThrow();
 
-        assertThat(model.engine()).isEqualTo("mediapipe");
-        assertThat(model.fileName()).isEqualTo("Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv1280.task");
+        // MediaPipe's tasks-genai runtime the app pins crashes natively on the .task build of
+        // this model (see #315/#316); the LiteRT-LM engine's CPU backend is the confirmed-working
+        // path for it, per an independent Android device benchmark of this exact .litertlm file.
+        assertThat(model.engine()).isEqualTo("litertlm");
+        assertThat(model.fileName()).isEqualTo("Qwen2.5-0.5B-Instruct-q8.litertlm");
         assertThat(model.sizeBytes()).isPositive();
         assertThat(model.downloadUrl()).startsWith("https://huggingface.co/litert-community/Qwen2.5-0.5B-Instruct/");
     }
