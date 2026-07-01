@@ -80,7 +80,7 @@ public class LocalAiCatalogService {
 
     /** True when the mobile app has a {@code LocalAiProvider} implementation for this engine. */
     static boolean isEngineSupported(String engine) {
-        return SUPPORTED_ENGINES.contains(engine);
+        return engine != null && SUPPORTED_ENGINES.contains(engine);
     }
 
     /** A single catalog entry by id, or empty if unknown. */

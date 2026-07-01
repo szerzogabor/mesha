@@ -123,4 +123,22 @@ class GemmaLocalAiProviderTest {
 
         assertFalse(isValidTaskBundle(file))
     }
+
+    @Test
+    fun isValidTaskBundle_falseForDirectory_doesNotThrow() {
+        val dir = File.createTempFile("model-dir", "").apply {
+            delete()
+            mkdir()
+            deleteOnExit()
+        }
+
+        assertFalse(isValidTaskBundle(dir))
+    }
+
+    @Test
+    fun isValidTaskBundle_falseForNonExistentFile_doesNotThrow() {
+        val missing = File.createTempFile("model", ".task").apply { delete() }
+
+        assertFalse(isValidTaskBundle(missing))
+    }
 }

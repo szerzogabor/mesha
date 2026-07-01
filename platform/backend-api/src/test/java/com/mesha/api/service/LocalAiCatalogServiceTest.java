@@ -103,6 +103,26 @@ class LocalAiCatalogServiceTest {
     }
 
     @Test
+    void isEngineSupported_falseForNullEngine_doesNotThrow() {
+        // A configured model omitting `engine` binds to null; listModels() must not crash
+        // the catalog endpoint just because a misconfigured entry has no engine at all.
+        assertThat(LocalAiCatalogService.isEngineSupported(null)).isFalse();
+    }
+
+    @Test
+    void listModelsDoesNotThrow_whenConfiguredModelHasNoEngine() {
+        LocalAiCatalogProperties props = new LocalAiCatalogProperties();
+        props.setModels(List.of(new LocalAiModelDto(
+                "no-engine", "No Engine", "Acme", "huggingface", "1.0", null,
+                "model.bin", 1L, "", "https://example.com/model.bin",
+                null, null, 1, 1, false)));
+
+        LocalAiCatalogService service = serviceWith(props);
+
+        assertThat(service.listModels()).anyMatch(m -> m.id().equals("no-engine"));
+    }
+
+    @Test
     void modelWithUnsupportedEngineIsStillServed() {
         // Serving stays unblocked even for an unsupported engine — see
         // includeDefaultsFalseServesOnlyConfiguredModels for the equivalent assertion; this

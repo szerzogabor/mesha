@@ -41,18 +41,19 @@ class GemmaModelManager @Inject constructor(
      * only for directories the catalog doesn't track at all.
      */
     fun resolveModelFile(): File? {
-        selectMediaPipeModel(modelStorageManager.installedModels())
+        val installedModels = modelStorageManager.installedModels()
+        selectMediaPipeModel(installedModels)
             ?.let { modelStorageManager.modelFile(it) }
             ?.let { return it }
-        return resolveSideloadedModelFile()
+        return resolveSideloadedModelFile(installedModels)
     }
 
-    private fun resolveSideloadedModelFile(): File? {
+    private fun resolveSideloadedModelFile(installedModels: List<InstalledModel>): File? {
         val dirs = listOfNotNull(
             context.getExternalFilesDir("models"),
             File(context.filesDir, "models"),
         )
-        val catalogManagedIds = modelStorageManager.installedModels().map { it.id }.toSet()
+        val catalogManagedIds = installedModels.map { it.id }.toSet()
         for (dir in dirs) {
             // Direct hits in the models root.
             for (name in candidateNames) {

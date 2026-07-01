@@ -12,6 +12,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -50,10 +51,14 @@ private val TASK_BUNDLE_MAGIC = byteArrayOf(0x50, 0x4B, 0x03, 0x04)
  * abort the process instead of throwing.
  */
 internal fun isValidTaskBundle(file: File): Boolean {
-    if (file.length() < TASK_BUNDLE_MAGIC.size) return false
-    val header = ByteArray(TASK_BUNDLE_MAGIC.size)
-    val read = file.inputStream().use { it.read(header) }
-    return read == header.size && header.contentEquals(TASK_BUNDLE_MAGIC)
+    if (!file.isFile || file.length() < TASK_BUNDLE_MAGIC.size) return false
+    return try {
+        val header = ByteArray(TASK_BUNDLE_MAGIC.size)
+        val read = file.inputStream().use { it.read(header) }
+        read == header.size && header.contentEquals(TASK_BUNDLE_MAGIC)
+    } catch (e: IOException) {
+        false
+    }
 }
 
 /**
