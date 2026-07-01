@@ -241,6 +241,8 @@ class CreateIssueAiViewModel @Inject constructor(
             "The model returned an unexpected response. Try rephrasing your request."
         is LocalAiException.InferenceFailed ->
             "On-device generation failed. ${e.message ?: ""}".trim()
+        is LocalAiException.UnsupportedModel ->
+            "This on-device model isn't supported. Try a different model from Settings."
     }
 
     override fun onCleared() {

@@ -87,4 +87,54 @@ class LocalAiCatalogServiceTest {
         assertThat(models).hasSize(1);
         assertThat(models.get(0).id()).isEqualTo("qwen-2-5");
     }
+
+    @Test
+    void isEngineSupported_trueForEnginesTheMobileAppImplements() {
+        assertThat(LocalAiCatalogService.isEngineSupported("mediapipe")).isTrue();
+        assertThat(LocalAiCatalogService.isEngineSupported("litertlm")).isTrue();
+    }
+
+    @Test
+    void isEngineSupported_falseForEngineWithNoClientProviderYet() {
+        // llama.cpp is the documented example of a "not implemented yet" engine (see
+        // includeDefaultsFalseServesOnlyConfiguredModels): the catalog stays engine-agnostic
+        // and still serves it, but the app has nothing to run it with today.
+        assertThat(LocalAiCatalogService.isEngineSupported("llama.cpp")).isFalse();
+    }
+
+    @Test
+    void isEngineSupported_falseForNullEngine_doesNotThrow() {
+        // A configured model omitting `engine` binds to null; listModels() must not crash
+        // the catalog endpoint just because a misconfigured entry has no engine at all.
+        assertThat(LocalAiCatalogService.isEngineSupported(null)).isFalse();
+    }
+
+    @Test
+    void listModelsDoesNotThrow_whenConfiguredModelHasNoEngine() {
+        LocalAiCatalogProperties props = new LocalAiCatalogProperties();
+        props.setModels(List.of(new LocalAiModelDto(
+                "no-engine", "No Engine", "Acme", "huggingface", "1.0", null,
+                "model.bin", 1L, "", "https://example.com/model.bin",
+                null, null, 1, 1, false)));
+
+        LocalAiCatalogService service = serviceWith(props);
+
+        assertThat(service.listModels()).anyMatch(m -> m.id().equals("no-engine"));
+    }
+
+    @Test
+    void modelWithUnsupportedEngineIsStillServed() {
+        // Serving stays unblocked even for an unsupported engine — see
+        // includeDefaultsFalseServesOnlyConfiguredModels for the equivalent assertion; this
+        // only re-confirms it alongside isEngineSupported() so the two don't drift apart.
+        LocalAiCatalogProperties props = new LocalAiCatalogProperties();
+        props.setModels(List.of(new LocalAiModelDto(
+                "qwen-2-5", "Qwen 2.5", "Alibaba", "huggingface", "1.0", "llama.cpp",
+                "qwen.gguf", 456L, "", "https://example.com/qwen.gguf",
+                null, null, 4, 3, false)));
+
+        LocalAiCatalogService service = serviceWith(props);
+
+        assertThat(service.findModel("qwen-2-5")).isPresent();
+    }
 }

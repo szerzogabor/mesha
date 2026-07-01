@@ -52,4 +52,7 @@ sealed class LocalAiException(message: String, cause: Throwable? = null) : Excep
     /** Inference engine failed (OOM, native crash, etc.). */
     class InferenceFailed(message: String, cause: Throwable? = null) :
         LocalAiException(message, cause)
+
+    /** The installed model file isn't a valid bundle for its engine and can't be loaded. */
+    class UnsupportedModel(message: String) : LocalAiException(message)
 }
