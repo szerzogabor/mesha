@@ -1,5 +1,6 @@
 package com.mesha.mobile.domain.ai
 
+import android.content.Context
 import com.mesha.mobile.localai.model.InstalledModel
 import com.mesha.mobile.localai.storage.ModelStorageManager
 import io.mockk.every
@@ -27,6 +28,24 @@ class GemmaModelManagerTest {
         installedAtEpochMs = installedAtEpochMs,
     )
 
+    /**
+     * A [Context] whose [Context.filesDir]/[Context.getExternalFilesDir] resolve to a real,
+     * empty temp directory rather than a relaxed-mock default. `filesDir` is non-null in the
+     * Android SDK, so a bare `mockk(relaxed = true)` leaves it null and the sideload fallback's
+     * `File(context.filesDir, "models")` NPEs the instant it's touched.
+     */
+    private fun contextWithNoSideloadedFiles(): Context {
+        val emptyDir = File.createTempFile("gemma-model-manager-test", "").apply {
+            delete()
+            mkdir()
+            deleteOnExit()
+        }
+        val context = mockk<Context>(relaxed = true)
+        every { context.filesDir } returns emptyDir
+        every { context.getExternalFilesDir(any()) } returns null
+        return context
+    }
+
     @Test
     fun selectMediaPipeModel_returnsNull_whenNoModelsInstalled() {
         assertNull(selectMediaPipeModel(emptyList()))
@@ -52,7 +71,7 @@ class GemmaModelManagerTest {
         // provider just because it's the only installed model.
         val storageManager = mockk<ModelStorageManager>()
         every { storageManager.installedModels() } returns listOf(model(engine = "litertlm"))
-        val manager = GemmaModelManager(mockk(relaxed = true), storageManager)
+        val manager = GemmaModelManager(contextWithNoSideloadedFiles(), storageManager)
 
         assertNull(manager.resolveModelFile())
     }
@@ -64,7 +83,7 @@ class GemmaModelManagerTest {
         val storageManager = mockk<ModelStorageManager>()
         every { storageManager.installedModels() } returns listOf(installed)
         every { storageManager.modelFile(installed) } returns expectedFile
-        val manager = GemmaModelManager(mockk(relaxed = true), storageManager)
+        val manager = GemmaModelManager(contextWithNoSideloadedFiles(), storageManager)
 
         assertEquals(expectedFile, manager.resolveModelFile())
     }
