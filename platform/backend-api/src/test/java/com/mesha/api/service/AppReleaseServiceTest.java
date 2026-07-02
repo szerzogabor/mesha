@@ -11,7 +11,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.HttpStatus;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
@@ -42,16 +41,15 @@ class AppReleaseServiceTest {
 
     // ---- upload ----
 
+    private static final String APK_URL = "https://github.com/szerzogabor/mesha/releases/download/android-5/mesha.apk";
+
     @Test
-    void upload_savesReleaseWithComputedChecksumAndFields() {
+    void upload_savesReleaseWithSuppliedFields() {
         when(releaseRepository.existsByPlatformAndVersionCode(AppPlatform.ANDROID, 5)).thenReturn(false);
         when(releaseRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        MockMultipartFile apk = new MockMultipartFile("file", "mesha.apk",
-                "application/vnd.android.package-archive", new byte[2048]);
-
         AppRelease result = service.upload(AppPlatform.ANDROID, "1.2.0", 5, 34,
-                "Notes", true, apk, new User());
+                "Notes", true, "mesha.apk", 2048, "a".repeat(64), APK_URL, new User());
 
         ArgumentCaptor<AppRelease> captor = ArgumentCaptor.forClass(AppRelease.class);
         verify(releaseRepository).save(captor.capture());
@@ -61,7 +59,7 @@ class AppReleaseServiceTest {
         assertThat(saved.getMinSdk()).isEqualTo(34);
         assertThat(saved.getFileSize()).isEqualTo(2048);
         assertThat(saved.getContentType()).isEqualTo("application/vnd.android.package-archive");
-        // SHA-256 of 2048 zero bytes is a fixed 64-char hex string.
+        assertThat(saved.getDownloadUrl()).isEqualTo(APK_URL);
         assertThat(saved.getChecksumSha256()).hasSize(64);
         assertThat(result).isSameAs(saved);
     }
@@ -71,8 +69,8 @@ class AppReleaseServiceTest {
         when(releaseRepository.existsByPlatformAndVersionCode(any(), anyInt())).thenReturn(false);
         when(releaseRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        MockMultipartFile apk = new MockMultipartFile("file", "mesha.apk", null, new byte[16]);
-        service.upload(AppPlatform.ANDROID, "1.0.0", 1, null, null, true, apk, new User());
+        service.upload(AppPlatform.ANDROID, "1.0.0", 1, null, null, true,
+                "mesha.apk", 16, "a".repeat(64), APK_URL, new User());
 
         ArgumentCaptor<AppRelease> captor = ArgumentCaptor.forClass(AppRelease.class);
         verify(releaseRepository).save(captor.capture());
@@ -80,20 +78,58 @@ class AppReleaseServiceTest {
     }
 
     @Test
-    void upload_rejectsNonApkFile() {
+    void upload_rejectsNonApkFileName() {
         when(releaseRepository.existsByPlatformAndVersionCode(any(), anyInt())).thenReturn(false);
-        MockMultipartFile notApk = new MockMultipartFile("file", "evil.exe", null, new byte[16]);
 
-        assertThatThrownBy(() -> service.upload(AppPlatform.ANDROID, "1.0.0", 1, null, null, true, notApk, new User()))
+        assertThatThrownBy(() -> service.upload(AppPlatform.ANDROID, "1.0.0", 1, null, null, true,
+                "evil.exe", 16, "a".repeat(64), APK_URL, new User()))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode())
                         .isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE));
     }
 
     @Test
-    void upload_rejectsEmptyFile() {
-        MockMultipartFile empty = new MockMultipartFile("file", "mesha.apk", null, new byte[0]);
-        assertThatThrownBy(() -> service.upload(AppPlatform.ANDROID, "1.0.0", 1, null, null, true, empty, new User()))
+    void upload_rejectsNonHttpsDownloadUrl() {
+        assertThatThrownBy(() -> service.upload(AppPlatform.ANDROID, "1.0.0", 1, null, null, true,
+                "mesha.apk", 16, "a".repeat(64), "http://example.com/mesha.apk", new User()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void upload_rejectsOversizedDownloadUrl() {
+        String tooLong = "https://example.com/" + "a".repeat(2048);
+        assertThatThrownBy(() -> service.upload(AppPlatform.ANDROID, "1.0.0", 1, null, null, true,
+                "mesha.apk", 16, "a".repeat(64), tooLong, new User()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void upload_rejectsWrongLengthChecksum() {
+        assertThatThrownBy(() -> service.upload(AppPlatform.ANDROID, "1.0.0", 1, null, null, true,
+                "mesha.apk", 16, "not-a-sha256", APK_URL, new User()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void upload_rejectsOversizedFileName() {
+        String tooLong = "a".repeat(253) + ".apk";
+        assertThatThrownBy(() -> service.upload(AppPlatform.ANDROID, "1.0.0", 1, null, null, true,
+                tooLong, 16, "a".repeat(64), APK_URL, new User()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void upload_rejectsNonPositiveFileSize() {
+        assertThatThrownBy(() -> service.upload(AppPlatform.ANDROID, "1.0.0", 1, null, null, true,
+                "mesha.apk", 0, "a".repeat(64), APK_URL, new User()))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode())
                         .isEqualTo(HttpStatus.BAD_REQUEST));
@@ -102,9 +138,9 @@ class AppReleaseServiceTest {
     @Test
     void upload_rejectsDuplicateVersionCode() {
         when(releaseRepository.existsByPlatformAndVersionCode(AppPlatform.ANDROID, 5)).thenReturn(true);
-        MockMultipartFile apk = new MockMultipartFile("file", "mesha.apk", null, new byte[16]);
 
-        assertThatThrownBy(() -> service.upload(AppPlatform.ANDROID, "1.0.0", 5, null, null, true, apk, new User()))
+        assertThatThrownBy(() -> service.upload(AppPlatform.ANDROID, "1.0.0", 5, null, null, true,
+                "mesha.apk", 16, "a".repeat(64), APK_URL, new User()))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode())
                         .isEqualTo(HttpStatus.CONFLICT));
@@ -112,8 +148,8 @@ class AppReleaseServiceTest {
 
     @Test
     void upload_rejectsNonPositiveVersionCode() {
-        MockMultipartFile apk = new MockMultipartFile("file", "mesha.apk", null, new byte[16]);
-        assertThatThrownBy(() -> service.upload(AppPlatform.ANDROID, "1.0.0", 0, null, null, true, apk, new User()))
+        assertThatThrownBy(() -> service.upload(AppPlatform.ANDROID, "1.0.0", 0, null, null, true,
+                "mesha.apk", 16, "a".repeat(64), APK_URL, new User()))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode())
                         .isEqualTo(HttpStatus.BAD_REQUEST));

@@ -114,11 +114,19 @@ jobs:
           ORG_GRADLE_PROJECT_mesha.clerk.publishableKey.debug: ${{ secrets.MOBILE_CLERK_PUBLISHABLE_KEY_DEBUG }}
 
   # Publishes a debug-signed APK to the in-app update feed on every push to main. Debug
-  # signing is intentional for now (no release keystore yet) — see RELEASE_PROCESS.md.
+  # signing is intentional for now (no release keystore yet, no R8/minification) — see
+  # RELEASE_PROCESS.md — but every build signs with the keystore committed at
+  # platform/mobile/mesha-debug.keystore, so every build shares one signing certificate;
+  # without that, Android refuses to install a new build as an update over an existing
+  # install. The APK is hosted as a GitHub Release asset (not the backend — it can't
+  # buffer a ~100MB upload/download on its memory budget); only lightweight metadata is
+  # POSTed to /api/releases.
   publish-mobile-release:
     needs: changes
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.mobile == 'true')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Setup Java
@@ -135,8 +143,22 @@ jobs:
             -Pmesha.versionCode=${{ github.run_number }} \
             -Pmesha.versionName=0.1.${{ github.run_number }} \
             -Pmesha.clerk.publishableKey.debug=${{ secrets.MOBILE_CLERK_PUBLISHABLE_KEY_DEBUG }}
+      - name: Compute checksum
+        id: checksum
+        working-directory: ./platform/mobile
+        run: |
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          echo "sha256=$(sha256sum "$APK" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "size=$(stat -c%s "$APK")" >> "$GITHUB_OUTPUT"
+      - name: Publish GitHub Release with APK asset
+        id: gh_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-${{ github.run_number }}
+          name: Mesha Android 0.1.${{ github.run_number }}
+          body: "Automated build from ${{ github.sha }}"
+          files: platform/mobile/app/build/outputs/apk/debug/app-debug.apk
       - name: Upload to release feed
-        if: false # APK-to-backend upload disabled
         working-directory: ./platform/mobile
         run: |
           curl \
@@ -144,12 +166,15 @@ jobs:
             -v \
             -X POST "https://mesha-api.onrender.com/api/releases" \
             -H "Authorization: Bearer ${{ secrets.APP_RELEASES_UPLOAD_TOKEN }}" \
-            -F "file=@app/build/outputs/apk/debug/app-debug.apk" \
             -F "platform=ANDROID" \
             -F "versionName=0.1.${{ github.run_number }}" \
             -F "versionCode=${{ github.run_number }}" \
             -F "minSdk=33" \
-            -F "releaseNotes=Automated build from ${{ github.sha }}"
+            -F "releaseNotes=Automated build from ${{ github.sha }}" \
+            -F "fileName=app-debug.apk" \
+            -F "fileSize=${{ steps.checksum.outputs.size }}" \
+            -F "checksumSha256=${{ steps.checksum.outputs.sha256 }}" \
+            -F "downloadUrl=https://github.com/${{ github.repository }}/releases/download/android-${{ github.run_number }}/app-debug.apk"
 
   quality:
     runs-on: ubuntu-latest

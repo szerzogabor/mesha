@@ -11,13 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 
@@ -73,7 +68,10 @@ public class AppReleaseService {
                              Integer minSdk,
                              String releaseNotes,
                              boolean published,
-                             MultipartFile file,
+                             String fileName,
+                             long fileSize,
+                             String checksumSha256,
+                             String downloadUrl,
                              User uploader) {
         if (!StringUtils.hasText(versionName)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "versionName is required");
@@ -81,10 +79,22 @@ public class AppReleaseService {
         if (versionCode <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "versionCode must be a positive integer");
         }
-        if (file == null || file.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "APK file must not be empty");
+        if (!StringUtils.hasText(downloadUrl) || !downloadUrl.startsWith("https://")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "downloadUrl must be an https URL");
         }
-        if (file.getSize() > maxApkSizeBytes) {
+        if (downloadUrl.length() > 2048) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "downloadUrl must be 2048 characters or less");
+        }
+        if (!StringUtils.hasText(checksumSha256)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "checksumSha256 is required");
+        }
+        if (checksumSha256.length() != 64) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "checksumSha256 must be exactly 64 characters");
+        }
+        if (fileSize <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "fileSize must be a positive integer");
+        }
+        if (fileSize > maxApkSizeBytes) {
             throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
                     "APK exceeds maximum allowed size of " + (maxApkSizeBytes / (1024 * 1024)) + " MB");
         }
@@ -92,36 +102,31 @@ public class AppReleaseService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "A release with versionCode " + versionCode + " already exists for " + platform);
         }
-
-        String name = file.getOriginalFilename();
-        if (name == null || !name.toLowerCase().endsWith(".apk")) {
-            throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Upload must be an .apk file");
+        if (fileName == null || !fileName.toLowerCase().endsWith(".apk")) {
+            throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "fileName must end with .apk");
+        }
+        if (fileName.length() > 255) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "fileName must be 255 characters or less");
         }
 
-        try {
-            byte[] bytes = file.getBytes();
-            AppRelease release = new AppRelease();
-            release.setPlatform(platform);
-            release.setVersionName(versionName.trim());
-            release.setVersionCode(versionCode);
-            release.setMinSdk(minSdk != null ? minSdk : 33);
-            release.setReleaseNotes(releaseNotes);
-            release.setPublished(published);
-            release.setFileName(sanitizeFileName(name));
-            release.setContentType(APK_CONTENT_TYPE);
-            release.setFileSize(file.getSize());
-            release.setContent(bytes);
-            release.setChecksumSha256(sha256Hex(bytes));
-            release.setUploadedBy(uploader);
+        AppRelease release = new AppRelease();
+        release.setPlatform(platform);
+        release.setVersionName(versionName.trim());
+        release.setVersionCode(versionCode);
+        release.setMinSdk(minSdk != null ? minSdk : 33);
+        release.setReleaseNotes(releaseNotes);
+        release.setPublished(published);
+        release.setFileName(sanitizeFileName(fileName));
+        release.setContentType(APK_CONTENT_TYPE);
+        release.setFileSize(fileSize);
+        release.setDownloadUrl(downloadUrl);
+        release.setChecksumSha256(checksumSha256);
+        release.setUploadedBy(uploader);
 
-            AppRelease saved = releaseRepository.save(release);
-            log.info("app_release_uploaded platform={} versionName={} versionCode={} sizeBytes={} releaseId={}",
-                    platform, saved.getVersionName(), saved.getVersionCode(), saved.getFileSize(), saved.getId());
-            return saved;
-        } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Failed to read uploaded APK: " + e.getMessage());
-        }
+        AppRelease saved = releaseRepository.save(release);
+        log.info("app_release_uploaded platform={} versionName={} versionCode={} sizeBytes={} releaseId={}",
+                platform, saved.getVersionName(), saved.getVersionCode(), saved.getFileSize(), saved.getId());
+        return saved;
     }
 
     @Transactional
@@ -146,14 +151,5 @@ public class AppReleaseService {
         String name = original.replaceAll(".*[/\\\\]", "")
                 .replaceAll("[^a-zA-Z0-9._-]", "_");
         return name.isBlank() ? "mesha.apk" : name;
-    }
-
-    private String sha256Hex(byte[] bytes) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(bytes));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 not available", e);
-        }
     }
 }

@@ -32,9 +32,26 @@ android {
         vectorDrawables { useSupportLibrary = true }
     }
 
+    // Every debug build (local or CI) signs with this committed keystore so every
+    // published APK shares one certificate — without that, Android refuses to install
+    // an "update" whose signature doesn't match what's already on the device (forces
+    // uninstall first, wiping the Clerk session and the downloaded on-device model).
+    // It's a CI/dev convenience key only (not a Play Store release key), so committing
+    // it is intentional — see RELEASE_PROCESS.md. Env vars still override it for anyone
+    // who wants to point at a different keystore without touching code.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file(System.getenv("MESHA_DEBUG_KEYSTORE_PATH") ?: "mesha-debug.keystore")
+            storePassword = System.getenv("MESHA_DEBUG_KEYSTORE_PASSWORD") ?: "mesha-ci-debug-2026"
+            keyAlias = System.getenv("MESHA_DEBUG_KEY_ALIAS") ?: "mesha-ci-debug"
+            keyPassword = System.getenv("MESHA_DEBUG_KEY_PASSWORD") ?: "mesha-ci-debug-2026"
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
             buildConfigField(
                 "String",
                 "API_BASE_URL",

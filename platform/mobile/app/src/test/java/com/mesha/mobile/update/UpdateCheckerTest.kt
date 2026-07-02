@@ -32,7 +32,26 @@ class UpdateCheckerTest {
         assertTrue(UpdateChecker(api).check() is UpdateStatus.UpToDate)
     }
 
-    private fun release(versionCode: Int) = AppReleaseDto(
+    @Test
+    fun downloadUrlPassesThroughAbsoluteUrls() {
+        val absolute = "https://github.com/szerzogabor/mesha/releases/download/android-1/mesha.apk"
+        val url = UpdateChecker(api).downloadUrl(release(1, downloadUrl = absolute))
+        assertTrue(url == absolute)
+    }
+
+    @Test
+    fun downloadUrlPrependsApiBaseForRelativeUrls() {
+        val url = UpdateChecker(api).downloadUrl(release(1, downloadUrl = "/api/releases/r1/download"))
+        assertTrue(url == BuildConfig.API_BASE_URL.trimEnd('/') + "/api/releases/r1/download")
+    }
+
+    @Test
+    fun downloadUrlIsBlankForLegacyReleasesWithoutOne() {
+        val url = UpdateChecker(api).downloadUrl(release(1, downloadUrl = ""))
+        assertTrue(url.isEmpty())
+    }
+
+    private fun release(versionCode: Int, downloadUrl: String = "/api/releases/r1/download") = AppReleaseDto(
         id = "r1",
         platform = "ANDROID",
         versionName = "9.9.9",
@@ -40,6 +59,6 @@ class UpdateCheckerTest {
         fileName = "mesha.apk",
         fileSize = 1000,
         checksumSha256 = "abc",
-        downloadUrl = "/api/releases/r1/download",
+        downloadUrl = downloadUrl,
     )
 }

@@ -1,11 +1,18 @@
 # APK Distribution & Release Management
 
-The platform hosts and serves the official Android APK. Backend release management lives
-in `backend-api` and is consumed by both the web `/download` page and the in-app updater.
+The platform serves metadata about the official Android APK; the binary itself is hosted
+externally as a **GitHub Release asset**. Backend release management lives in
+`backend-api` and is consumed by both the web `/download` page and the in-app updater.
+
+The backend deliberately never touches the APK bytes: `backend-api` runs on a
+memory-constrained instance that cannot buffer a ~100MB multipart upload or download
+without OOMing. So the binary is uploaded to a GitHub Release by CI, and only a small
+metadata record (including the resulting `download_url`) is POSTed to `/api/releases`.
 
 ## Data model
 
-`app_releases` (migration `V49__app_releases.sql`, entity `AppRelease`):
+`app_releases` (migration `V49__app_releases.sql`, `download_url` added in
+`V50__app_releases_external_url.sql`; entity `AppRelease`):
 
 | Column | Notes |
 |--------|-------|
@@ -14,8 +21,9 @@ in `backend-api` and is consumed by both the web `/download` page and the in-app
 | `version_code` | **monotonic int**; the app compares it against `BuildConfig.VERSION_CODE` |
 | `release_notes` | shown on `/download` and Settings |
 | `min_sdk` | default 33 |
-| `content` | APK bytes (`bytea`, mirrors `issue_attachments`) |
-| `checksum_sha256` | computed on upload, surfaced for verification |
+| `download_url` | absolute URL to the hosted APK (a GitHub Release asset) |
+| `content` | legacy inline APK bytes (`bytea`); nullable since V50, unused for new releases |
+| `checksum_sha256` | computed by the uploader, surfaced for verification |
 | `published` | unpublished releases are hidden from public endpoints |
 
 Unique `(platform, version_code)` prevents duplicate releases.
@@ -28,15 +36,13 @@ Public (registered `permitAll` in `SecurityConfig`):
 |--------|------|---------|
 | GET | `/{platform}/latest` | latest published release metadata (drives updates + download page) |
 | GET | `/{platform}` | published release history |
-| GET | `/{platform}/latest/download` | stream latest APK |
-| GET | `/{releaseId}/download` | stream a specific APK (`attachment`, with `X-Checksum-SHA256`) |
 
 Admin-only (`@platformSecurity.isPlatformAdmin`):
 
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/admin/{platform}` | list incl. unpublished |
-| POST | `/` (multipart) | upload a new APK build |
+| POST | `/` | publish a new release's metadata (no APK bytes — see below) |
 | PATCH | `/{releaseId}/published` | publish/unpublish |
 | DELETE | `/{releaseId}` | delete |
 
@@ -52,17 +58,23 @@ nobody can upload.
 `application.yml` / env:
 
 - `PLATFORM_ADMIN_EMAILS` — admins allowed to manage releases.
-- `MAX_APK_SIZE_BYTES` (default 200 MB) and `spring.servlet.multipart.max-file-size`
-  (`MAX_UPLOAD_FILE_SIZE`, default 200MB) — APK upload limits.
+- `MAX_APK_SIZE_BYTES` (default 200 MB) — rejects an implausibly large `fileSize` at
+  publish time; the backend never receives the bytes themselves.
 
-## Uploading a release (curl)
+## Publishing a release (curl)
+
+Upload the APK to a GitHub Release yourself first (or let CI do it — see
+`RELEASE_PROCESS.md`), then publish its metadata:
 
 ```bash
 curl -X POST "$API/api/releases" \
   -H "Authorization: Bearer $CLERK_JWT" \
-  -F "file=@app-release.apk" \
   -F "versionName=1.2.0" \
   -F "versionCode=5" \
+  -F "fileName=app-release.apk" \
+  -F "fileSize=$(stat -c%s app-release.apk)" \
+  -F "checksumSha256=$(sha256sum app-release.apk | cut -d' ' -f1)" \
+  -F "downloadUrl=https://github.com/szerzogabor/mesha/releases/download/android-1.2.0/app-release.apk" \
   -F "releaseNotes=Voice input + offline drafts" \
   -F "published=true"
 ```
@@ -71,4 +83,5 @@ curl -X POST "$API/api/releases" \
 
 The web `/download` page (`platform/frontend/src/app/download/page.tsx`) fetches
 `/api/releases/android/latest` via `useLatestRelease` and renders a prominent **Download
-APK** button with version, size, checksum and install steps. The homepage CTA links here.
+APK** button (linking directly to the GitHub-hosted `downloadUrl`) with version, size,
+checksum and install steps. The homepage CTA links here.
