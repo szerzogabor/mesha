@@ -31,6 +31,7 @@ import com.mesha.mobile.ui.screens.agents.AgentsScreen
 import com.mesha.mobile.ui.screens.createissue.CreateIssueAiScreen
 import com.mesha.mobile.ui.screens.dashboard.DashboardScreen
 import com.mesha.mobile.localai.ui.LocalAiScreen
+import com.mesha.mobile.ui.screens.issues.IssueDetailScreen
 import com.mesha.mobile.ui.screens.issues.IssuesScreen
 import com.mesha.mobile.ui.screens.login.LoginScreen
 import com.mesha.mobile.ui.screens.projects.ProjectsScreen
@@ -117,6 +118,18 @@ fun MeshaApp() {
             composable(Routes.ISSUES) {
                 IssuesScreen(
                     onCreateIssueWithAi = { navController.navigate(Routes.CREATE_ISSUE_AI) },
+                    onOpenIssue = { projectId, issueId ->
+                        navController.navigate(Routes.issueDetail(projectId, issueId))
+                    },
+                )
+            }
+            composable(Routes.ISSUE_DETAIL) { entry ->
+                val projectId = entry.arguments?.getString("projectId").orEmpty()
+                val issueId = entry.arguments?.getString("issueId").orEmpty()
+                IssueDetailScreen(
+                    projectId = projectId,
+                    issueId = issueId,
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable(Routes.SESSIONS) {

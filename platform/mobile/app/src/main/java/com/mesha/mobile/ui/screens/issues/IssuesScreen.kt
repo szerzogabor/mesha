@@ -35,6 +35,7 @@ import com.mesha.mobile.ui.components.LoadingState
 @Composable
 fun IssuesScreen(
     onCreateIssueWithAi: () -> Unit,
+    onOpenIssue: (projectId: String, issueId: String) -> Unit,
     viewModel: IssuesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -73,7 +74,9 @@ fun IssuesScreen(
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(state.issues, key = { it.id }) { issue -> IssueRow(issue) }
+                    items(state.issues, key = { it.id }) { issue ->
+                        IssueRow(issue, onClick = { onOpenIssue(issue.projectId, issue.id) })
+                    }
                 }
             }
         }
@@ -81,8 +84,8 @@ fun IssuesScreen(
 }
 
 @Composable
-private fun IssueRow(issue: IssueDto) {
-    Card(Modifier.fillMaxWidth()) {
+private fun IssueRow(issue: IssueDto, onClick: () -> Unit) {
+    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 issue.identifier?.let {
