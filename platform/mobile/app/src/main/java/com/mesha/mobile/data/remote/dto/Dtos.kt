@@ -144,6 +144,16 @@ data class SyncUserRequestDto(
 @Serializable
 data class SendMessageRequestDto(val content: String)
 
+@Serializable
+data class UpdateIssueRequestDto(
+    val title: String? = null,
+    val description: String? = null,
+    val status: String? = null,
+    val priority: String? = null,
+    val assigneeId: String? = null,
+    val labelIds: List<String>? = null,
+)
+
 /** Mirrors backend `AppReleaseDto` for the in-app update check. */
 @Serializable
 data class AppReleaseDto(

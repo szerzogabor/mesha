@@ -9,6 +9,7 @@ import com.mesha.mobile.data.remote.dto.CreateCommentRequestDto
 import com.mesha.mobile.data.remote.dto.CreateIssueRequestDto
 import com.mesha.mobile.data.remote.dto.IssueDto
 import com.mesha.mobile.data.remote.dto.LabelDto
+import com.mesha.mobile.data.remote.dto.UpdateIssueRequestDto
 import com.mesha.mobile.data.remote.dto.PagedResponseDto
 import com.mesha.mobile.data.remote.dto.ProjectDto
 import com.mesha.mobile.data.remote.dto.SendMessageRequestDto
@@ -16,6 +17,7 @@ import com.mesha.mobile.data.remote.dto.SyncUserRequestDto
 import com.mesha.mobile.data.remote.dto.WorkspaceDto
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -61,6 +63,13 @@ interface MeshaApi {
     suspend fun createIssue(
         @Path("projectId") projectId: String,
         @Body body: CreateIssueRequestDto,
+    ): IssueDto
+
+    @PATCH("api/projects/{projectId}/issues/{issueId}")
+    suspend fun updateIssue(
+        @Path("projectId") projectId: String,
+        @Path("issueId") issueId: String,
+        @Body body: UpdateIssueRequestDto,
     ): IssueDto
 
     // --- Comments ---
