@@ -115,11 +115,12 @@ jobs:
 
   # Publishes a debug-signed APK to the in-app update feed on every push to main. Debug
   # signing is intentional for now (no release keystore yet, no R8/minification) — see
-  # RELEASE_PROCESS.md — but the debug keystore itself is pinned to a persistent CI
-  # secret so every build shares one signing certificate; without that, Android refuses
-  # to install a new build as an update over an existing install. The APK is hosted as a
-  # GitHub Release asset (not the backend — it can't buffer a ~100MB upload/download on
-  # its memory budget); only lightweight metadata is POSTed to /api/releases.
+  # RELEASE_PROCESS.md — but every build signs with the keystore committed at
+  # platform/mobile/mesha-debug.keystore, so every build shares one signing certificate;
+  # without that, Android refuses to install a new build as an update over an existing
+  # install. The APK is hosted as a GitHub Release asset (not the backend — it can't
+  # buffer a ~100MB upload/download on its memory budget); only lightweight metadata is
+  # POSTed to /api/releases.
   publish-mobile-release:
     needs: changes
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.mobile == 'true')
@@ -135,16 +136,8 @@ jobs:
           java-version: 17
       - name: Setup Android SDK
         uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
-      - name: Restore stable debug keystore
-        working-directory: ./platform/mobile
-        run: echo "${{ secrets.MESHA_DEBUG_KEYSTORE_BASE64 }}" | base64 -d > mesha-debug.keystore
       - name: Assemble debug APK
         working-directory: ./platform/mobile
-        env:
-          MESHA_DEBUG_KEYSTORE_PATH: ${{ github.workspace }}/platform/mobile/mesha-debug.keystore
-          MESHA_DEBUG_KEYSTORE_PASSWORD: ${{ secrets.MESHA_DEBUG_KEYSTORE_PASSWORD }}
-          MESHA_DEBUG_KEY_ALIAS: ${{ secrets.MESHA_DEBUG_KEY_ALIAS }}
-          MESHA_DEBUG_KEY_PASSWORD: ${{ secrets.MESHA_DEBUG_KEY_PASSWORD }}
         run: |
           ./gradlew :app:assembleDebug --no-daemon \
             -Pmesha.versionCode=${{ github.run_number }} \

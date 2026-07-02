@@ -7,23 +7,21 @@ How a new Android version goes from code to users' devices.
 The `publish-mobile-release` job in [`ci.yml`](../../../.github/workflows/ci.yml) runs on
 every push to `main` that touches `platform/mobile/**`:
 
-1. Restores a **persistent CI debug keystore** from the `MESHA_DEBUG_KEYSTORE_BASE64`
-   secret before building, so every published build shares one signing certificate. This
-   is required for the in-app updater to work at all: Android refuses to install a new
-   build as an "update" over an existing install unless the signature matches, otherwise
-   every update requires a full uninstall (which also wipes the Clerk login session and
-   any downloaded on-device model). Without the secret set, the build falls back to
-   AGP's normal per-runner random debug keystore, and updates will require reinstalling.
-2. Assembles a **debug-signed** APK (`:app:assembleDebug`) — no release keystore/R8
-   minification yet, so debug signing is intentional for now, not an oversight. This is
-   a separate concern from signing *consistency* (item 1) — a debug build can still be
-   consistently signed.
-3. Sets `versionCode` to `github.run_number` (monotonic, auto-incrementing) and
+1. Assembles a **debug-signed** APK (`:app:assembleDebug`) using the keystore committed
+   at `platform/mobile/mesha-debug.keystore`, so every published build — CI or local —
+   shares one signing certificate. This is required for the in-app updater to work at
+   all: Android refuses to install a new build as an "update" over an existing install
+   unless the signature matches, otherwise every update requires a full uninstall (which
+   also wipes the Clerk login session and any downloaded on-device model). No release
+   keystore/R8 minification yet, so debug signing itself is intentional for now, not an
+   oversight — a separate concern from signing *consistency*, which the committed
+   keystore solves regardless of build type.
+2. Sets `versionCode` to `github.run_number` (monotonic, auto-incrementing) and
    `versionName` to `0.1.<run_number>` via the `-Pmesha.versionCode` /
    `-Pmesha.versionName` Gradle properties (see `defaultConfig` in `app/build.gradle.kts`).
-4. Publishes the APK as a **GitHub Release asset** (tag `android-<run_number>`) and
+3. Publishes the APK as a **GitHub Release asset** (tag `android-<run_number>`) and
    computes its SHA-256/size in CI.
-5. POSTs the release **metadata** (not the APK bytes) to `POST /api/releases` against the
+4. POSTs the release **metadata** (not the APK bytes) to `POST /api/releases` against the
    production API (`https://mesha-api.onrender.com`), authenticated with a static CI
    token — `Authorization: Bearer relpub_<token>` — read from the
    `APP_RELEASES_UPLOAD_TOKEN` GitHub Actions secret (validated by
@@ -35,17 +33,31 @@ every push to `main` that touches `platform/mobile/**`:
 
 No human action is required for a normal release: merging to `main` is the release.
 
+### Signing key
+
+The persistent CI/dev debug keystore is committed at
+`platform/mobile/mesha-debug.keystore` (alias `mesha-ci-debug`) and read by the
+`signingConfigs.debug` block in `app/build.gradle.kts`, so both CI and local
+`assembleDebug` builds sign identically with zero setup. It's a debug-only convenience
+key, not a Play Store release key, so committing it is intentional rather than routing it
+through GitHub Actions secrets. **Never regenerate it** — doing so breaks in-place updates
+for everyone already on the previous key, forcing one more uninstall. If it ever needs
+regenerating anyway:
+```bash
+cd platform/mobile
+keytool -genkeypair -v -keystore mesha-debug.keystore -alias mesha-ci-debug \
+  -keyalg RSA -keysize 2048 -validity 10950 -storepass <password> -keypass <password>
+```
+then update the hardcoded fallback password/alias in `app/build.gradle.kts` to match and
+commit the new keystore file.
+
+`app/build.gradle.kts` also honors `MESHA_DEBUG_KEYSTORE_PATH` /
+`MESHA_DEBUG_KEYSTORE_PASSWORD` / `MESHA_DEBUG_KEY_ALIAS` / `MESHA_DEBUG_KEY_PASSWORD` env
+vars as an override, in case this ever migrates to a GitHub Actions secret-backed keystore
+(e.g. for a real Play Store release key) without touching build config.
+
 ### One-time setup (manual, not done by CI)
 
-- `MESHA_DEBUG_KEYSTORE_BASE64`, `MESHA_DEBUG_KEYSTORE_PASSWORD`,
-  `MESHA_DEBUG_KEY_ALIAS`, `MESHA_DEBUG_KEY_PASSWORD` — a persistent CI-only debug
-  keystore, generated once and never regenerated (regenerating it breaks in-place
-  updates for everyone already on the previous key, forcing one more uninstall):
-  ```bash
-  keytool -genkeypair -v -keystore mesha-debug.keystore -alias mesha-ci \
-    -keyalg RSA -keysize 2048 -validity 10950 -storepass <password> -keypass <password>
-  base64 -w0 mesha-debug.keystore   # → MESHA_DEBUG_KEYSTORE_BASE64
-  ```
 - `APP_RELEASES_UPLOAD_TOKEN` — a `relpub_`-prefixed secret, set as both a GitHub Actions
   secret and the `APP_RELEASES_UPLOAD_TOKEN` Render env var (already scaffolded in
   `render.yaml` with `sync: false`).

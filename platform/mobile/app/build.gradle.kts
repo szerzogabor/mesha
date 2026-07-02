@@ -32,20 +32,19 @@ android {
         vectorDrawables { useSupportLibrary = true }
     }
 
-    // CI pins the debug signing key via env vars so every published APK shares one
-    // certificate — without this, AGP falls back to a fresh random per-runner debug
-    // keystore on every build, and Android refuses to install an "update" whose
-    // signature doesn't match what's already on the device (forces uninstall first,
-    // wiping the Clerk session and the downloaded on-device model). Local/dev builds
-    // without these env vars fall back to AGP's normal default debug keystore.
+    // Every debug build (local or CI) signs with this committed keystore so every
+    // published APK shares one certificate — without that, Android refuses to install
+    // an "update" whose signature doesn't match what's already on the device (forces
+    // uninstall first, wiping the Clerk session and the downloaded on-device model).
+    // It's a CI/dev convenience key only (not a Play Store release key), so committing
+    // it is intentional — see RELEASE_PROCESS.md. Env vars still override it for anyone
+    // who wants to point at a different keystore without touching code.
     signingConfigs {
         getByName("debug") {
-            System.getenv("MESHA_DEBUG_KEYSTORE_PATH")?.let { path ->
-                storeFile = file(path)
-                storePassword = System.getenv("MESHA_DEBUG_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("MESHA_DEBUG_KEY_ALIAS")
-                keyPassword = System.getenv("MESHA_DEBUG_KEY_PASSWORD")
-            }
+            storeFile = rootProject.file(System.getenv("MESHA_DEBUG_KEYSTORE_PATH") ?: "mesha-debug.keystore")
+            storePassword = System.getenv("MESHA_DEBUG_KEYSTORE_PASSWORD") ?: "mesha-ci-debug-2026"
+            keyAlias = System.getenv("MESHA_DEBUG_KEY_ALIAS") ?: "mesha-ci-debug"
+            keyPassword = System.getenv("MESHA_DEBUG_KEY_PASSWORD") ?: "mesha-ci-debug-2026"
         }
     }
 
