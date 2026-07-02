@@ -39,15 +39,19 @@ class LocalAiCatalogServiceTest {
     }
 
     @Test
-    void qwen25HalfBillionUsesMediaPipeEngine() {
+    void qwen2HalfBillionUsesLiteRtLmEngine() {
+        // Qwen2.5-0.5B-Instruct never had a genuine bundle for either client engine — its
+        // litert-community repo only ships a raw, unpackaged .tflite file (see #319's history).
+        // Qwen2-0.5B-Instruct is the closest working substitute: same size class, same family,
+        // and litert-community's repo for it is HF-tagged "litertlm", confirming a real bundle.
         LocalAiCatalogService service = serviceWith(new LocalAiCatalogProperties());
 
-        LocalAiModelDto model = service.findModel("qwen2.5-0.5b").orElseThrow();
+        LocalAiModelDto model = service.findModel("qwen2-0.5b").orElseThrow();
 
-        assertThat(model.engine()).isEqualTo("mediapipe");
-        assertThat(model.fileName()).isEqualTo("Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv1280.task");
+        assertThat(model.engine()).isEqualTo("litertlm");
+        assertThat(model.fileName()).isEqualTo("Qwen2_0.5B_Instruct.litertlm");
         assertThat(model.sizeBytes()).isPositive();
-        assertThat(model.downloadUrl()).startsWith("https://huggingface.co/litert-community/Qwen2.5-0.5B-Instruct/");
+        assertThat(model.downloadUrl()).startsWith("https://huggingface.co/litert-community/Qwen2-0.5B-Instruct/");
     }
 
     @Test
