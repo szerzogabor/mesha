@@ -54,6 +54,7 @@ export function useReleaseHistory(platform: string = "android") {
  * Release asset), so only prepend the API base when it hasn't already given us one.
  */
 export function releaseDownloadUrl(release: AppRelease): string {
+  if (!release.downloadUrl) return "";
   return release.downloadUrl.startsWith("http")
     ? release.downloadUrl
     : `${API_BASE_URL}${release.downloadUrl}`;

@@ -82,8 +82,14 @@ public class AppReleaseService {
         if (!StringUtils.hasText(downloadUrl) || !downloadUrl.startsWith("https://")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "downloadUrl must be an https URL");
         }
+        if (downloadUrl.length() > 2048) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "downloadUrl must be 2048 characters or less");
+        }
         if (!StringUtils.hasText(checksumSha256)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "checksumSha256 is required");
+        }
+        if (checksumSha256.length() != 64) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "checksumSha256 must be exactly 64 characters");
         }
         if (fileSize <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "fileSize must be a positive integer");
@@ -98,6 +104,9 @@ public class AppReleaseService {
         }
         if (fileName == null || !fileName.toLowerCase().endsWith(".apk")) {
             throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "fileName must end with .apk");
+        }
+        if (fileName.length() > 255) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "fileName must be 255 characters or less");
         }
 
         AppRelease release = new AppRelease();

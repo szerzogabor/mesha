@@ -36,7 +36,9 @@ class UpdateChecker @Inject constructor(
      * asset), so only prepend the API base when it hasn't already given us one.
      */
     fun downloadUrl(release: AppReleaseDto): String =
-        if (release.downloadUrl.startsWith("http")) {
+        if (release.downloadUrl.isBlank()) {
+            ""
+        } else if (release.downloadUrl.startsWith("http")) {
             release.downloadUrl
         } else {
             BuildConfig.API_BASE_URL.trimEnd('/') + release.downloadUrl

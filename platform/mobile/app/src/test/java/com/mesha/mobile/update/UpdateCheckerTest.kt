@@ -45,6 +45,12 @@ class UpdateCheckerTest {
         assertTrue(url == BuildConfig.API_BASE_URL.trimEnd('/') + "/api/releases/r1/download")
     }
 
+    @Test
+    fun downloadUrlIsBlankForLegacyReleasesWithoutOne() {
+        val url = UpdateChecker(api).downloadUrl(release(1, downloadUrl = ""))
+        assertTrue(url.isEmpty())
+    }
+
     private fun release(versionCode: Int, downloadUrl: String = "/api/releases/r1/download") = AppReleaseDto(
         id = "r1",
         platform = "ANDROID",

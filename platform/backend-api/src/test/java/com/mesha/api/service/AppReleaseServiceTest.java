@@ -98,6 +98,35 @@ class AppReleaseServiceTest {
     }
 
     @Test
+    void upload_rejectsOversizedDownloadUrl() {
+        String tooLong = "https://example.com/" + "a".repeat(2048);
+        assertThatThrownBy(() -> service.upload(AppPlatform.ANDROID, "1.0.0", 1, null, null, true,
+                "mesha.apk", 16, "a".repeat(64), tooLong, new User()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void upload_rejectsWrongLengthChecksum() {
+        assertThatThrownBy(() -> service.upload(AppPlatform.ANDROID, "1.0.0", 1, null, null, true,
+                "mesha.apk", 16, "not-a-sha256", APK_URL, new User()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void upload_rejectsOversizedFileName() {
+        String tooLong = "a".repeat(253) + ".apk";
+        assertThatThrownBy(() -> service.upload(AppPlatform.ANDROID, "1.0.0", 1, null, null, true,
+                tooLong, 16, "a".repeat(64), APK_URL, new User()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
     void upload_rejectsNonPositiveFileSize() {
         assertThatThrownBy(() -> service.upload(AppPlatform.ANDROID, "1.0.0", 1, null, null, true,
                 "mesha.apk", 0, "a".repeat(64), APK_URL, new User()))
