@@ -119,4 +119,31 @@ class LocalAiProviderRouterTest {
 
         verify(exactly = 0) { mediapipeProvider.close() }
     }
+
+    @Test
+    fun generateChatResponse_throwsModelNotAvailable_whenNoProviderMatches() = runTest {
+        val storageManager = mockk<ModelStorageManager>()
+        every { storageManager.installedModels() } returns emptyList()
+        val router = LocalAiProviderRouter(emptyMap(), storageManager)
+
+        assertThrows(LocalAiException.ModelNotAvailable::class.java) {
+            kotlinx.coroutines.runBlocking {
+                router.generateChatResponse(
+                    listOf(LocalChatMessage(LocalChatMessage.Role.USER, "Hello")),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun generateChatResponse_delegatesToMatchingProvider() = runTest {
+        val history = listOf(LocalChatMessage(LocalChatMessage.Role.USER, "Hello"))
+        val provider = mockk<LocalAiProvider>()
+        coEvery { provider.generateChatResponse(history) } returns "Hi!"
+        val storageManager = mockk<ModelStorageManager>()
+        every { storageManager.installedModels() } returns listOf(model("mediapipe"))
+        val router = LocalAiProviderRouter(mapOf("mediapipe" to provider), storageManager)
+
+        assertEquals("Hi!", router.generateChatResponse(history))
+    }
 }
