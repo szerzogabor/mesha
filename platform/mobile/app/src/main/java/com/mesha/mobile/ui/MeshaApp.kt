@@ -34,6 +34,7 @@ import com.mesha.mobile.localai.ui.LocalAiScreen
 import com.mesha.mobile.ui.screens.issues.IssuesScreen
 import com.mesha.mobile.ui.screens.login.LoginScreen
 import com.mesha.mobile.ui.screens.projects.ProjectsScreen
+import com.mesha.mobile.ui.screens.chat.LocalLlmChatScreen
 import com.mesha.mobile.ui.screens.sessions.SessionDetailScreen
 import com.mesha.mobile.ui.screens.sessions.SessionsScreen
 import com.mesha.mobile.ui.screens.settings.SettingsScreen
@@ -112,6 +113,7 @@ fun MeshaApp() {
                     onCreateIssueWithAi = { navController.navigate(Routes.CREATE_ISSUE_AI) },
                     onOpenSessions = { navController.navigate(Routes.SESSIONS) },
                     onOpenIssues = { navController.navigate(Routes.ISSUES) },
+                    onOpenChat = { navController.navigate(Routes.LOCAL_LLM_CHAT) },
                 )
             }
             composable(Routes.ISSUES) {
@@ -135,6 +137,9 @@ fun MeshaApp() {
             composable("agents") { AgentsScreen(onBack = { navController.popBackStack() }) }
             composable(Routes.LOCAL_AI) {
                 LocalAiScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.LOCAL_LLM_CHAT) {
+                LocalLlmChatScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.CREATE_ISSUE_AI) {
                 CreateIssueAiScreen(onClose = { navController.popBackStack() })

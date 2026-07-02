@@ -34,6 +34,16 @@ interface LocalAiProvider : AutoCloseable {
      */
     suspend fun generateIssueDraft(request: GenerateIssueRequest): IssueDraft
 
+    /**
+     * Generate a free-form chat reply given the full conversation [history].
+     *
+     * The last entry in [history] must be a USER message. Implementations format the
+     * history into a prompt and return the raw model response as a trimmed string.
+     *
+     * @throws LocalAiException when the model is unavailable or inference fails.
+     */
+    suspend fun generateChatResponse(history: List<LocalChatMessage>): String
+
     /** Releases native resources, if any. Default no-op for providers with nothing to free. */
     override fun close() {}
 }

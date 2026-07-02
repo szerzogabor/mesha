@@ -89,6 +89,9 @@ class GemmaLocalAiProvider @Inject constructor(
         return IssueDraftParser.parse(raw, fallbackTitleSource = request.prompt)
     }
 
+    override suspend fun generateChatResponse(history: List<LocalChatMessage>): String =
+        runInference(ChatPromptBuilder.build(history)).trim()
+
     private suspend fun runInference(prompt: String): String = withContext(Dispatchers.IO) {
         val inference = obtainEngine()
         try {

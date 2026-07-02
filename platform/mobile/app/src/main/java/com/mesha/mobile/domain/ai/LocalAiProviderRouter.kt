@@ -26,12 +26,19 @@ class LocalAiProviderRouter @Inject constructor(
     override suspend fun isAvailable(): Boolean = resolveProvider()?.isAvailable() == true
 
     override suspend fun generateIssueDraft(request: GenerateIssueRequest): IssueDraft {
-        val provider = resolveProvider()
-            ?: throw LocalAiException.ModelNotAvailable(
-                "No on-device model is installed. Install one from Settings."
-            )
+        val provider = requireProvider()
         return provider.generateIssueDraft(request)
     }
+
+    override suspend fun generateChatResponse(history: List<LocalChatMessage>): String {
+        val provider = requireProvider()
+        return provider.generateChatResponse(history)
+    }
+
+    private fun requireProvider(): LocalAiProvider =
+        resolveProvider() ?: throw LocalAiException.ModelNotAvailable(
+            "No on-device model is installed. Install one from Settings."
+        )
 
     /**
      * Resolves the provider for the currently installed model, closing the previously active

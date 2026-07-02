@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,6 +32,7 @@ fun DashboardScreen(
     onCreateIssueWithAi: () -> Unit,
     onOpenSessions: () -> Unit,
     onOpenIssues: () -> Unit,
+    onOpenChat: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -59,6 +61,15 @@ fun DashboardScreen(
                 Icon(Icons.Filled.AutoAwesome, contentDescription = null,
                     modifier = Modifier.padding(end = 8.dp))
                 Text("Create Issue with AI")
+            }
+
+            Button(
+                onClick = onOpenChat,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Filled.Chat, contentDescription = null,
+                    modifier = Modifier.padding(end = 8.dp))
+                Text("Chat with Local AI")
             }
 
             if (unsynced > 0) {
