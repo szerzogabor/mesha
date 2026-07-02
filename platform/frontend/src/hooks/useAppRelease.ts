@@ -48,14 +48,15 @@ export function useReleaseHistory(platform: string = "android") {
   });
 }
 
-/** Absolute URL to a release's APK, suitable for a plain anchor download. */
+/**
+ * Absolute URL to a release's APK, suitable for a plain anchor download. The backend
+ * returns an absolute URL pointing at externally-hosted release binary (a GitHub
+ * Release asset), so only prepend the API base when it hasn't already given us one.
+ */
 export function releaseDownloadUrl(release: AppRelease): string {
-  return `${API_BASE_URL}${release.downloadUrl}`;
-}
-
-/** Absolute URL to the latest published APK for a platform. */
-export function latestDownloadUrl(platform: string = "android"): string {
-  return `${API_BASE_URL}/api/releases/${platform}/latest/download`;
+  return release.downloadUrl.startsWith("http")
+    ? release.downloadUrl
+    : `${API_BASE_URL}${release.downloadUrl}`;
 }
 
 export function formatBytes(bytes: number): string {

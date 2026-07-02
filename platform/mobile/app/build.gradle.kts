@@ -32,9 +32,27 @@ android {
         vectorDrawables { useSupportLibrary = true }
     }
 
+    // CI pins the debug signing key via env vars so every published APK shares one
+    // certificate — without this, AGP falls back to a fresh random per-runner debug
+    // keystore on every build, and Android refuses to install an "update" whose
+    // signature doesn't match what's already on the device (forces uninstall first,
+    // wiping the Clerk session and the downloaded on-device model). Local/dev builds
+    // without these env vars fall back to AGP's normal default debug keystore.
+    signingConfigs {
+        getByName("debug") {
+            System.getenv("MESHA_DEBUG_KEYSTORE_PATH")?.let { path ->
+                storeFile = file(path)
+                storePassword = System.getenv("MESHA_DEBUG_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("MESHA_DEBUG_KEY_ALIAS")
+                keyPassword = System.getenv("MESHA_DEBUG_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
             buildConfigField(
                 "String",
                 "API_BASE_URL",

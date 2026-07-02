@@ -30,9 +30,17 @@ class UpdateChecker @Inject constructor(
             .getOrDefault(UpdateStatus.UpToDate)
     }
 
-    /** Absolute URL to download the APK for [release]. */
+    /**
+     * Absolute URL to download the APK for [release]. The backend now returns an
+     * absolute URL pointing at externally-hosted release binary (a GitHub Release
+     * asset), so only prepend the API base when it hasn't already given us one.
+     */
     fun downloadUrl(release: AppReleaseDto): String =
-        BuildConfig.API_BASE_URL.trimEnd('/') + release.downloadUrl
+        if (release.downloadUrl.startsWith("http")) {
+            release.downloadUrl
+        } else {
+            BuildConfig.API_BASE_URL.trimEnd('/') + release.downloadUrl
+        }
 }
 
 sealed interface UpdateStatus {

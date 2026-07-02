@@ -6,9 +6,10 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Public metadata for a client release. Deliberately excludes the APK bytes —
- * the binary is served separately via the download endpoint so this payload stays
- * cheap to fetch for the marketing site and the in-app update check.
+ * Public metadata for a client release. Deliberately excludes the APK bytes — the
+ * binary is hosted externally (e.g. a GitHub Release asset) and referenced by
+ * {@link #downloadUrl}, so this payload stays cheap to fetch for the marketing site
+ * and the in-app update check.
  */
 public record AppReleaseDto(
         UUID id,
@@ -36,7 +37,7 @@ public record AppReleaseDto(
                 r.getFileSize(),
                 r.getChecksumSha256(),
                 r.isPublished(),
-                "/api/releases/" + r.getId() + "/download",
+                r.getDownloadUrl(),
                 r.getCreatedAt()
         );
     }

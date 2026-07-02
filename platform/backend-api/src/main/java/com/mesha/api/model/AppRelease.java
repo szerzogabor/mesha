@@ -8,9 +8,11 @@ import java.util.UUID;
  * A published, downloadable native client build (an Android APK today).
  *
  * <p>Releases are platform-wide rather than workspace-scoped: every user downloads
- * the same official binary from the marketing site / in-app updater. The APK bytes
- * are stored as {@code bytea} to avoid an external object-store dependency at the
- * current scale, mirroring {@link IssueAttachment}.
+ * the same official binary from the marketing site / in-app updater. The binary itself
+ * is hosted externally (a GitHub Release asset) and referenced by {@link #downloadUrl} —
+ * the backend only stores metadata, since the API instance doesn't have enough memory to
+ * buffer a ~100MB APK on upload or download. {@code content} is legacy: earlier releases
+ * stored the bytes inline as {@code bytea}; the column stays nullable for those old rows.
  *
  * <p>{@code versionCode} is the monotonic integer the Android client compares against
  * its own {@code BuildConfig.VERSION_CODE} to decide whether an update is available;
@@ -53,10 +55,14 @@ public class AppRelease {
     @Column(name = "file_size", nullable = false)
     private long fileSize;
 
-    // Stored as bytea (see V49 migration). Matches IssueAttachment: a plain byte[]
-    // maps to bytea under Hibernate/Postgres; @Lob would map to OID and fail validate.
-    @Column(name = "content", nullable = false)
+    // Legacy inline bytea storage (see V49 migration); nullable since V50 — new releases
+    // leave this null and populate downloadUrl instead.
+    @Column(name = "content")
     private byte[] content;
+
+    /** Absolute URL to the hosted APK (e.g. a GitHub Release asset), set since V50. */
+    @Column(name = "download_url", length = 2048)
+    private String downloadUrl;
 
     /** SHA-256 of the APK bytes, surfaced so clients can verify the download. */
     @Column(name = "checksum_sha256", nullable = false, length = 64)
@@ -91,6 +97,8 @@ public class AppRelease {
     public void setFileSize(long fileSize) { this.fileSize = fileSize; }
     public byte[] getContent() { return content; }
     public void setContent(byte[] content) { this.content = content; }
+    public String getDownloadUrl() { return downloadUrl; }
+    public void setDownloadUrl(String downloadUrl) { this.downloadUrl = downloadUrl; }
     public String getChecksumSha256() { return checksumSha256; }
     public void setChecksumSha256(String checksumSha256) { this.checksumSha256 = checksumSha256; }
     public boolean isPublished() { return published; }

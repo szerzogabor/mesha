@@ -99,9 +99,7 @@ public class SecurityConfig {
                 // and are additionally guarded by @platformSecurity.isPlatformAdmin.
                 .requestMatchers(HttpMethod.GET,
                         "/api/releases/*",
-                        "/api/releases/*/latest",
-                        "/api/releases/*/latest/download",
-                        "/api/releases/*/download").permitAll()
+                        "/api/releases/*/latest").permitAll()
                 // Public Local AI model catalog: non-sensitive reference data the mobile
                 // app reads to discover and download supported on-device models.
                 .requestMatchers(HttpMethod.GET,
