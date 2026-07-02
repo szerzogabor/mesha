@@ -8,6 +8,7 @@ import com.mesha.mobile.data.remote.dto.CommentDto
 import com.mesha.mobile.data.remote.dto.CreateCommentRequestDto
 import com.mesha.mobile.data.remote.dto.CreateIssueRequestDto
 import com.mesha.mobile.data.remote.dto.IssueDto
+import com.mesha.mobile.data.remote.dto.UpdateIssueRequestDto
 import com.mesha.mobile.data.remote.dto.LabelDto
 import com.mesha.mobile.data.remote.dto.ProjectDto
 import com.mesha.mobile.data.remote.dto.SendMessageRequestDto
@@ -43,6 +44,9 @@ class MeshaRepository @Inject constructor(
 
     suspend fun createIssue(projectId: String, body: CreateIssueRequestDto): Result<IssueDto> =
         io { api.createIssue(projectId, body) }
+
+    suspend fun updateIssue(projectId: String, issueId: String, body: UpdateIssueRequestDto): Result<IssueDto> =
+        io { api.updateIssue(projectId, issueId, body) }
 
     suspend fun getComments(issueId: String): Result<List<CommentDto>> =
         io { api.getComments(issueId) }
