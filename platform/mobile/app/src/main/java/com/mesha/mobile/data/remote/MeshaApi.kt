@@ -1,21 +1,31 @@
 package com.mesha.mobile.data.remote
 
+import com.mesha.mobile.data.remote.dto.ActivityEventDto
 import com.mesha.mobile.data.remote.dto.AgentSessionDto
 import com.mesha.mobile.data.remote.dto.AgentSessionMessageDto
 import com.mesha.mobile.data.remote.dto.AppReleaseDto
+import com.mesha.mobile.data.remote.dto.AssignAgentRequestDto
 import com.mesha.mobile.data.remote.dto.AssignableAgentDto
+import com.mesha.mobile.data.remote.dto.BlocksMessageDto
+import com.mesha.mobile.data.remote.dto.BlocksSessionDto
 import com.mesha.mobile.data.remote.dto.CommentDto
 import com.mesha.mobile.data.remote.dto.CreateCommentRequestDto
 import com.mesha.mobile.data.remote.dto.CreateIssueRequestDto
+import com.mesha.mobile.data.remote.dto.CreateLabelRequestDto
+import com.mesha.mobile.data.remote.dto.IssueAgentDto
 import com.mesha.mobile.data.remote.dto.IssueDto
 import com.mesha.mobile.data.remote.dto.LabelDto
 import com.mesha.mobile.data.remote.dto.UpdateIssueRequestDto
 import com.mesha.mobile.data.remote.dto.PagedResponseDto
 import com.mesha.mobile.data.remote.dto.ProjectDto
+import com.mesha.mobile.data.remote.dto.ProjectStatusDto
 import com.mesha.mobile.data.remote.dto.SendMessageRequestDto
+import com.mesha.mobile.data.remote.dto.StartSessionRequestDto
 import com.mesha.mobile.data.remote.dto.SyncUserRequestDto
 import com.mesha.mobile.data.remote.dto.WorkspaceDto
+import com.mesha.mobile.data.remote.dto.WorkspaceMemberDto
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -37,6 +47,11 @@ interface MeshaApi {
     @GET("api/workspaces")
     suspend fun getWorkspaces(): List<WorkspaceDto>
 
+    @GET("api/workspaces/{workspaceId}/members")
+    suspend fun getWorkspaceMembers(
+        @Path("workspaceId") workspaceId: String,
+    ): List<WorkspaceMemberDto>
+
     // --- Projects ---
     @GET("api/workspaces/{workspaceId}/projects")
     suspend fun getProjects(@Path("workspaceId") workspaceId: String): List<ProjectDto>
@@ -45,12 +60,29 @@ interface MeshaApi {
     @GET("api/workspaces/{workspaceId}/labels")
     suspend fun getLabels(@Path("workspaceId") workspaceId: String): List<LabelDto>
 
+    @POST("api/workspaces/{workspaceId}/labels")
+    suspend fun createLabel(
+        @Path("workspaceId") workspaceId: String,
+        @Body body: CreateLabelRequestDto,
+    ): LabelDto
+
+    // --- Project statuses (custom, per-project workflow stages) ---
+    @GET("api/projects/{projectId}/statuses")
+    suspend fun getProjectStatuses(
+        @Path("projectId") projectId: String,
+    ): List<ProjectStatusDto>
+
     // --- Issues ---
     @GET("api/projects/{projectId}/issues")
     suspend fun getIssues(
         @Path("projectId") projectId: String,
+        @Query("status") status: String? = null,
+        @Query("priority") priority: String? = null,
+        @Query("assigneeId") assigneeId: String? = null,
+        @Query("search") search: String? = null,
+        @Query("labelIds") labelIds: List<String>? = null,
         @Query("page") page: Int = 0,
-        @Query("size") size: Int = 50,
+        @Query("size") size: Int = 25,
     ): PagedResponseDto<IssueDto>
 
     @GET("api/projects/{projectId}/issues/{issueId}")
@@ -72,6 +104,60 @@ interface MeshaApi {
         @Body body: UpdateIssueRequestDto,
     ): IssueDto
 
+    @DELETE("api/projects/{projectId}/issues/{issueId}")
+    suspend fun deleteIssue(
+        @Path("projectId") projectId: String,
+        @Path("issueId") issueId: String,
+    ): Unit
+
+    @GET("api/projects/{projectId}/issues/{issueId}/activity")
+    suspend fun getIssueActivity(
+        @Path("projectId") projectId: String,
+        @Path("issueId") issueId: String,
+    ): List<ActivityEventDto>
+
+    // --- Issue AI agents (definition-based assignment) ---
+    @GET("api/projects/{projectId}/issues/{issueId}/agents")
+    suspend fun getIssueAgents(
+        @Path("projectId") projectId: String,
+        @Path("issueId") issueId: String,
+    ): List<IssueAgentDto>
+
+    @POST("api/projects/{projectId}/issues/{issueId}/agents")
+    suspend fun assignIssueAgent(
+        @Path("projectId") projectId: String,
+        @Path("issueId") issueId: String,
+        @Body body: AssignAgentRequestDto,
+    ): IssueAgentDto
+
+    @DELETE("api/projects/{projectId}/issues/{issueId}/agents/{agentDefinitionId}")
+    suspend fun unassignIssueAgent(
+        @Path("projectId") projectId: String,
+        @Path("issueId") issueId: String,
+        @Path("agentDefinitionId") agentDefinitionId: String,
+    ): Unit
+
+    // --- Blocks AI sessions (provider-managed, issue-scoped) ---
+    @GET("api/projects/{projectId}/issues/{issueId}/blocks-sessions")
+    suspend fun getBlocksSessions(
+        @Path("projectId") projectId: String,
+        @Path("issueId") issueId: String,
+    ): List<BlocksSessionDto>
+
+    @POST("api/projects/{projectId}/issues/{issueId}/blocks-sessions")
+    suspend fun startBlocksSession(
+        @Path("projectId") projectId: String,
+        @Path("issueId") issueId: String,
+        @Body body: StartSessionRequestDto,
+    ): BlocksSessionDto
+
+    @POST("api/projects/{projectId}/issues/{issueId}/blocks-sessions/{sessionId}/cancel")
+    suspend fun cancelBlocksSession(
+        @Path("projectId") projectId: String,
+        @Path("issueId") issueId: String,
+        @Path("sessionId") sessionId: String,
+    ): BlocksSessionDto
+
     // --- Comments ---
     @GET("api/issues/{issueId}/comments")
     suspend fun getComments(@Path("issueId") issueId: String): List<CommentDto>
@@ -81,6 +167,12 @@ interface MeshaApi {
         @Path("issueId") issueId: String,
         @Body body: CreateCommentRequestDto,
     ): CommentDto
+
+    @DELETE("api/issues/{issueId}/comments/{commentId}")
+    suspend fun deleteComment(
+        @Path("issueId") issueId: String,
+        @Path("commentId") commentId: String,
+    ): Unit
 
     // --- Agents (assignable agents = definitions + connector agents) ---
     @GET("api/workspaces/{workspaceId}/agents/active")

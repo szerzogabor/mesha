@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import com.mesha.mobile.data.remote.dto.CommentDto
 import com.mesha.mobile.data.remote.dto.IssueDto
 import com.mesha.mobile.data.repository.MeshaRepository
+import com.mesha.mobile.data.repository.SelectionStore
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -51,7 +52,13 @@ class IssueDetailViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         repository = mockk()
-        viewModel = IssueDetailViewModel(repository)
+        // Best-effort side loads performed by load() — default them to empty so tests
+        // can focus on the issue + comments behaviour.
+        coEvery { repository.getProjectStatuses(any()) } returns Result.success(emptyList())
+        coEvery { repository.getIssueActivity(any(), any()) } returns Result.success(emptyList())
+        coEvery { repository.getIssueAgents(any(), any()) } returns Result.success(emptyList())
+        coEvery { repository.getBlocksSessions(any(), any()) } returns Result.success(emptyList())
+        viewModel = IssueDetailViewModel(repository, SelectionStore())
     }
 
     @After
