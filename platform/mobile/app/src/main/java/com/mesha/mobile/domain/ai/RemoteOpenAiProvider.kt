@@ -24,74 +24,84 @@ import javax.inject.Singleton
 @Singleton
 class RemoteOpenAiProvider @Inject constructor(
     private val meAiApi: MeAiApi,
-    private val json: Json,
 ) : LocalAiProvider {
 
     override val id: String = "openai"
     override val displayName: String = "ChatGPT"
 
-    override suspend fun isAvailable(): Boolean = try {
-        meAiApi.getOpenAiConfig()
-        true
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        // 404 (not configured) or any transport error → treat as unavailable.
-        false
+    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+
+    override suspend fun isAvailable(): Boolean {
+        return try {
+            meAiApi.getOpenAiConfig()
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // 404 (not configured) or any transport error → treat as unavailable.
+            false
+        }
     }
 
-    override suspend fun generateIssueDraft(request: GenerateIssueRequest): IssueDraft = call {
-        val dto = meAiApi.generateDraft(MeAiPromptRequestDto(request.prompt))
-        dto.toIssueDraft(request.prompt)
+    override suspend fun generateIssueDraft(request: GenerateIssueRequest): IssueDraft {
+        val dto = runRemote { meAiApi.generateDraft(MeAiPromptRequestDto(request.prompt)) }
+        return toIssueDraft(dto, request.prompt)
     }
 
-    override suspend fun generate(prompt: String): String = call {
-        meAiApi.complete(MeAiPromptRequestDto(prompt)).text.trim()
+    override suspend fun generate(prompt: String): String {
+        return runRemote { meAiApi.complete(MeAiPromptRequestDto(prompt)) }.text.trim()
     }
 
-    override suspend fun generateChatResponse(history: List<LocalChatMessage>): String = call {
-        val prompt = history.joinToString("\n") { msg ->
-            val role = if (msg.role == LocalChatMessage.Role.USER) "User" else "Assistant"
-            "$role: ${msg.content}"
-        } + "\nAssistant:"
-        meAiApi.complete(MeAiPromptRequestDto(prompt)).text.trim()
+    override suspend fun generateChatResponse(history: List<LocalChatMessage>): String {
+        val prompt = buildString {
+            history.forEach { msg ->
+                val role = if (msg.role == LocalChatMessage.Role.USER) "User" else "Assistant"
+                append(role).append(": ").append(msg.content).append("\n")
+            }
+            append("Assistant:")
+        }
+        return runRemote { meAiApi.complete(MeAiPromptRequestDto(prompt)) }.text.trim()
     }
 
     /** Run a suspending backend call, mapping failures to [LocalAiException]. */
-    private suspend fun <T> call(block: suspend () -> T): T = try {
-        block()
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: HttpException) {
-        if (e.code() == 412) {
-            throw LocalAiException.ModelNotAvailable(
-                "ChatGPT isn't connected. Add your OpenAI credential in the web app settings.",
+    private suspend fun <T> runRemote(block: suspend () -> T): T {
+        try {
+            return block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: HttpException) {
+            if (e.code() == 412) {
+                throw LocalAiException.ModelNotAvailable(
+                    "ChatGPT isn't connected. Add your OpenAI credential in the web app settings.",
+                )
+            }
+            throw LocalAiException.InferenceFailed("ChatGPT request failed (HTTP ${e.code()}).", e)
+        } catch (e: LocalAiException) {
+            throw e
+        } catch (e: Exception) {
+            throw LocalAiException.InferenceFailed(
+                "Couldn't reach ChatGPT: ${e.message ?: "network error"}.", e,
             )
         }
-        throw LocalAiException.InferenceFailed("ChatGPT request failed (HTTP ${e.code()}).", e)
-    } catch (e: LocalAiException) {
-        throw e
-    } catch (e: Exception) {
-        throw LocalAiException.InferenceFailed("Couldn't reach ChatGPT: ${e.message ?: "network error"}.", e)
     }
 
-    private fun MeAiDraftResponseDto.toIssueDraft(fallbackTitleSource: String): IssueDraft {
-        val title = title.trim().ifBlank {
+    private fun toIssueDraft(dto: MeAiDraftResponseDto, fallbackTitleSource: String): IssueDraft {
+        val resolvedTitle = dto.title.trim().ifBlank {
             fallbackTitleSource.lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty().take(140)
         }
-        if (title.isBlank() && description.isBlank()) {
+        if (resolvedTitle.isBlank() && dto.description.isBlank()) {
             throw LocalAiException.InvalidOutput("ChatGPT returned an empty draft")
         }
         return IssueDraft(
-            title = title.take(140),
-            description = description.trim(),
-            acceptanceCriteria = acceptanceCriteria
-                .split('\n')
+            title = resolvedTitle.take(140),
+            description = dto.description.trim(),
+            acceptanceCriteria = dto.acceptanceCriteria
+                .split("\n")
                 .map { it.trim().removePrefix("- ").removePrefix("* ").removePrefix("[ ]").trim() }
                 .filter { it.isNotBlank() }
                 .distinct(),
-            priority = IssuePriority.fromLenient(prioritySuggestion),
-            labels = parseLabels(suggestedLabels),
+            priority = IssuePriority.fromLenient(dto.prioritySuggestion),
+            labels = parseLabels(dto.suggestedLabels),
         )
     }
 
@@ -99,11 +109,14 @@ class RemoteOpenAiProvider @Inject constructor(
     private fun parseLabels(raw: String): List<String> {
         if (raw.isBlank()) return emptyList()
         return try {
-            (json.parseToJsonElement(raw) as? JsonArray)
-                ?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull?.trim() }
-                ?.filter { it.isNotBlank() }
-                ?.distinct()
-                .orEmpty()
+            val element = json.parseToJsonElement(raw)
+            if (element is JsonArray) {
+                element.mapNotNull { (it as? JsonPrimitive)?.contentOrNull?.trim() }
+                    .filter { it.isNotBlank() }
+                    .distinct()
+            } else {
+                emptyList()
+            }
         } catch (e: Exception) {
             emptyList()
         }
