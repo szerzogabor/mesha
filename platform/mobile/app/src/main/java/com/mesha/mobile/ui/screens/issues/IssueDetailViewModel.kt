@@ -18,6 +18,7 @@ import com.mesha.mobile.data.remote.dto.WorkspaceMemberDto
 import com.mesha.mobile.data.repository.MeshaRepository
 import com.mesha.mobile.data.repository.SelectionStore
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -153,16 +154,18 @@ class IssueDetailViewModel @Inject constructor(
         viewModelScope.launch {
             val base = BuildConfig.API_BASE_URL.trimEnd('/')
             val url = "$base/api/projects/$projectId/issues/$issueId/attachments/${attachment.id}/content"
-            val result = runCatching {
+            try {
                 attachmentOpener.open(url, attachment.fileName, attachment.contentType)
-            }
-            _state.update {
-                it.copy(
-                    openingAttachmentId = null,
-                    updateError = result.exceptionOrNull()?.let { e ->
-                        "Couldn't open ${attachment.fileName}: ${e.message ?: "download failed"}"
-                    },
-                )
+                _state.update { it.copy(openingAttachmentId = null) }
+            } catch (e: CancellationException) {
+                throw e // navigation away / VM cleared — not a user-facing error
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        openingAttachmentId = null,
+                        updateError = "Couldn't open ${attachment.fileName}: ${e.message ?: "download failed"}",
+                    )
+                }
             }
         }
     }
