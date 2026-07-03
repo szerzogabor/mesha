@@ -35,6 +35,11 @@ class LocalAiProviderRouter @Inject constructor(
         return provider.generateChatResponse(history)
     }
 
+    override suspend fun generate(prompt: String): String {
+        val provider = requireProvider()
+        return provider.generate(prompt)
+    }
+
     private fun requireProvider(): LocalAiProvider =
         resolveProvider() ?: throw LocalAiException.ModelNotAvailable(
             "No on-device model is installed. Install one from Settings."

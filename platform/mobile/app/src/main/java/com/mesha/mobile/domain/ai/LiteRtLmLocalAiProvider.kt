@@ -70,6 +70,8 @@ class LiteRtLmLocalAiProvider @Inject constructor(
     override suspend fun generateChatResponse(history: List<LocalChatMessage>): String =
         runInference(ChatPromptBuilder.build(history)).trim()
 
+    override suspend fun generate(prompt: String): String = runInference(prompt).trim()
+
     private suspend fun runInference(prompt: String): String = withContext(Dispatchers.IO) {
         val inference = obtainEngine()
         try {

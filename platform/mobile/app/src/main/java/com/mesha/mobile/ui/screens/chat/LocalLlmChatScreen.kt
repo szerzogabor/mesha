@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -35,10 +36,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.mesha.mobile.domain.ai.LocalChatMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,16 +50,16 @@ fun LocalLlmChatScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
-    LaunchedEffect(state.messages.size) {
-        if (state.messages.isNotEmpty()) {
-            listState.animateScrollToItem(state.messages.size - 1)
+    LaunchedEffect(state.entries.size) {
+        if (state.entries.isNotEmpty()) {
+            listState.animateScrollToItem(state.entries.size - 1)
         }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Chat with AI") },
+                title = { Text("AI Agent") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -95,8 +96,12 @@ fun LocalLlmChatScreen(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(state.messages) { message ->
-                    MessageBubble(message)
+                items(state.entries) { entry ->
+                    when (entry) {
+                        is ChatEntry.User -> MessageBubble(entry.text, isUser = true)
+                        is ChatEntry.Assistant -> MessageBubble(entry.text, isUser = false)
+                        is ChatEntry.Tool -> ToolRow(entry)
+                    }
                 }
 
                 if (state.isGenerating) {
@@ -125,8 +130,7 @@ fun LocalLlmChatScreen(
 }
 
 @Composable
-private fun MessageBubble(message: LocalChatMessage) {
-    val isUser = message.role == LocalChatMessage.Role.USER
+private fun MessageBubble(text: String, isUser: Boolean) {
     val bubbleColor = if (isUser)
         MaterialTheme.colorScheme.primaryContainer
     else
@@ -153,10 +157,54 @@ private fun MessageBubble(message: LocalChatMessage) {
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             Text(
-                message.content,
+                text,
                 color = textColor,
                 style = MaterialTheme.typography.bodyMedium,
             )
+        }
+    }
+}
+
+/**
+ * A compact row showing a tool the agent invoked (e.g. "update_ticket · MES-4") and, once it
+ * returns, the observation. Rendered distinctly from chat bubbles so the reasoning steps read
+ * as activity rather than conversation.
+ */
+@Composable
+private fun ToolRow(entry: ChatEntry.Tool) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (entry.running) {
+            CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+        } else {
+            Icon(
+                Icons.Filled.Build,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                entry.title,
+                style = MaterialTheme.typography.labelMedium,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            entry.detail?.let { detail ->
+                Text(
+                    detail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                )
+            }
         }
     }
 }
@@ -178,7 +226,7 @@ private fun ChatInput(
         OutlinedTextField(
             value = text,
             onValueChange = onTextChange,
-            placeholder = { Text("Message…") },
+            placeholder = { Text("Ask about or change your tickets…") },
             modifier = Modifier.weight(1f),
             enabled = enabled,
             maxLines = 4,

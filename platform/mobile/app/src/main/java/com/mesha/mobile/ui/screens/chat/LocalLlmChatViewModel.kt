@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.mesha.mobile.domain.ai.LocalAiException
 import com.mesha.mobile.domain.ai.LocalAiProvider
 import com.mesha.mobile.domain.ai.LocalChatMessage
+import com.mesha.mobile.domain.ai.agent.AgentStep
+import com.mesha.mobile.domain.ai.agent.TicketAgent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,21 +16,43 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** One item in the chat transcript: a person's message, the agent's reply, or a tool step. */
+sealed interface ChatEntry {
+    data class User(val text: String) : ChatEntry
+    data class Assistant(val text: String) : ChatEntry
+
+    /** A tool the agent invoked. [running] flips to false and [detail] fills in once it returns. */
+    data class Tool(val title: String, val detail: String?, val running: Boolean) : ChatEntry
+}
+
 data class LocalLlmChatUiState(
-    val messages: List<LocalChatMessage> = emptyList(),
+    val entries: List<ChatEntry> = emptyList(),
     val inputText: String = "",
     val isGenerating: Boolean = false,
     val modelAvailable: Boolean = true,
     val error: String? = null,
 )
 
+/**
+ * Drives the on-device AI chat. Instead of a plain single-shot completion, messages are handled
+ * by [TicketAgent], which can read and modify the user's Mesha tickets by calling tools while it
+ * reasons. The agent's tool activity is surfaced as [ChatEntry.Tool] rows so the user can see
+ * what it's doing; its final answer becomes a [ChatEntry.Assistant] row.
+ *
+ * [localAi] is retained only to report model availability for the banner/enablement — all
+ * generation goes through [agent].
+ */
 @HiltViewModel
 class LocalLlmChatViewModel @Inject constructor(
+    private val agent: TicketAgent,
     private val localAi: LocalAiProvider,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LocalLlmChatUiState())
     val state: StateFlow<LocalLlmChatUiState> = _state.asStateFlow()
+
+    /** Conversation as the agent sees it — user messages and the agent's final replies only. */
+    private val conversation = mutableListOf<LocalChatMessage>()
 
     init {
         viewModelScope.launch {
@@ -42,12 +66,10 @@ class LocalLlmChatViewModel @Inject constructor(
         val text = _state.value.inputText.trim()
         if (text.isBlank() || _state.value.isGenerating) return
 
-        val userMessage = LocalChatMessage(LocalChatMessage.Role.USER, text)
-        val history = _state.value.messages + userMessage
-
+        conversation.add(LocalChatMessage(LocalChatMessage.Role.USER, text))
         _state.update {
             it.copy(
-                messages = history,
+                entries = it.entries + ChatEntry.User(text),
                 inputText = "",
                 isGenerating = true,
                 error = null,
@@ -56,13 +78,10 @@ class LocalLlmChatViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                val response = localAi.generateChatResponse(history)
-                val assistantMessage = LocalChatMessage(LocalChatMessage.Role.ASSISTANT, response)
+                val reply = agent.run(conversation.toList()) { step -> onAgentStep(step) }
+                conversation.add(LocalChatMessage(LocalChatMessage.Role.ASSISTANT, reply))
                 _state.update {
-                    it.copy(
-                        messages = it.messages + assistantMessage,
-                        isGenerating = false,
-                    )
+                    it.copy(entries = it.entries + ChatEntry.Assistant(reply), isGenerating = false)
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -72,6 +91,24 @@ class LocalLlmChatViewModel @Inject constructor(
                 _state.update {
                     it.copy(isGenerating = false, error = "Chat failed: ${e.message ?: "Unknown error"}")
                 }
+            }
+        }
+    }
+
+    private fun onAgentStep(step: AgentStep) {
+        when (step) {
+            is AgentStep.ToolInvocation -> _state.update {
+                it.copy(entries = it.entries + ChatEntry.Tool(step.summary, detail = null, running = true))
+            }
+            is AgentStep.ToolResult -> _state.update { state ->
+                // Complete the most recent still-running tool row with its observation.
+                val entries = state.entries.toMutableList()
+                val idx = entries.indexOfLast { it is ChatEntry.Tool && it.running }
+                if (idx >= 0) {
+                    val row = entries[idx] as ChatEntry.Tool
+                    entries[idx] = row.copy(detail = step.observation, running = false)
+                }
+                state.copy(entries = entries)
             }
         }
     }
