@@ -284,8 +284,10 @@ public class BlocksSessionService {
         };
         if (trigger != null) {
             automationService.executeFor(trigger, issue);
+            // A token/usage limit only manifests on a terminal transition (DONE/FAILED), so the
+            // message scan is gated here to avoid a needless query on every intermediate state change.
+            fireTokenLimitAutomationIfHit(session);
         }
-        fireTokenLimitAutomationIfHit(session);
     }
 
     /**
