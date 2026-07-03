@@ -115,6 +115,11 @@ class SessionPollTransactionsTokenLimitTest {
             "prompt token count of 131835 exceeds the limit of 128000",
             "token count exceeds maximum",
             "This model's maximum context length is 8192 tokens",
+            // GitHub Copilot premium request allowance (no "quota"/"limit"/"reached" token)
+            "You have exceeded your premium request allowance.",
+            "You've reached your monthly premium request allowance",
+            "Premium requests 100% used",
+            "You have used all of your premium requests for this month",
             // OpenAI/ChatGPT quota errors: "insufficient_quota", "exceeded your current quota"
             "insufficient_quota: you have exceeded your current quota",
             "insufficient quota",

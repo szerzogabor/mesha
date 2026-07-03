@@ -397,43 +397,12 @@ class SessionPollTransactions {
         }
     }
 
-    private static final java.util.regex.Pattern TOKEN_LIMIT_PATTERN = java.util.regex.Pattern.compile(
-            // Generic token/context limit terms
-            "token[_ ]limit|context[_ ]limit|context[_ ]length|max[_ ]tokens|out[_ ]of[_ ]tokens|context[_ ]window"
-            // Claude.ai usage limit: "You've hit your limit · resets 4:40pm (UTC)"
-            + "|hit your limit"
-            // Claude.ai alternate: "You're out of messages until <time>"
-            + "|out of messages"
-            // Claude API context overflow: "prompt is too long"
-            + "|prompt is too long"
-            // Claude API / OpenAI rate limiting: "rate limit reached", "rate_limit_error"
-            + "|rate.?limit"
-            // Gemini: "The input token count (X) exceeds the maximum number of tokens allowed (Y)"
-            + "|maximum number of tokens allowed|input token count"
-            // Gemini quota/rate errors: "RESOURCE_EXHAUSTED", "Resource has been exhausted",
-            // "Quota exceeded for quota metric"
-            + "|resource.{0,20}exhausted|quota.{0,5}exceeded|resource_exhausted"
-            // GitHub Copilot (ghagpt): "prompt token count of X exceeds the limit of Y"
-            + "|prompt token count"
-            // OpenAI/ChatGPT: "insufficient_quota", "exceeded your current quota"
-            + "|insufficient.quota|exceeded.{0,30}quota"
-            // Various providers: "token count exceeds maximum"
-            + "|token count exceeds"
-            // General usage/daily/monthly limit phrases:
-            // "usage limit", "usage_limit", "your usage limit has been reached"
-            + "|usage.{0,10}limit"
-            // "limit reached", "monthly limit reached", "daily limit reached"
-            + "|limit.{0,10}reached"
-            // Anthropic billing: "Your credit balance is too low to access the Claude API"
-            + "|credit.{0,30}too.{0,10}low",
-            java.util.regex.Pattern.CASE_INSENSITIVE);
-
     boolean isTokenLimitMessage(String message) {
-        return message != null && TOKEN_LIMIT_PATTERN.matcher(message).find();
+        return com.mesha.api.service.TokenLimitDetector.isTokenLimitMessage(message);
     }
 
     boolean anyMessageIsTokenLimit(List<String> messages) {
-        return messages != null && messages.stream().anyMatch(this::isTokenLimitMessage);
+        return com.mesha.api.service.TokenLimitDetector.anyMessageIsTokenLimit(messages);
     }
 
     /** Immutable snapshot of session state loaded before any HTTP call. */
