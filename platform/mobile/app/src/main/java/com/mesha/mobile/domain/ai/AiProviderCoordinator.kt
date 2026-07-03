@@ -37,16 +37,20 @@ class AiProviderCoordinator @Inject constructor(
      * otherwise fall back to the first option (local is listed first), or none.
      */
     suspend fun refresh() {
-        val opts = buildList {
-            val installed = modelStorageManager.installedModels()
-            if (installed.isNotEmpty()) {
-                val label = if (installed.size == 1) installed.first().name else "On-device model"
-                add(AiProviderChoice(AiProviderKeys.LOCAL, label, AiProviderKind.LOCAL))
-            }
-            if (remote.isAvailable()) {
-                add(AiProviderChoice(AiProviderKeys.OPENAI, "ChatGPT", AiProviderKind.OPENAI))
-            }
+        // Resolve suspend inputs first, then build the list — keep the suspend call out of
+        // any builder/inline lambda.
+        val installed = modelStorageManager.installedModels()
+        val chatGptAvailable = remote.isAvailable()
+
+        val opts = mutableListOf<AiProviderChoice>()
+        if (installed.isNotEmpty()) {
+            val label = if (installed.size == 1) installed.first().name else "On-device model"
+            opts.add(AiProviderChoice(AiProviderKeys.LOCAL, label, AiProviderKind.LOCAL))
         }
+        if (chatGptAvailable) {
+            opts.add(AiProviderChoice(AiProviderKeys.OPENAI, "ChatGPT", AiProviderKind.OPENAI))
+        }
+
         _options.value = opts
         _selected.value = opts.firstOrNull { it.key == prefs.selectedKey } ?: opts.firstOrNull()
     }
