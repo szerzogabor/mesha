@@ -193,7 +193,120 @@ class GitHubPullRequestServiceTest {
         verify(issueRepository, times(1)).findByWorkspaceAndProjectKeyAndNumber(any(), any(), any());
     }
 
+    // --- polling sync transition path ---
+
+    @Test
+    void syncFiresMergedAutomationWhenOpenPrBecomesMerged() throws Exception {
+        when(issueRepository.findByWorkspaceAndProjectKeyAndNumber(workspace.getId(), "TP", 84))
+                .thenReturn(Optional.of(issue));
+
+        GitHubPullRequest prior = new GitHubPullRequest();
+        prior.setRepository(repo);
+        prior.setGithubPrNumber(1);
+        prior.setState("open");
+        java.util.Map<Integer, GitHubPullRequest> existing = new java.util.HashMap<>();
+        existing.put(1, prior);
+
+        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "closed", true);
+        service.processSyncedPullRequest(repo, node, existing, false);
+
+        verify(automationService).executeFor(eq(AutomationTriggerType.PR_MERGED), eq(issue));
+    }
+
+    @Test
+    void syncFiresClosedAutomationWhenOpenPrBecomesClosedWithoutMerge() throws Exception {
+        when(issueRepository.findByWorkspaceAndProjectKeyAndNumber(workspace.getId(), "TP", 84))
+                .thenReturn(Optional.of(issue));
+
+        GitHubPullRequest prior = new GitHubPullRequest();
+        prior.setRepository(repo);
+        prior.setGithubPrNumber(1);
+        prior.setState("open");
+        java.util.Map<Integer, GitHubPullRequest> existing = new java.util.HashMap<>();
+        existing.put(1, prior);
+
+        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "closed", false);
+        service.processSyncedPullRequest(repo, node, existing, false);
+
+        verify(automationService).executeFor(eq(AutomationTriggerType.PR_CLOSED), eq(issue));
+    }
+
+    @Test
+    void syncFiresOpenedAutomationForNewlyDiscoveredOpenPrAfterInitialSync() throws Exception {
+        when(issueRepository.findByWorkspaceAndProjectKeyAndNumber(workspace.getId(), "TP", 84))
+                .thenReturn(Optional.of(issue));
+
+        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "open", false);
+        service.processSyncedPullRequest(repo, node, new java.util.HashMap<>(), false);
+
+        verify(automationService).executeFor(eq(AutomationTriggerType.PR_OPENED), eq(issue));
+    }
+
+    @Test
+    void syncDoesNotFireOpenedForPreExistingBacklogOnInitialSync() throws Exception {
+        when(issueRepository.findByWorkspaceAndProjectKeyAndNumber(workspace.getId(), "TP", 84))
+                .thenReturn(Optional.of(issue));
+
+        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "open", false);
+        service.processSyncedPullRequest(repo, node, new java.util.HashMap<>(), true);
+
+        verifyNoInteractions(automationService);
+    }
+
+    @Test
+    void syncDoesNotReFireWhenAlreadyMerged() throws Exception {
+        GitHubPullRequest prior = new GitHubPullRequest();
+        prior.setRepository(repo);
+        prior.setGithubPrNumber(1);
+        prior.setState("closed");
+        prior.setMergedAt(java.time.Instant.parse("2024-01-01T00:00:00Z"));
+        java.util.Map<Integer, GitHubPullRequest> existing = new java.util.HashMap<>();
+        existing.put(1, prior);
+
+        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "closed", true);
+        service.processSyncedPullRequest(repo, node, existing, false);
+
+        verifyNoInteractions(automationService);
+    }
+
+    @Test
+    void syncDoesNotFireWhenOpenPrStaysOpen() throws Exception {
+        GitHubPullRequest prior = new GitHubPullRequest();
+        prior.setRepository(repo);
+        prior.setGithubPrNumber(1);
+        prior.setState("open");
+        java.util.Map<Integer, GitHubPullRequest> existing = new java.util.HashMap<>();
+        existing.put(1, prior);
+
+        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "open", false);
+        service.processSyncedPullRequest(repo, node, existing, false);
+
+        verifyNoInteractions(automationService);
+    }
+
     // --- helpers ---
+
+    private JsonNode prObjectNode(String title, String branch, String state, boolean merged) throws Exception {
+        String mergedAt = merged ? "\"2024-01-01T00:00:00Z\"" : "null";
+        String closedAt = state.equals("closed") ? "\"2024-01-02T00:00:00Z\"" : "null";
+        String json = """
+                {
+                  "number": 1,
+                  "title": "%s",
+                  "body": null,
+                  "state": "%s",
+                  "user": { "login": "dev", "avatar_url": "https://example.com/avatar" },
+                  "head": { "ref": "%s" },
+                  "base": { "ref": "main" },
+                  "html_url": "https://github.com/owner/repo/pull/1",
+                  "draft": false,
+                  "commits": 1,
+                  "merged_at": %s,
+                  "closed_at": %s
+                }
+                """.formatted(title, state, branch, mergedAt, closedAt);
+        return objectMapper.readTree(json);
+    }
 
     private JsonNode openedPayload(String title, String branch) throws Exception {
         return buildPayload("opened", title, branch, false);

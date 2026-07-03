@@ -129,12 +129,13 @@ public class GitHubPullRequestService {
                     .stream()
                     .collect(Collectors.toMap(GitHubPullRequest::getGithubPrNumber, Function.identity()));
 
+            boolean initialSync = repo.getLastSyncedAt() == null;
             JsonNode prs = objectMapper.readTree(response.body());
             int[] counts = {0, 0};
-            prs.forEach(pr -> {
-                int prNumber = pr.path("number").asInt();
+            prs.forEach(prNode -> {
+                int prNumber = prNode.path("number").asInt();
                 boolean isNew = !existingPrs.containsKey(prNumber);
-                upsertPullRequest(repo, pr, existingPrs);
+                processSyncedPullRequest(repo, prNode, existingPrs, initialSync);
                 if (isNew) counts[0]++; else counts[1]++;
             });
 
@@ -174,7 +175,7 @@ public class GitHubPullRequestService {
             return;
         }
 
-        GitHubPullRequest pr = upsertPullRequest(repoOpt.get(), prNode);
+        GitHubPullRequest pr = upsertPullRequest(repoOpt.get(), prNode).pr();
 
         AutomationTriggerType trigger = resolveAutomationTrigger(action, prNode);
         if (trigger != null) {
@@ -227,11 +228,62 @@ public class GitHubPullRequestService {
         return null;
     }
 
-    private GitHubPullRequest upsertPullRequest(GitHubRepository repo, JsonNode prNode) {
+    /**
+     * Upserts a pull request seen during the scheduled polling sync and fires automation for any
+     * lifecycle transition the poll observed. This mirrors the webhook path so PR-triggered
+     * automation still runs when a state change is learned via polling rather than a webhook
+     * (e.g. when webhook delivery is unavailable). Transitions are inferred from the previously
+     * persisted state, so a PR that is already in its final state does not re-fire on later syncs.
+     */
+    void processSyncedPullRequest(GitHubRepository repo, JsonNode prNode,
+            Map<Integer, GitHubPullRequest> existingPrs, boolean initialSync) {
+        PrUpsert result = upsertPullRequest(repo, prNode, existingPrs);
+        AutomationTriggerType trigger = resolveSyncTransitionTrigger(result, initialSync);
+        if (trigger == null) {
+            return;
+        }
+        Issue issue = resolveIssueForAutomation(result.pr());
+        if (issue != null) {
+            automationService.executeFor(trigger, issue);
+        } else {
+            log.debug("No linked issue found for synced PR automation prNumber={} trigger={}",
+                    result.pr().getGithubPrNumber(), trigger);
+        }
+    }
+
+    /**
+     * Infers the automation trigger from a persisted-state transition observed during a poll.
+     * PR_OPENED is only inferred after a repository's first sync so the initial backlog of
+     * pre-existing open PRs does not retroactively fire "opened" automation.
+     */
+    AutomationTriggerType resolveSyncTransitionTrigger(PrUpsert result, boolean initialSync) {
+        GitHubPullRequest pr = result.pr();
+        boolean nowMerged = pr.getMergedAt() != null;
+        boolean nowClosed = "closed".equalsIgnoreCase(pr.getState());
+        if (result.isNew()) {
+            if (!initialSync && !nowMerged && !nowClosed) {
+                return AutomationTriggerType.PR_OPENED;
+            }
+            return null;
+        }
+        if (result.wasOpenBefore()) {
+            if (nowMerged) {
+                return AutomationTriggerType.PR_MERGED;
+            }
+            if (nowClosed) {
+                return AutomationTriggerType.PR_CLOSED;
+            }
+        }
+        return null;
+    }
+
+    record PrUpsert(GitHubPullRequest pr, boolean isNew, boolean wasOpenBefore) {}
+
+    private PrUpsert upsertPullRequest(GitHubRepository repo, JsonNode prNode) {
         return upsertPullRequest(repo, prNode, null);
     }
 
-    private GitHubPullRequest upsertPullRequest(GitHubRepository repo, JsonNode prNode,
+    private PrUpsert upsertPullRequest(GitHubRepository repo, JsonNode prNode,
             Map<Integer, GitHubPullRequest> existingPrs) {
         int prNumber = prNode.path("number").asInt();
         Optional<GitHubPullRequest> existing = existingPrs != null
@@ -239,6 +291,11 @@ public class GitHubPullRequestService {
                 : prRepo.findFirstByRepositoryIdAndGithubPrNumberOrderByUpdatedAtDesc(repo.getId(), prNumber);
 
         boolean isNew = existing.isEmpty();
+        // Capture the previously persisted lifecycle state before it is overwritten, so the polling
+        // sync path can detect open→merged / open→closed transitions and fire automation.
+        boolean wasOpenBefore = existing
+                .map(p -> p.getMergedAt() == null && !"closed".equalsIgnoreCase(p.getState()))
+                .orElse(false);
         GitHubPullRequest pr = existing.orElse(new GitHubPullRequest());
         pr.setRepository(repo);
         pr.setGithubPrNumber(prNumber);
@@ -271,7 +328,7 @@ public class GitHubPullRequestService {
         log.debug("Pull request upserted repositoryId={} prNumber={} state={} action={} linkedSession={}",
                 repo.getId(), prNumber, pr.getState(), isNew ? "created" : "updated",
                 pr.getBlocksSession() != null ? pr.getBlocksSession().getId() : "none");
-        return pr;
+        return new PrUpsert(pr, isNew, wasOpenBefore);
     }
 
     private static final Set<AIExecutionState> TERMINAL_STATES = EnumSet.of(
