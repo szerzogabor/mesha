@@ -1,6 +1,7 @@
 package com.mesha.mobile.ui.screens.chat
 
 import app.cash.turbine.test
+import com.mesha.mobile.data.local.chat.ChatRepository
 import com.mesha.mobile.domain.ai.LocalAiException
 import com.mesha.mobile.domain.ai.LocalAiProvider
 import com.mesha.mobile.domain.ai.LocalChatMessage
@@ -43,6 +44,12 @@ class LocalLlmChatViewModelTest {
         return provider
     }
 
+    private fun emptyChatRepository(): ChatRepository {
+        val repo = mockk<ChatRepository>(relaxed = true)
+        coEvery { repo.loadMessages() } returns emptyList()
+        return repo
+    }
+
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
@@ -55,7 +62,7 @@ class LocalLlmChatViewModelTest {
 
     @Test
     fun initialState_modelAvailableCheckedOnInit() = runTest {
-        val viewModel = LocalLlmChatViewModel(agentReturning("hi"), availableProvider(true))
+        val viewModel = LocalLlmChatViewModel(agentReturning("hi"), availableProvider(true), emptyChatRepository())
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.state.test {
@@ -71,7 +78,7 @@ class LocalLlmChatViewModelTest {
 
     @Test
     fun initialState_modelUnavailable_whenProviderReportsFalse() = runTest {
-        val viewModel = LocalLlmChatViewModel(agentReturning("hi"), availableProvider(false))
+        val viewModel = LocalLlmChatViewModel(agentReturning("hi"), availableProvider(false), emptyChatRepository())
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.state.test {
@@ -82,7 +89,7 @@ class LocalLlmChatViewModelTest {
 
     @Test
     fun onInputChange_updatesInputText() = runTest {
-        val viewModel = LocalLlmChatViewModel(agentReturning("hi"), availableProvider())
+        val viewModel = LocalLlmChatViewModel(agentReturning("hi"), availableProvider(), emptyChatRepository())
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onInputChange("Hello!")
@@ -95,7 +102,7 @@ class LocalLlmChatViewModelTest {
 
     @Test
     fun sendMessage_addsUserAndAssistantEntries() = runTest {
-        val viewModel = LocalLlmChatViewModel(agentReturning("Hi there!"), availableProvider())
+        val viewModel = LocalLlmChatViewModel(agentReturning("Hi there!"), availableProvider(), emptyChatRepository())
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onInputChange("Hello")
@@ -122,7 +129,7 @@ class LocalLlmChatViewModelTest {
             onStep(AgentStep.ToolResult("list_tickets", "2 tickets: MES-1, MES-2"))
             "You have 2 tickets."
         }
-        val viewModel = LocalLlmChatViewModel(agent, availableProvider())
+        val viewModel = LocalLlmChatViewModel(agent, availableProvider(), emptyChatRepository())
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onInputChange("what's open?")
@@ -150,7 +157,7 @@ class LocalLlmChatViewModelTest {
         coEvery { agent.run(capture(histories), any()) } coAnswers {
             listOf("Reply 1", "Reply 2").getOrElse(index++) { "Reply" }
         }
-        val viewModel = LocalLlmChatViewModel(agent, availableProvider())
+        val viewModel = LocalLlmChatViewModel(agent, availableProvider(), emptyChatRepository())
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onInputChange("First message")
@@ -173,7 +180,7 @@ class LocalLlmChatViewModelTest {
     @Test
     fun sendMessage_ignoresBlankInput() = runTest {
         val agent = agentReturning("unused")
-        val viewModel = LocalLlmChatViewModel(agent, availableProvider())
+        val viewModel = LocalLlmChatViewModel(agent, availableProvider(), emptyChatRepository())
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onInputChange("   ")
@@ -190,7 +197,7 @@ class LocalLlmChatViewModelTest {
     @Test
     fun sendMessage_ignoresWhenAlreadyGenerating() = runTest {
         val agent = agentReturning("Response")
-        val viewModel = LocalLlmChatViewModel(agent, availableProvider())
+        val viewModel = LocalLlmChatViewModel(agent, availableProvider(), emptyChatRepository())
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onInputChange("First")
@@ -208,7 +215,7 @@ class LocalLlmChatViewModelTest {
     fun sendMessage_setsErrorOnLocalAiException() = runTest {
         val agent = mockk<TicketAgent>()
         coEvery { agent.run(any(), any()) } throws LocalAiException.ModelNotAvailable("Model gone")
-        val viewModel = LocalLlmChatViewModel(agent, availableProvider())
+        val viewModel = LocalLlmChatViewModel(agent, availableProvider(), emptyChatRepository())
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onInputChange("Hello")
@@ -227,7 +234,7 @@ class LocalLlmChatViewModelTest {
     fun sendMessage_setsErrorOnGenericException() = runTest {
         val agent = mockk<TicketAgent>()
         coEvery { agent.run(any(), any()) } throws RuntimeException("Network error")
-        val viewModel = LocalLlmChatViewModel(agent, availableProvider())
+        val viewModel = LocalLlmChatViewModel(agent, availableProvider(), emptyChatRepository())
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onInputChange("Hello")
@@ -246,7 +253,7 @@ class LocalLlmChatViewModelTest {
     fun dismissError_clearsErrorField() = runTest {
         val agent = mockk<TicketAgent>()
         coEvery { agent.run(any(), any()) } throws LocalAiException.InferenceFailed("oops")
-        val viewModel = LocalLlmChatViewModel(agent, availableProvider())
+        val viewModel = LocalLlmChatViewModel(agent, availableProvider(), emptyChatRepository())
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onInputChange("hi")
@@ -257,6 +264,45 @@ class LocalLlmChatViewModelTest {
 
         viewModel.state.test {
             assertNull(awaitItem().error)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun clearSession_resetsEntriesAndConversation() = runTest {
+        val viewModel = LocalLlmChatViewModel(agentReturning("Hi there!"), availableProvider(), emptyChatRepository())
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onInputChange("Hello")
+        viewModel.sendMessage()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.clearSession()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.state.test {
+            val state = awaitItem()
+            assertTrue(state.entries.isEmpty())
+            assertNull(state.error)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun clearSession_persistedMessagesRestoredOnInit() = runTest {
+        val repo = mockk<ChatRepository>(relaxed = true)
+        coEvery { repo.loadMessages() } returns listOf(
+            LocalChatMessage(LocalChatMessage.Role.USER, "Stored question"),
+            LocalChatMessage(LocalChatMessage.Role.ASSISTANT, "Stored answer"),
+        )
+        val viewModel = LocalLlmChatViewModel(agentReturning("hi"), availableProvider(), repo)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.state.test {
+            val state = awaitItem()
+            assertEquals(2, state.entries.size)
+            assertEquals(ChatEntry.User("Stored question"), state.entries[0])
+            assertEquals(ChatEntry.Assistant("Stored answer"), state.entries[1])
             cancelAndIgnoreRemainingEvents()
         }
     }
