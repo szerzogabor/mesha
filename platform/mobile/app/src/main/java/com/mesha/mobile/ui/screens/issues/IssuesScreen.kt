@@ -203,13 +203,17 @@ private fun BoardView(
     onOpenIssue: (projectId: String, issueId: String) -> Unit,
     onMove: (issueId: String, newStatus: String) -> Unit,
 ) {
-    val knownNames = state.statuses.map { it.name }
-    val orphanNames = state.issues.mapNotNull { it.status }
-        .filter { it.isNotBlank() && it !in knownNames }
-        .distinct()
-    val columns: List<Pair<String, String?>> =
+    // The board can hold up to a few hundred issues, so keep these O(N) groupings out of
+    // the recomposition path — recompute only when the statuses or issues actually change.
+    val columns: List<Pair<String, String?>> = remember(state.statuses, state.issues) {
+        val knownNames = state.statuses.map { it.name }
+        val orphanNames = state.issues.mapNotNull { it.status }
+            .filter { it.isNotBlank() && it !in knownNames }
+            .distinct()
         state.statuses.map { it.name to it.color } + orphanNames.map { it to null }
-    val allStatusNames = columns.map { it.first }
+    }
+    val allStatusNames = remember(columns) { columns.map { it.first } }
+    val issuesByStatus = remember(state.issues) { state.issues.groupBy { it.status.orEmpty() } }
 
     if (columns.isEmpty()) {
         EmptyState("No statuses configured for this project.")
@@ -224,11 +228,10 @@ private fun BoardView(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         columns.forEach { (statusName, color) ->
-            val columnIssues = state.issues.filter { it.status == statusName }
             BoardColumn(
                 statusName = statusName,
                 color = color,
-                issues = columnIssues,
+                issues = issuesByStatus[statusName].orEmpty(),
                 allStatusNames = allStatusNames,
                 onOpenIssue = onOpenIssue,
                 onMove = onMove,

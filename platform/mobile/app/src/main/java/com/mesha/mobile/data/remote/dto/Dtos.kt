@@ -6,8 +6,6 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonPrimitive
 
 /** Spring `PagedResponse<T>` mirror. */
 @Serializable
@@ -319,10 +317,14 @@ data class UpdateAgentDefinitionRequestDto(
     val active: Boolean? = null,
 )
 
-/** Read `startupCommands` (a `List<String>`) out of a provider-parameters JSON object. */
+/**
+ * Read `startupCommands` (a `List<String>`) out of a provider-parameters JSON object.
+ * Uses safe casts so an unexpected shape (e.g. `null` or a non-array value) yields an
+ * empty list instead of throwing.
+ */
 fun JsonObject?.startupCommands(): List<String> =
-    this?.get("startupCommands")?.jsonArray
-        ?.mapNotNull { it.jsonPrimitive.contentOrNull }
+    (this?.get("startupCommands") as? JsonArray)
+        ?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
         ?: emptyList()
 
 /**
