@@ -3,6 +3,9 @@ package com.mesha.api.service;
 import com.mesha.api.ai.AIDraftContent;
 import com.mesha.api.ai.AIOrchestrationService;
 import com.mesha.api.ai.BlocksAIDraftGenerator;
+import com.mesha.api.ai.DraftProvider;
+import com.mesha.api.ai.OpenAiAIDraftGenerator;
+import com.mesha.api.ai.OpenAiCredential;
 import com.mesha.api.dto.ApproveDraftRequest;
 import com.mesha.api.dto.CreateIssueRequest;
 import com.mesha.api.model.*;
@@ -27,6 +30,8 @@ public class AIDraftService {
     private final AIOrchestrationService orchestration;
     private final BlocksAIDraftGenerator blocksGenerator;
     private final BlocksConfigService blocksConfigService;
+    private final OpenAiAIDraftGenerator openAiGenerator;
+    private final OpenAiConfigService openAiConfigService;
     private final IssueService issueService;
     private final ActivityService activityService;
 
@@ -35,6 +40,8 @@ public class AIDraftService {
                           AIOrchestrationService orchestration,
                           BlocksAIDraftGenerator blocksGenerator,
                           BlocksConfigService blocksConfigService,
+                          OpenAiAIDraftGenerator openAiGenerator,
+                          OpenAiConfigService openAiConfigService,
                           IssueService issueService,
                           ActivityService activityService) {
         this.draftRepository = draftRepository;
@@ -42,15 +49,19 @@ public class AIDraftService {
         this.orchestration = orchestration;
         this.blocksGenerator = blocksGenerator;
         this.blocksConfigService = blocksConfigService;
+        this.openAiGenerator = openAiGenerator;
+        this.openAiConfigService = openAiConfigService;
         this.issueService = issueService;
         this.activityService = activityService;
     }
 
     // No @Transactional here: the AI network call must not hold a DB connection open.
     // Each draftRepository.save() call runs in its own implicit transaction.
-    public AIDraft generate(UUID projectId, String prompt, User actor) {
+    public AIDraft generate(UUID projectId, String prompt, DraftProvider provider, User actor) {
         Project project = projectRepository.findById(projectId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
+
+        DraftProvider selected = provider != null ? provider : DraftProvider.DEFAULT;
 
         AIDraft draft = new AIDraft();
         draft.setProject(project);
@@ -59,13 +70,10 @@ public class AIDraftService {
         draft.setStatus(AIDraftStatus.PENDING);
         draft = draftRepository.save(draft);
 
-        log.info("AI draft generation started draftId={} projectId={}", draft.getId(), projectId);
+        log.info("AI draft generation started draftId={} projectId={} provider={}", draft.getId(), projectId, selected);
         long aiStartMs = System.currentTimeMillis();
         try {
-            UUID workspaceId = project.getWorkspace().getId();
-            AIDraftContent content = blocksConfigService.isConnected(workspaceId)
-                    ? blocksGenerator.generate(prompt, workspaceId)
-                    : orchestration.generateDraft(prompt);
+            AIDraftContent content = generateContent(selected, prompt, project, actor);
             log.info("AI draft generation completed draftId={} durationMs={}", draft.getId(), System.currentTimeMillis() - aiStartMs);
             draft.setStatus(AIDraftStatus.COMPLETED);
             draft.setGeneratedTitle(content.title());
@@ -83,6 +91,20 @@ public class AIDraftService {
         }
 
         return draftRepository.save(draft);
+    }
+
+    private AIDraftContent generateContent(DraftProvider provider, String prompt, Project project, User actor) {
+        UUID workspaceId = project.getWorkspace().getId();
+        return switch (provider) {
+            case OPENAI -> {
+                OpenAiCredential credential = openAiConfigService.resolveCredential(actor.getId());
+                yield openAiGenerator.generate(prompt, credential);
+            }
+            case BLOCKS -> blocksGenerator.generate(prompt, workspaceId);
+            case DEFAULT -> blocksConfigService.isConnected(workspaceId)
+                    ? blocksGenerator.generate(prompt, workspaceId)
+                    : orchestration.generateDraft(prompt);
+        };
     }
 
     public AIDraft getById(UUID draftId) {
@@ -133,11 +155,11 @@ public class AIDraftService {
 
     // No @Transactional here: calls generate() which makes an external network call.
     // reject() and generate() each manage their own transactions.
-    public AIDraft regenerate(UUID draftId, String newPrompt, User actor) {
+    public AIDraft regenerate(UUID draftId, String newPrompt, DraftProvider provider, User actor) {
         AIDraft existing = getById(draftId);
         String prompt = (newPrompt != null && !newPrompt.isBlank()) ? newPrompt : existing.getPrompt();
         reject(draftId);
-        return generate(existing.getProject().getId(), prompt, actor);
+        return generate(existing.getProject().getId(), prompt, provider, actor);
     }
 
     private IssuePriority parsePriority(String suggestion) {

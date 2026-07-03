@@ -353,6 +353,22 @@ export interface BlocksConfig {
   updatedAt: string;
 }
 
+export type OpenAiAuthMode = "API_KEY" | "CHATGPT_TOKEN";
+
+export interface OpenAiConfig {
+  id: string;
+  userId: string;
+  authMode: OpenAiAuthMode;
+  accountId?: string;
+  model?: string;
+  status: string;
+  connectedAt: string;
+  updatedAt: string;
+}
+
+// Which AI provider to use for draft generation. Mirrors the backend DraftProvider enum.
+export type DraftProvider = "DEFAULT" | "BLOCKS" | "OPENAI";
+
 export interface GitHubPullRequest {
   id: string;
   repositoryId: string;

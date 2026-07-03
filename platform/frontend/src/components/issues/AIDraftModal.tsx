@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { logger } from "@/lib/logger";
-import { AIDraft, IssuePriority, IssueStatus } from "@/types";
+import { AIDraft, DraftProvider, IssuePriority, IssueStatus } from "@/types";
 import {
   useGenerateDraft,
   useApproveDraft,
@@ -11,6 +12,8 @@ import {
   useRegenerateDraft,
 } from "@/hooks/useAIDraft";
 import { useProjectStatuses } from "@/hooks/useProjectStatuses";
+import { useBlocksConfig } from "@/hooks/useBlocksConfig";
+import { useOpenAiConfig } from "@/hooks/useOpenAiConfig";
 import { statusLabel } from "@/lib/utils";
 
 const inputClass =
@@ -46,8 +49,12 @@ function buildFullDescription(draft: AIDraft): string {
 }
 
 export function AIDraftModal({ open, projectId, onClose }: AIDraftModalProps) {
+  const params = useParams();
+  const workspaceId = (params?.workspaceId as string) ?? "";
+
   const [step, setStep] = useState<Step>("prompt");
   const [prompt, setPrompt] = useState("");
+  const [provider, setProvider] = useState<DraftProvider>("DEFAULT");
   const [draft, setDraft] = useState<AIDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,11 +70,28 @@ export function AIDraftModal({ open, projectId, onClose }: AIDraftModalProps) {
   const { data: projectStatuses = [] } = useProjectStatuses(projectId);
   const regenerate = useRegenerateDraft(projectId);
 
+  // Provider availability — Blocks is per-workspace, OpenAI is per-user.
+  const { data: blocksConfig } = useBlocksConfig(workspaceId);
+  const { data: openAiConfig } = useOpenAiConfig();
+  const blocksAvailable = !!blocksConfig;
+  const openAiAvailable = !!openAiConfig;
+  // Only offer an explicit picker when the user has a real alternative to the default.
+  const showProviderPicker = openAiAvailable || blocksAvailable;
+
+  // Keep editStatus in sync once project statuses load (they may arrive after a
+  // draft is populated), so we never submit an empty status.
+  useEffect(() => {
+    if (!editStatus && projectStatuses.length > 0) {
+      setEditStatus(projectStatuses[0].name);
+    }
+  }, [editStatus, projectStatuses]);
+
   const loading = generate.isPending || approve.isPending || reject.isPending || regenerate.isPending;
 
   function resetAndClose() {
     setStep("prompt");
     setPrompt("");
+    setProvider("DEFAULT");
     setDraft(null);
     setError(null);
     onClose();
@@ -86,7 +110,7 @@ export function AIDraftModal({ open, projectId, onClose }: AIDraftModalProps) {
     if (!prompt.trim()) return;
     setError(null);
     try {
-      const result = await generate.mutateAsync(prompt.trim());
+      const result = await generate.mutateAsync({ prompt: prompt.trim(), provider });
       if (result.status === "FAILED") {
         setError(result.errorMessage ?? "AI generation failed. Please try again.");
         return;
@@ -134,7 +158,7 @@ export function AIDraftModal({ open, projectId, onClose }: AIDraftModalProps) {
     if (!draft) return;
     setError(null);
     try {
-      const result = await regenerate.mutateAsync({ draftId: draft.id, prompt: prompt.trim() || undefined });
+      const result = await regenerate.mutateAsync({ draftId: draft.id, prompt: prompt.trim() || undefined, provider });
       if (result.status === "FAILED") {
         setError(result.errorMessage ?? "Regeneration failed. Please try again.");
         return;
@@ -176,6 +200,28 @@ export function AIDraftModal({ open, projectId, onClose }: AIDraftModalProps) {
             />
             <p className="text-xs text-text-tertiary mt-1">Minimum 10 characters</p>
           </div>
+
+          {showProviderPicker && (
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">
+                AI provider
+              </label>
+              <select
+                value={provider}
+                onChange={(e) => setProvider(e.target.value as DraftProvider)}
+                className={inputClass}
+              >
+                <option value="DEFAULT">Default{blocksAvailable ? " (Blocks)" : ""}</option>
+                {blocksAvailable && <option value="BLOCKS">Blocks agent</option>}
+                {openAiAvailable && <option value="OPENAI">ChatGPT / OpenAI (my account)</option>}
+              </select>
+              {!openAiAvailable && (
+                <p className="text-xs text-text-tertiary mt-1">
+                  Connect your ChatGPT subscription in Settings → OpenAI to draft with it.
+                </p>
+              )}
+            </div>
+          )}
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
