@@ -29,6 +29,7 @@ import com.mesha.mobile.ui.navigation.Routes
 import com.mesha.mobile.ui.navigation.TopLevelDestination
 import com.mesha.mobile.ui.screens.agents.AgentsScreen
 import com.mesha.mobile.ui.screens.createissue.CreateIssueAiScreen
+import com.mesha.mobile.ui.screens.createissue.CreateIssueManualScreen
 import com.mesha.mobile.ui.screens.dashboard.DashboardScreen
 import com.mesha.mobile.localai.ui.LocalAiScreen
 import com.mesha.mobile.ui.screens.issues.IssueDetailScreen
@@ -120,6 +121,7 @@ fun MeshaApp() {
             composable(Routes.ISSUES) {
                 IssuesScreen(
                     onCreateIssueWithAi = { navController.navigate(Routes.CREATE_ISSUE_AI) },
+                    onCreateIssueManual = { navController.navigate(Routes.CREATE_ISSUE_MANUAL) },
                     onOpenIssue = { projectId, issueId ->
                         navController.navigate(Routes.issueDetail(projectId, issueId))
                     },
@@ -132,6 +134,7 @@ fun MeshaApp() {
                     projectId = projectId,
                     issueId = issueId,
                     onBack = { navController.popBackStack() },
+                    onDeleted = { navController.popBackStack() },
                 )
             }
             composable(Routes.SESSIONS) {
@@ -156,6 +159,9 @@ fun MeshaApp() {
             }
             composable(Routes.CREATE_ISSUE_AI) {
                 CreateIssueAiScreen(onClose = { navController.popBackStack() })
+            }
+            composable(Routes.CREATE_ISSUE_MANUAL) {
+                CreateIssueManualScreen(onClose = { navController.popBackStack() })
             }
             composable(Routes.SESSION_DETAIL) { entry ->
                 val sessionId = entry.arguments?.getString("sessionId").orEmpty()

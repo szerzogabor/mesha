@@ -11,6 +11,32 @@
 **Legend**
 - ❌ **Missing** — no equivalent in Android at all
 - ⚠️ **Partial** — present but read-only or significantly reduced vs. web
+- ✅ **Done** — implemented on Android
+
+---
+
+## Implementation status (2026-07-03)
+
+The following gaps are now **closed** in the Android app (`platform/mobile`). Each is
+backed by an existing REST endpoint — no backend changes were required.
+
+| Ref | Feature | Where |
+|-----|---------|-------|
+| 2.1–2.6 | Issue **search, status/priority filters, sort, load-more pagination** | `IssuesScreen.kt` / `IssuesViewModel.kt` |
+| 3.1–3.3 | **Assign issue to a human** (member picker) and **to an AI agent** (assign/unassign) | `IssueDetailScreen.kt` / `IssueDetailViewModel.kt` |
+| 4.1, 4.2, 4.4 | **Add/remove labels** on an issue, **create a label inline**, colored label chips | issue detail label editor |
+| 5.1, 5.3 | **Per-project custom statuses** (from `/statuses`) with **status colors**, replacing the hardcoded enum | issue list + detail status picker |
+| 6.1, 6.2 | **Manual (non-AI) create-issue form** with status / priority / assignee / label selection | `CreateIssueManualScreen.kt` |
+| 7.1 | **Delete ticket** | issue detail overflow menu |
+| 7.4 | **Activity feed / timeline** | issue detail |
+| 7.5, 7.6 | **Comment threading (replies)** and **delete comment** | issue detail comments |
+| 8.1, 8.2, 8.3, 8.4 | **Start / cancel a Blocks AI session from the issue**, execution-state badges, PR + CI status | issue detail AI Sessions panel |
+| 11.2 | **PR badge with CI status** on list cards | `IssuesScreen.kt` |
+
+Still open (not in this change): Kanban/board drag-to-move (1.1), attachments (7.3),
+issue links / sub-issues (7.2), agent-definition & connector-agent CRUD (8.7, 8.8),
+automation & ticket rules (9.x), GitHub/Blocks integration config (10.1–10.3), and
+real-time SSE (11.1). These remain tracked in the tables below.
 
 ---
 
