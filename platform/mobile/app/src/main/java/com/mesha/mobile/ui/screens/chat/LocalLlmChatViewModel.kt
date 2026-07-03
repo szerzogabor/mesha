@@ -2,8 +2,9 @@ package com.mesha.mobile.ui.screens.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mesha.mobile.domain.ai.AiProviderChoice
+import com.mesha.mobile.domain.ai.AiProviderCoordinator
 import com.mesha.mobile.domain.ai.LocalAiException
-import com.mesha.mobile.domain.ai.LocalAiProvider
 import com.mesha.mobile.domain.ai.LocalChatMessage
 import com.mesha.mobile.domain.ai.agent.AgentStep
 import com.mesha.mobile.domain.ai.agent.TicketAgent
@@ -12,6 +13,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -30,6 +32,8 @@ data class LocalLlmChatUiState(
     val inputText: String = "",
     val isGenerating: Boolean = false,
     val modelAvailable: Boolean = true,
+    val providerOptions: List<AiProviderChoice> = emptyList(),
+    val selectedProviderKey: String? = null,
     val error: String? = null,
 )
 
@@ -45,7 +49,7 @@ data class LocalLlmChatUiState(
 @HiltViewModel
 class LocalLlmChatViewModel @Inject constructor(
     private val agent: TicketAgent,
-    private val localAi: LocalAiProvider,
+    private val coordinator: AiProviderCoordinator,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LocalLlmChatUiState())
@@ -55,12 +59,24 @@ class LocalLlmChatViewModel @Inject constructor(
     private val conversation = mutableListOf<LocalChatMessage>()
 
     init {
+        viewModelScope.launch { coordinator.refresh() }
         viewModelScope.launch {
-            _state.update { it.copy(modelAvailable = localAi.isAvailable()) }
+            combine(coordinator.options, coordinator.selected) { opts, sel -> opts to sel }
+                .collect { (opts, sel) ->
+                    _state.update {
+                        it.copy(
+                            providerOptions = opts,
+                            selectedProviderKey = sel?.key,
+                            modelAvailable = opts.isNotEmpty(),
+                        )
+                    }
+                }
         }
     }
 
     fun onInputChange(text: String) = _state.update { it.copy(inputText = text, error = null) }
+
+    fun onSelectProvider(key: String) = coordinator.select(key)
 
     fun sendMessage() {
         val text = _state.value.inputText.trim()
@@ -117,11 +133,11 @@ class LocalLlmChatViewModel @Inject constructor(
 
     private fun friendlyMessage(e: LocalAiException): String = when (e) {
         is LocalAiException.ModelNotAvailable ->
-            "On-device model isn't installed. Add it in Settings to chat."
+            e.message ?: "No AI provider available. Install an on-device model in Settings, or connect ChatGPT on the web."
         is LocalAiException.InvalidOutput ->
             "Unexpected model response. Try sending another message."
         is LocalAiException.InferenceFailed ->
-            e.message ?: "On-device inference failed."
+            e.message ?: "Inference failed."
         is LocalAiException.UnsupportedModel ->
             "This model isn't supported. Try a different one in Settings."
     }

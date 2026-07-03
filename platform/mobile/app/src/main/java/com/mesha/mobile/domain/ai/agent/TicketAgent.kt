@@ -1,7 +1,7 @@
 package com.mesha.mobile.domain.ai.agent
 
 import com.mesha.mobile.data.repository.SelectionStore
-import com.mesha.mobile.domain.ai.LocalAiProvider
+import com.mesha.mobile.domain.ai.AiProviderCoordinator
 import com.mesha.mobile.domain.ai.LocalChatMessage
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonObject
@@ -25,7 +25,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class TicketAgent @Inject constructor(
-    private val localAi: LocalAiProvider,
+    private val coordinator: AiProviderCoordinator,
     private val registry: AgentToolRegistry,
     private val selectionStore: SelectionStore,
 ) {
@@ -52,7 +52,7 @@ class TicketAgent @Inject constructor(
 
         repeat(MAX_STEPS) {
             val prompt = AgentPromptBuilder.build(registry.tools, context, history, scratchpad)
-            val raw = localAi.generate(prompt)
+            val raw = coordinator.active().generate(prompt)
 
             when (val action = AgentActionParser.parse(raw)) {
                 is AgentAction.Final -> {
