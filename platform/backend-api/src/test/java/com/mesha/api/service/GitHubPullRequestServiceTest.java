@@ -21,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -195,20 +196,32 @@ class GitHubPullRequestServiceTest {
 
     // --- polling sync transition path ---
 
+    private static final Instant LAST_SYNC = Instant.parse("2024-06-01T00:00:00Z");
+    private static final String BEFORE_SYNC = "2024-01-01T00:00:00Z";
+    private static final String AFTER_SYNC = "2024-06-01T12:00:00Z";
+
+    private GitHubPullRequest priorPr(String state, Instant mergedAt) {
+        GitHubPullRequest prior = new GitHubPullRequest();
+        prior.setRepository(repo);
+        prior.setGithubPrNumber(1);
+        prior.setState(state);
+        prior.setMergedAt(mergedAt);
+        return prior;
+    }
+
+    private java.util.Map<Integer, GitHubPullRequest> mapOf(GitHubPullRequest pr) {
+        java.util.Map<Integer, GitHubPullRequest> existing = new java.util.HashMap<>();
+        existing.put(pr.getGithubPrNumber(), pr);
+        return existing;
+    }
+
     @Test
     void syncFiresMergedAutomationWhenOpenPrBecomesMerged() throws Exception {
         when(issueRepository.findByWorkspaceAndProjectKeyAndNumber(workspace.getId(), "TP", 84))
                 .thenReturn(Optional.of(issue));
 
-        GitHubPullRequest prior = new GitHubPullRequest();
-        prior.setRepository(repo);
-        prior.setGithubPrNumber(1);
-        prior.setState("open");
-        java.util.Map<Integer, GitHubPullRequest> existing = new java.util.HashMap<>();
-        existing.put(1, prior);
-
-        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "closed", true);
-        service.processSyncedPullRequest(repo, node, existing, false);
+        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "closed", BEFORE_SYNC, AFTER_SYNC, AFTER_SYNC);
+        service.processSyncedPullRequest(repo, node, mapOf(priorPr("open", null)), LAST_SYNC);
 
         verify(automationService).executeFor(eq(AutomationTriggerType.PR_MERGED), eq(issue));
     }
@@ -218,77 +231,76 @@ class GitHubPullRequestServiceTest {
         when(issueRepository.findByWorkspaceAndProjectKeyAndNumber(workspace.getId(), "TP", 84))
                 .thenReturn(Optional.of(issue));
 
-        GitHubPullRequest prior = new GitHubPullRequest();
-        prior.setRepository(repo);
-        prior.setGithubPrNumber(1);
-        prior.setState("open");
-        java.util.Map<Integer, GitHubPullRequest> existing = new java.util.HashMap<>();
-        existing.put(1, prior);
-
-        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "closed", false);
-        service.processSyncedPullRequest(repo, node, existing, false);
+        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "closed", BEFORE_SYNC, null, AFTER_SYNC);
+        service.processSyncedPullRequest(repo, node, mapOf(priorPr("open", null)), LAST_SYNC);
 
         verify(automationService).executeFor(eq(AutomationTriggerType.PR_CLOSED), eq(issue));
     }
 
     @Test
-    void syncFiresOpenedAutomationForNewlyDiscoveredOpenPrAfterInitialSync() throws Exception {
+    void syncFiresOpenedAutomationForNewlyOpenedPrAfterInitialSync() throws Exception {
         when(issueRepository.findByWorkspaceAndProjectKeyAndNumber(workspace.getId(), "TP", 84))
                 .thenReturn(Optional.of(issue));
 
-        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "open", false);
-        service.processSyncedPullRequest(repo, node, new java.util.HashMap<>(), false);
+        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "open", AFTER_SYNC, null, null);
+        service.processSyncedPullRequest(repo, node, new java.util.HashMap<>(), LAST_SYNC);
 
         verify(automationService).executeFor(eq(AutomationTriggerType.PR_OPENED), eq(issue));
     }
 
     @Test
-    void syncDoesNotFireOpenedForPreExistingBacklogOnInitialSync() throws Exception {
+    void syncFiresMergedForPrOpenedAndMergedWithinOneInterval() throws Exception {
         when(issueRepository.findByWorkspaceAndProjectKeyAndNumber(workspace.getId(), "TP", 84))
                 .thenReturn(Optional.of(issue));
 
-        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "open", false);
-        service.processSyncedPullRequest(repo, node, new java.util.HashMap<>(), true);
+        // Never seen before (isNew) but merged since the previous sync — the whole lifecycle
+        // happened within one polling interval and no webhook was delivered.
+        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "closed", AFTER_SYNC, AFTER_SYNC, AFTER_SYNC);
+        service.processSyncedPullRequest(repo, node, new java.util.HashMap<>(), LAST_SYNC);
+
+        verify(automationService).executeFor(eq(AutomationTriggerType.PR_MERGED), eq(issue));
+    }
+
+    @Test
+    void syncDoesNotFireForOldTerminalPrReenteringWindow() throws Exception {
+        // Newly seen by us, but merged long before the previous sync (e.g. re-entered the
+        // most-recently-updated page after a late comment). Must not retroactively fire.
+        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "closed", BEFORE_SYNC, BEFORE_SYNC, BEFORE_SYNC);
+        service.processSyncedPullRequest(repo, node, new java.util.HashMap<>(), LAST_SYNC);
+
+        verifyNoInteractions(automationService);
+    }
+
+    @Test
+    void syncDoesNotFireOpenedForPreExistingBacklogOnInitialSync() throws Exception {
+        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "open", BEFORE_SYNC, null, null);
+        service.processSyncedPullRequest(repo, node, new java.util.HashMap<>(), null);
 
         verifyNoInteractions(automationService);
     }
 
     @Test
     void syncDoesNotReFireWhenAlreadyMerged() throws Exception {
-        GitHubPullRequest prior = new GitHubPullRequest();
-        prior.setRepository(repo);
-        prior.setGithubPrNumber(1);
-        prior.setState("closed");
-        prior.setMergedAt(java.time.Instant.parse("2024-01-01T00:00:00Z"));
-        java.util.Map<Integer, GitHubPullRequest> existing = new java.util.HashMap<>();
-        existing.put(1, prior);
+        GitHubPullRequest prior = priorPr("closed", Instant.parse(BEFORE_SYNC));
 
-        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "closed", true);
-        service.processSyncedPullRequest(repo, node, existing, false);
+        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "closed", BEFORE_SYNC, AFTER_SYNC, AFTER_SYNC);
+        service.processSyncedPullRequest(repo, node, mapOf(prior), LAST_SYNC);
 
         verifyNoInteractions(automationService);
     }
 
     @Test
     void syncDoesNotFireWhenOpenPrStaysOpen() throws Exception {
-        GitHubPullRequest prior = new GitHubPullRequest();
-        prior.setRepository(repo);
-        prior.setGithubPrNumber(1);
-        prior.setState("open");
-        java.util.Map<Integer, GitHubPullRequest> existing = new java.util.HashMap<>();
-        existing.put(1, prior);
-
-        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "open", false);
-        service.processSyncedPullRequest(repo, node, existing, false);
+        JsonNode node = prObjectNode("TP-84: some feature", "feature/TP-84", "open", BEFORE_SYNC, null, null);
+        service.processSyncedPullRequest(repo, node, mapOf(priorPr("open", null)), LAST_SYNC);
 
         verifyNoInteractions(automationService);
     }
 
     // --- helpers ---
 
-    private JsonNode prObjectNode(String title, String branch, String state, boolean merged) throws Exception {
-        String mergedAt = merged ? "\"2024-01-01T00:00:00Z\"" : "null";
-        String closedAt = state.equals("closed") ? "\"2024-01-02T00:00:00Z\"" : "null";
+    private JsonNode prObjectNode(String title, String branch, String state,
+            String createdAt, String mergedAt, String closedAt) throws Exception {
         String json = """
                 {
                   "number": 1,
@@ -301,11 +313,16 @@ class GitHubPullRequestServiceTest {
                   "html_url": "https://github.com/owner/repo/pull/1",
                   "draft": false,
                   "commits": 1,
+                  "created_at": %s,
                   "merged_at": %s,
                   "closed_at": %s
                 }
-                """.formatted(title, state, branch, mergedAt, closedAt);
+                """.formatted(title, state, branch, jsonOrNull(createdAt), jsonOrNull(mergedAt), jsonOrNull(closedAt));
         return objectMapper.readTree(json);
+    }
+
+    private static String jsonOrNull(String value) {
+        return value == null ? "null" : "\"" + value + "\"";
     }
 
     private JsonNode openedPayload(String title, String branch) throws Exception {

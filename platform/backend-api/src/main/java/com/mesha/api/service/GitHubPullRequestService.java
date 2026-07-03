@@ -129,13 +129,13 @@ public class GitHubPullRequestService {
                     .stream()
                     .collect(Collectors.toMap(GitHubPullRequest::getGithubPrNumber, Function.identity()));
 
-            boolean initialSync = repo.getLastSyncedAt() == null;
+            Instant previousSyncedAt = repo.getLastSyncedAt();
             JsonNode prs = objectMapper.readTree(response.body());
             int[] counts = {0, 0};
             prs.forEach(prNode -> {
                 int prNumber = prNode.path("number").asInt();
                 boolean isNew = !existingPrs.containsKey(prNumber);
-                processSyncedPullRequest(repo, prNode, existingPrs, initialSync);
+                processSyncedPullRequest(repo, prNode, existingPrs, previousSyncedAt);
                 if (isNew) counts[0]++; else counts[1]++;
             });
 
@@ -236,9 +236,10 @@ public class GitHubPullRequestService {
      * persisted state, so a PR that is already in its final state does not re-fire on later syncs.
      */
     void processSyncedPullRequest(GitHubRepository repo, JsonNode prNode,
-            Map<Integer, GitHubPullRequest> existingPrs, boolean initialSync) {
+            Map<Integer, GitHubPullRequest> existingPrs, Instant previousSyncedAt) {
         PrUpsert result = upsertPullRequest(repo, prNode, existingPrs);
-        AutomationTriggerType trigger = resolveSyncTransitionTrigger(result, initialSync);
+        Instant prCreatedAt = parseInstant(prNode, "created_at");
+        AutomationTriggerType trigger = resolveSyncTransitionTrigger(result, previousSyncedAt, prCreatedAt);
         if (trigger == null) {
             return;
         }
@@ -252,19 +253,34 @@ public class GitHubPullRequestService {
     }
 
     /**
-     * Infers the automation trigger from a persisted-state transition observed during a poll.
-     * PR_OPENED is only inferred after a repository's first sync so the initial backlog of
-     * pre-existing open PRs does not retroactively fire "opened" automation.
+     * Infers the automation trigger for a PR observed during a poll.
+     *
+     * <p>For a PR we have seen before, the trigger follows directly from the persisted-state
+     * transition (open → merged / closed).
+     *
+     * <p>For a PR seen for the first time we have no prior state to compare against, so we fire only
+     * when the event demonstrably happened <em>since the previous sync</em> — comparing the PR's
+     * merged/closed/created timestamps against {@code previousSyncedAt}. This covers a PR that was
+     * opened and then merged or closed within a single polling interval, while avoiding retroactive
+     * firing for the initial backlog ({@code previousSyncedAt == null}) or for older PRs that
+     * re-enter the polling window (the sync fetches only the most-recently-updated page).
      */
-    AutomationTriggerType resolveSyncTransitionTrigger(PrUpsert result, boolean initialSync) {
+    AutomationTriggerType resolveSyncTransitionTrigger(PrUpsert result, Instant previousSyncedAt,
+            Instant prCreatedAt) {
         GitHubPullRequest pr = result.pr();
         boolean nowMerged = pr.getMergedAt() != null;
         boolean nowClosed = "closed".equalsIgnoreCase(pr.getState());
         if (result.isNew()) {
-            if (!initialSync && !nowMerged && !nowClosed) {
-                return AutomationTriggerType.PR_OPENED;
+            if (previousSyncedAt == null) {
+                return null;
             }
-            return null;
+            if (nowMerged) {
+                return isAfter(pr.getMergedAt(), previousSyncedAt) ? AutomationTriggerType.PR_MERGED : null;
+            }
+            if (nowClosed) {
+                return isAfter(pr.getClosedAt(), previousSyncedAt) ? AutomationTriggerType.PR_CLOSED : null;
+            }
+            return isAfter(prCreatedAt, previousSyncedAt) ? AutomationTriggerType.PR_OPENED : null;
         }
         if (result.wasOpenBefore()) {
             if (nowMerged) {
@@ -275,6 +291,14 @@ public class GitHubPullRequestService {
             }
         }
         return null;
+    }
+
+    private static boolean isAfter(Instant candidate, Instant reference) {
+        return candidate != null && candidate.isAfter(reference);
+    }
+
+    private static Instant parseInstant(JsonNode node, String field) {
+        return node.hasNonNull(field) ? Instant.parse(node.get(field).asText()) : null;
     }
 
     record PrUpsert(GitHubPullRequest pr, boolean isNew, boolean wasOpenBefore) {}
