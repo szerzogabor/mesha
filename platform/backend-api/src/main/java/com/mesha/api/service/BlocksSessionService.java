@@ -150,7 +150,7 @@ public class BlocksSessionService {
                 ? session.getPrUrl()
                 : session.getExecutionState().name();
         activityService.record(issue, actor, eventType, oldState, newValue);
-        fireSessionStateAutomation(issue, oldState, session.getExecutionState());
+        fireSessionStateAutomation(session, oldState, session.getExecutionState());
 
         log.info("Blocks session state updated sessionId={} from={} to={}", sessionId, oldState, session.getExecutionState());
         return session;
@@ -266,16 +266,17 @@ public class BlocksSessionService {
                 ? session.getPrUrl()
                 : session.getExecutionState().name();
         activityService.record(issue, null, eventType, oldState, newValue);
-        fireSessionStateAutomation(issue, oldState, session.getExecutionState());
+        fireSessionStateAutomation(session, oldState, session.getExecutionState());
 
         log.info("Blocks session state advanced via webhook sessionId={} from={} to={}",
                 session.getId(), oldState, session.getExecutionState());
     }
 
-    private void fireSessionStateAutomation(Issue issue, String oldState, AIExecutionState newState) {
+    private void fireSessionStateAutomation(BlocksSession session, String oldState, AIExecutionState newState) {
         if (newState == null || newState.name().equals(oldState)) {
             return;
         }
+        Issue issue = session.getIssue();
         AutomationTriggerType trigger = switch (newState) {
             case DONE -> AutomationTriggerType.BLOCKS_SESSION_COMPLETED;
             case FAILED -> AutomationTriggerType.BLOCKS_SESSION_FAILED;
@@ -283,6 +284,30 @@ public class BlocksSessionService {
         };
         if (trigger != null) {
             automationService.executeFor(trigger, issue);
+            // A token/usage limit only manifests on a terminal transition (DONE/FAILED), so the
+            // message scan is gated here to avoid a needless query on every intermediate state change.
+            fireTokenLimitAutomationIfHit(session);
+        }
+    }
+
+    /**
+     * Fires the {@code AI_TOKEN_LIMIT_HIT} automation trigger when the session ended because the
+     * provider reached a token/context/usage limit. The limit notice arrives either as the session
+     * error message (e.g. Blocks {@code execution.failed} webhook {@code errorMessage}) or as one of
+     * the assistant messages already persisted for the session, so both are scanned.
+     */
+    private void fireTokenLimitAutomationIfHit(BlocksSession session) {
+        boolean tokenLimitHit = TokenLimitDetector.isTokenLimitMessage(session.getErrorMessage());
+        if (!tokenLimitHit) {
+            List<String> messages = blocksMessageRepository
+                    .findBySessionIdOrderByCreatedAtAsc(session.getId()).stream()
+                    .map(BlocksMessage::getMessage)
+                    .toList();
+            tokenLimitHit = TokenLimitDetector.anyMessageIsTokenLimit(messages);
+        }
+        if (tokenLimitHit) {
+            log.info("session_token_limit_detected session_id={}", session.getId());
+            automationService.executeFor(AutomationTriggerType.AI_TOKEN_LIMIT_HIT, session.getIssue());
         }
     }
 
