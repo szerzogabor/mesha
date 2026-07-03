@@ -81,6 +81,7 @@ export default function WorkspaceSettingsPage({
       <Group title="Integrations">
         <Row href={`${base}/github`} label="GitHub" description="Repositories & pull requests" />
         <Row href={`${base}/blocks`} label="Blocks" description="AI provider connection" />
+        <Row href={`${base}/openai`} label="OpenAI / ChatGPT" description="Use your ChatGPT subscription for drafts" />
       </Group>
 
       <Group title="App">

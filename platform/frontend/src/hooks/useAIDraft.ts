@@ -2,12 +2,12 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
-import { AIDraft, Issue, IssueStatus, IssuePriority } from "@/types";
+import { AIDraft, DraftProvider, Issue, IssueStatus, IssuePriority } from "@/types";
 
 export function useGenerateDraft(projectId: string) {
   return useMutation({
-    mutationFn: (prompt: string) =>
-      apiClient.post<AIDraft>(`/api/projects/${projectId}/ai-drafts`, { prompt }),
+    mutationFn: ({ prompt, provider }: { prompt: string; provider?: DraftProvider }) =>
+      apiClient.post<AIDraft>(`/api/projects/${projectId}/ai-drafts`, { prompt, provider }),
   });
 }
 
@@ -49,10 +49,18 @@ export function useRejectDraft(projectId: string) {
 
 export function useRegenerateDraft(projectId: string) {
   return useMutation({
-    mutationFn: ({ draftId, prompt }: { draftId: string; prompt?: string }) =>
+    mutationFn: ({
+      draftId,
+      prompt,
+      provider,
+    }: {
+      draftId: string;
+      prompt?: string;
+      provider?: DraftProvider;
+    }) =>
       apiClient.post<AIDraft>(
         `/api/projects/${projectId}/ai-drafts/${draftId}/regenerate`,
-        prompt ? { prompt } : {}
+        { ...(prompt ? { prompt } : {}), ...(provider ? { provider } : {}) }
       ),
   });
 }

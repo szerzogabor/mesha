@@ -79,6 +79,17 @@ ai:
     api-key: ${ANTHROPIC_API_KEY:}
     model: ${ANTHROPIC_MODEL:claude-haiku-4-5-20251001}
     base-url: https://api.anthropic.com
+  # Per-user OpenAI / ChatGPT draft provider. Credentials are supplied by each user
+  # (API key or a ChatGPT-subscription token from ~/.codex/auth.json); these are just
+  # endpoint/model/OAuth defaults, overridable since the ChatGPT-backend and OAuth
+  # values are OpenAI/Codex internals that may change.
+  openai:
+    api-base-url: ${OPENAI_API_BASE_URL:https://api.openai.com}
+    api-model: ${OPENAI_API_MODEL:gpt-4o-mini}
+    chatgpt-base-url: ${OPENAI_CHATGPT_BASE_URL:https://chatgpt.com/backend-api}
+    chatgpt-model: ${OPENAI_CHATGPT_MODEL:gpt-5}
+    oauth-token-url: ${OPENAI_OAUTH_TOKEN_URL:https://auth.openai.com/oauth/token}
+    oauth-client-id: ${OPENAI_OAUTH_CLIENT_ID:app_EMoamEEZ73f0CkXaXp7hrann}
 
 blocks:
   webhook:

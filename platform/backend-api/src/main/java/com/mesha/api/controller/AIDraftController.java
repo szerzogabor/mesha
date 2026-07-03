@@ -38,8 +38,8 @@ public class AIDraftController {
             @PathVariable UUID projectId,
             @CurrentUser User user,
             @Valid @RequestBody GenerateDraftRequest req) {
-        log.info("Generating AI draft projectId={} userId={}", projectId, user.getId());
-        AIDraft draft = draftService.generate(projectId, req.prompt(), user);
+        log.info("Generating AI draft projectId={} userId={} provider={}", projectId, user.getId(), req.provider());
+        AIDraft draft = draftService.generate(projectId, req.prompt(), req.provider(), user);
         log.info("AI draft generated draftId={} projectId={} userId={}", draft.getId(), projectId, user.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(AIDraftDto.from(draft));
     }
@@ -85,9 +85,10 @@ public class AIDraftController {
             @CurrentUser User user,
             @RequestBody(required = false) GenerateDraftRequest req) {
         String newPrompt = req != null ? req.prompt() : null;
-        log.info("Regenerating AI draft draftId={} projectId={} userId={} hasNewPrompt={}",
-                draftId, projectId, user.getId(), newPrompt != null);
-        AIDraft draft = draftService.regenerate(draftId, newPrompt, user);
+        var provider = req != null ? req.provider() : null;
+        log.info("Regenerating AI draft draftId={} projectId={} userId={} hasNewPrompt={} provider={}",
+                draftId, projectId, user.getId(), newPrompt != null, provider);
+        AIDraft draft = draftService.regenerate(draftId, newPrompt, provider, user);
         log.info("AI draft regenerated newDraftId={} previousDraftId={}", draft.getId(), draftId);
         return ResponseEntity.status(HttpStatus.CREATED).body(AIDraftDto.from(draft));
     }
