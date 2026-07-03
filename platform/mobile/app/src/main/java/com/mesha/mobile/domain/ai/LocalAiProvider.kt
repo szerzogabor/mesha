@@ -44,6 +44,18 @@ interface LocalAiProvider : AutoCloseable {
      */
     suspend fun generateChatResponse(history: List<LocalChatMessage>): String
 
+    /**
+     * Run inference on a fully-formed [prompt] and return the model's raw, trimmed output.
+     *
+     * Unlike [generateChatResponse] this performs no history/turn formatting — the caller
+     * owns the entire prompt. It's the low-level entry point used by the on-device ticket
+     * agent, which builds its own tool-calling prompt (instructions + tool schemas +
+     * reasoning scratchpad) and needs the response verbatim to parse an action out of it.
+     *
+     * @throws LocalAiException when the model is unavailable or inference fails.
+     */
+    suspend fun generate(prompt: String): String
+
     /** Releases native resources, if any. Default no-op for providers with nothing to free. */
     override fun close() {}
 }

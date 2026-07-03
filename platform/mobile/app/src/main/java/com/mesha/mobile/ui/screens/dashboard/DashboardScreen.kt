@@ -69,7 +69,7 @@ fun DashboardScreen(
             ) {
                 Icon(Icons.Filled.Chat, contentDescription = null,
                     modifier = Modifier.padding(end = 8.dp))
-                Text("Chat with Local AI")
+                Text("Chat with AI Agent")
             }
 
             if (unsynced > 0) {

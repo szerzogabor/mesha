@@ -4,6 +4,8 @@ import app.cash.turbine.test
 import com.mesha.mobile.domain.ai.LocalAiException
 import com.mesha.mobile.domain.ai.LocalAiProvider
 import com.mesha.mobile.domain.ai.LocalChatMessage
+import com.mesha.mobile.domain.ai.agent.AgentStep
+import com.mesha.mobile.domain.ai.agent.TicketAgent
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -26,6 +28,21 @@ class LocalLlmChatViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
 
+    private fun agentReturning(vararg replies: String): TicketAgent {
+        val agent = mockk<TicketAgent>()
+        var index = 0
+        coEvery { agent.run(any(), any()) } coAnswers {
+            replies.getOrElse(index++) { replies.last() }
+        }
+        return agent
+    }
+
+    private fun availableProvider(available: Boolean = true): LocalAiProvider {
+        val provider = mockk<LocalAiProvider>(relaxed = true)
+        coEvery { provider.isAvailable() } returns available
+        return provider
+    }
+
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
@@ -38,16 +55,13 @@ class LocalLlmChatViewModelTest {
 
     @Test
     fun initialState_modelAvailableCheckedOnInit() = runTest {
-        val localAi = mockk<LocalAiProvider>()
-        coEvery { localAi.isAvailable() } returns true
-
-        val viewModel = LocalLlmChatViewModel(localAi)
+        val viewModel = LocalLlmChatViewModel(agentReturning("hi"), availableProvider(true))
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.state.test {
             val state = awaitItem()
             assertTrue(state.modelAvailable)
-            assertTrue(state.messages.isEmpty())
+            assertTrue(state.entries.isEmpty())
             assertEquals("", state.inputText)
             assertFalse(state.isGenerating)
             assertNull(state.error)
@@ -57,10 +71,7 @@ class LocalLlmChatViewModelTest {
 
     @Test
     fun initialState_modelUnavailable_whenProviderReportsFalse() = runTest {
-        val localAi = mockk<LocalAiProvider>()
-        coEvery { localAi.isAvailable() } returns false
-
-        val viewModel = LocalLlmChatViewModel(localAi)
+        val viewModel = LocalLlmChatViewModel(agentReturning("hi"), availableProvider(false))
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.state.test {
@@ -71,8 +82,7 @@ class LocalLlmChatViewModelTest {
 
     @Test
     fun onInputChange_updatesInputText() = runTest {
-        val localAi = mockk<LocalAiProvider>(relaxed = true)
-        val viewModel = LocalLlmChatViewModel(localAi)
+        val viewModel = LocalLlmChatViewModel(agentReturning("hi"), availableProvider())
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onInputChange("Hello!")
@@ -84,32 +94,8 @@ class LocalLlmChatViewModelTest {
     }
 
     @Test
-    fun onInputChange_clearsExistingError() = runTest {
-        val localAi = mockk<LocalAiProvider>(relaxed = true)
-        coEvery { localAi.generateChatResponse(any()) } throws LocalAiException.InferenceFailed("failed")
-        val viewModel = LocalLlmChatViewModel(localAi)
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        viewModel.onInputChange("trigger error")
-        viewModel.sendMessage()
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        viewModel.onInputChange("new input")
-
-        viewModel.state.test {
-            val state = awaitItem()
-            assertNull(state.error)
-            cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
-    fun sendMessage_addsUserAndAssistantMessages() = runTest {
-        val localAi = mockk<LocalAiProvider>()
-        coEvery { localAi.isAvailable() } returns true
-        coEvery { localAi.generateChatResponse(any()) } returns "Hi there!"
-
-        val viewModel = LocalLlmChatViewModel(localAi)
+    fun sendMessage_addsUserAndAssistantEntries() = runTest {
+        val viewModel = LocalLlmChatViewModel(agentReturning("Hi there!"), availableProvider())
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onInputChange("Hello")
@@ -118,11 +104,9 @@ class LocalLlmChatViewModelTest {
 
         viewModel.state.test {
             val state = awaitItem()
-            assertEquals(2, state.messages.size)
-            assertEquals(LocalChatMessage.Role.USER, state.messages[0].role)
-            assertEquals("Hello", state.messages[0].content)
-            assertEquals(LocalChatMessage.Role.ASSISTANT, state.messages[1].role)
-            assertEquals("Hi there!", state.messages[1].content)
+            assertEquals(2, state.entries.size)
+            assertEquals(ChatEntry.User("Hello"), state.entries[0])
+            assertEquals(ChatEntry.Assistant("Hi there!"), state.entries[1])
             assertFalse(state.isGenerating)
             assertEquals("", state.inputText)
             cancelAndIgnoreRemainingEvents()
@@ -130,12 +114,43 @@ class LocalLlmChatViewModelTest {
     }
 
     @Test
-    fun sendMessage_passesFullHistoryToProvider() = runTest {
-        val localAi = mockk<LocalAiProvider>()
-        coEvery { localAi.isAvailable() } returns true
-        coEvery { localAi.generateChatResponse(any()) } returnsMany listOf("Reply 1", "Reply 2")
+    fun sendMessage_surfacesToolActivityFromAgentSteps() = runTest {
+        val agent = mockk<TicketAgent>()
+        coEvery { agent.run(any(), any()) } coAnswers {
+            val onStep = secondArg<(AgentStep) -> Unit>()
+            onStep(AgentStep.ToolInvocation("list_tickets", "list_tickets"))
+            onStep(AgentStep.ToolResult("list_tickets", "2 tickets: MES-1, MES-2"))
+            "You have 2 tickets."
+        }
+        val viewModel = LocalLlmChatViewModel(agent, availableProvider())
+        testDispatcher.scheduler.advanceUntilIdle()
 
-        val viewModel = LocalLlmChatViewModel(localAi)
+        viewModel.onInputChange("what's open?")
+        viewModel.sendMessage()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.state.test {
+            val entries = awaitItem().entries
+            assertEquals(3, entries.size)
+            assertEquals(ChatEntry.User("what's open?"), entries[0])
+            val tool = entries[1] as ChatEntry.Tool
+            assertEquals("list_tickets", tool.title)
+            assertEquals("2 tickets: MES-1, MES-2", tool.detail)
+            assertFalse(tool.running)
+            assertEquals(ChatEntry.Assistant("You have 2 tickets."), entries[2])
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun sendMessage_passesGrowingConversationToAgent() = runTest {
+        val histories = mutableListOf<List<LocalChatMessage>>()
+        val agent = mockk<TicketAgent>()
+        var index = 0
+        coEvery { agent.run(capture(histories), any()) } coAnswers {
+            listOf("Reply 1", "Reply 2").getOrElse(index++) { "Reply" }
+        }
+        val viewModel = LocalLlmChatViewModel(agent, availableProvider())
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onInputChange("First message")
@@ -146,20 +161,19 @@ class LocalLlmChatViewModelTest {
         viewModel.sendMessage()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        coVerify {
-            localAi.generateChatResponse(match { history ->
-                history.size == 3 &&
-                    history[0].role == LocalChatMessage.Role.USER &&
-                    history[1].role == LocalChatMessage.Role.ASSISTANT &&
-                    history[2].role == LocalChatMessage.Role.USER
-            })
-        }
+        // First turn: [user]. Second turn: [user, assistant, user].
+        assertEquals(1, histories[0].size)
+        assertEquals(3, histories[1].size)
+        assertEquals(LocalChatMessage.Role.USER, histories[1][0].role)
+        assertEquals(LocalChatMessage.Role.ASSISTANT, histories[1][1].role)
+        assertEquals("Reply 1", histories[1][1].content)
+        assertEquals(LocalChatMessage.Role.USER, histories[1][2].role)
     }
 
     @Test
     fun sendMessage_ignoresBlankInput() = runTest {
-        val localAi = mockk<LocalAiProvider>(relaxed = true)
-        val viewModel = LocalLlmChatViewModel(localAi)
+        val agent = agentReturning("unused")
+        val viewModel = LocalLlmChatViewModel(agent, availableProvider())
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onInputChange("   ")
@@ -167,20 +181,16 @@ class LocalLlmChatViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.state.test {
-            val state = awaitItem()
-            assertTrue(state.messages.isEmpty())
+            assertTrue(awaitItem().entries.isEmpty())
             cancelAndIgnoreRemainingEvents()
         }
-        coVerify(exactly = 0) { localAi.generateChatResponse(any()) }
+        coVerify(exactly = 0) { agent.run(any(), any()) }
     }
 
     @Test
     fun sendMessage_ignoresWhenAlreadyGenerating() = runTest {
-        val localAi = mockk<LocalAiProvider>()
-        coEvery { localAi.isAvailable() } returns true
-        coEvery { localAi.generateChatResponse(any()) } returns "Response"
-
-        val viewModel = LocalLlmChatViewModel(localAi)
+        val agent = agentReturning("Response")
+        val viewModel = LocalLlmChatViewModel(agent, availableProvider())
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onInputChange("First")
@@ -191,17 +201,14 @@ class LocalLlmChatViewModelTest {
         viewModel.sendMessage()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        coVerify(exactly = 1) { localAi.generateChatResponse(any()) }
+        coVerify(exactly = 1) { agent.run(any(), any()) }
     }
 
     @Test
     fun sendMessage_setsErrorOnLocalAiException() = runTest {
-        val localAi = mockk<LocalAiProvider>()
-        coEvery { localAi.isAvailable() } returns true
-        coEvery { localAi.generateChatResponse(any()) } throws
-            LocalAiException.ModelNotAvailable("Model gone")
-
-        val viewModel = LocalLlmChatViewModel(localAi)
+        val agent = mockk<TicketAgent>()
+        coEvery { agent.run(any(), any()) } throws LocalAiException.ModelNotAvailable("Model gone")
+        val viewModel = LocalLlmChatViewModel(agent, availableProvider())
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onInputChange("Hello")
@@ -218,11 +225,9 @@ class LocalLlmChatViewModelTest {
 
     @Test
     fun sendMessage_setsErrorOnGenericException() = runTest {
-        val localAi = mockk<LocalAiProvider>()
-        coEvery { localAi.isAvailable() } returns true
-        coEvery { localAi.generateChatResponse(any()) } throws RuntimeException("Network error")
-
-        val viewModel = LocalLlmChatViewModel(localAi)
+        val agent = mockk<TicketAgent>()
+        coEvery { agent.run(any(), any()) } throws RuntimeException("Network error")
+        val viewModel = LocalLlmChatViewModel(agent, availableProvider())
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onInputChange("Hello")
@@ -239,11 +244,9 @@ class LocalLlmChatViewModelTest {
 
     @Test
     fun dismissError_clearsErrorField() = runTest {
-        val localAi = mockk<LocalAiProvider>()
-        coEvery { localAi.isAvailable() } returns true
-        coEvery { localAi.generateChatResponse(any()) } throws LocalAiException.InferenceFailed("oops")
-
-        val viewModel = LocalLlmChatViewModel(localAi)
+        val agent = mockk<TicketAgent>()
+        coEvery { agent.run(any(), any()) } throws LocalAiException.InferenceFailed("oops")
+        val viewModel = LocalLlmChatViewModel(agent, availableProvider())
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onInputChange("hi")

@@ -44,11 +44,17 @@ app/src/main/java/com/mesha/mobile/
 │   └── sync/            # DraftSyncWorker (offline queue drain)
 ├── domain/
 │   ├── ai/              # LocalAiProvider, GemmaLocalAiProvider, IssueDraftParser
+│   │   └── agent/       # On-device ticket agent (TicketAgent, tools, prompt/action parsing)
 │   └── speech/          # SpeechInputProvider, AndroidSpeechInputProvider
 ├── localai/            # Local AI model management (catalog, download, storage, repo, UI)
 ├── update/              # UpdateChecker, ApkInstaller (in-app updates)
 └── ui/                  # Compose theme, navigation, screens + ViewModels
 ```
+
+Beyond one-shot issue drafting, the **Chat with AI Agent** screen is backed by an on-device
+agent that can read and modify the user's tickets (list/get, create, update title/description/
+status/priority/labels/assignee, add comments) through natural-language chat — still fully
+on-device, see [`AI_AGENT.md`](../docs/mobile/AI_AGENT.md).
 
 Full documentation lives in [`../docs/mobile/`](../docs/mobile/), including native on-device
 model management ([`LOCAL_AI.md`](../docs/mobile/LOCAL_AI.md)) and how
