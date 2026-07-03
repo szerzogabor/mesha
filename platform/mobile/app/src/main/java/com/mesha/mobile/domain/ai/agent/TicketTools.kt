@@ -2,7 +2,6 @@ package com.mesha.mobile.domain.ai.agent
 
 import com.mesha.mobile.data.remote.dto.CreateIssueRequestDto
 import com.mesha.mobile.data.remote.dto.IssueDto
-import com.mesha.mobile.data.remote.dto.LabelDto
 import com.mesha.mobile.data.remote.dto.UpdateIssueRequestDto
 import com.mesha.mobile.data.repository.MeshaRepository
 import kotlinx.serialization.json.JsonArray
@@ -75,6 +74,8 @@ private fun IssueDto.line(): String {
  */
 internal suspend fun MeshaRepository.resolveIssue(projectId: String, ref: String): IssueDto? {
     val needle = ref.trim().trimStart('#')
+    // Guard an empty reference: title.contains("") is always true and would match the first issue.
+    if (needle.isBlank()) return null
     val issues = getIssues(projectId, size = 100).getOrElse { return null }
     return issues.firstOrNull { it.identifier?.equals(needle, ignoreCase = true) == true }
         ?: issues.firstOrNull { it.title.equals(needle, ignoreCase = true) }
@@ -210,19 +211,23 @@ class ListMembersTool(private val repo: MeshaRepository) : AgentTool {
 
 // ---- write tools -------------------------------------------------------------
 
-/** Resolve label names to ids against the workspace, reporting any that didn't match. */
+/**
+ * Resolve label names to ids against the workspace, reporting any that didn't match.
+ *
+ * Returns a [Result] so a failed label fetch propagates instead of being swallowed: silently
+ * returning an empty list would make a full-replace label update wipe every label on the ticket.
+ */
 private suspend fun MeshaRepository.resolveLabelIds(
     workspaceId: String,
     names: List<String>,
-): Pair<List<String>, List<String>> {
-    val all: List<LabelDto> = getLabels(workspaceId).getOrElse { emptyList() }
+): Result<Pair<List<String>, List<String>>> = getLabels(workspaceId).map { all ->
     val ids = mutableListOf<String>()
     val unknown = mutableListOf<String>()
     for (name in names) {
         val match = all.firstOrNull { it.name.equals(name.trim().trimStart('#'), ignoreCase = true) }
         if (match != null) ids.add(match.id) else unknown.add(name)
     }
-    return ids to unknown
+    ids to unknown
 }
 
 /** Resolve an assignee reference (name or email) to a workspace member's user id. */
@@ -268,6 +273,7 @@ class CreateTicketTool(private val repo: MeshaRepository) : AgentTool {
         args.strList("labels", "label")?.let { names ->
             val workspaceId = context.workspaceId ?: return NO_WORKSPACE
             val (ids, unknown) = repo.resolveLabelIds(workspaceId, names)
+                .getOrElse { return "Couldn't load labels: ${it.message ?: "API error"}." }
             labelIds = ids
             if (unknown.isNotEmpty()) notes.append(" (skipped unknown labels: ${unknown.joinToString(", ")})")
         }
@@ -354,6 +360,7 @@ class UpdateTicketTool(private val repo: MeshaRepository) : AgentTool {
             val target = LinkedHashSet<String>()
             if (replace != null) {
                 val (ids, unknown) = repo.resolveLabelIds(workspaceId, replace)
+                    .getOrElse { return "Couldn't load labels: ${it.message ?: "API error"}." }
                 target.addAll(ids)
                 if (unknown.isNotEmpty()) notes.append(" (skipped unknown labels: ${unknown.joinToString(", ")})")
             } else {
@@ -361,11 +368,13 @@ class UpdateTicketTool(private val repo: MeshaRepository) : AgentTool {
             }
             if (add != null) {
                 val (ids, unknown) = repo.resolveLabelIds(workspaceId, add)
+                    .getOrElse { return "Couldn't load labels: ${it.message ?: "API error"}." }
                 target.addAll(ids)
                 if (unknown.isNotEmpty()) notes.append(" (skipped unknown labels: ${unknown.joinToString(", ")})")
             }
             if (remove != null) {
                 val (ids, _) = repo.resolveLabelIds(workspaceId, remove)
+                    .getOrElse { return "Couldn't load labels: ${it.message ?: "API error"}." }
                 target.removeAll(ids.toSet())
             }
             changes.add("labels")

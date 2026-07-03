@@ -3,6 +3,7 @@ package com.mesha.mobile.domain.ai.agent
 import com.mesha.mobile.data.repository.SelectionStore
 import com.mesha.mobile.domain.ai.LocalAiProvider
 import com.mesha.mobile.domain.ai.LocalChatMessage
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -70,8 +71,15 @@ class TicketAgent @Inject constructor(
                             registry.tools.joinToString(", ") { it.name } +
                             """. Call one of these, or answer with {"final":"…"}."""
                     } else {
-                        runCatching { tool.execute(action.arguments, context) }
-                            .getOrElse { "The tool failed: ${it.message ?: "unknown error"}." }
+                        try {
+                            tool.execute(action.arguments, context)
+                        } catch (e: CancellationException) {
+                            // Never swallow cancellation — rethrow so structured concurrency
+                            // can tear the loop down instead of turning it into an observation.
+                            throw e
+                        } catch (e: Exception) {
+                            "The tool failed: ${e.message ?: "unknown error"}."
+                        }
                     }
 
                     lastObservation = observation

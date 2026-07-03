@@ -159,6 +159,22 @@ class TicketToolsTest {
     }
 
     @Test
+    fun updateTicket_abortsWhenLabelFetchFails_ratherThanClearing() = runTest {
+        val repo = mockk<MeshaRepository>()
+        coEvery { repo.getIssues(any(), any(), any()) } returns Result.success(listOf(issueMes1))
+        coEvery { repo.getLabels("w") } returns Result.failure(RuntimeException("offline"))
+
+        val result = UpdateTicketTool(repo).execute(
+            args("""{"ticket":"MES-1","labels":["bug"]}"""),
+            projectCtx,
+        )
+
+        assertTrue(result.contains("Couldn't load labels"))
+        // Must NOT fall through to an update that would wipe the ticket's labels.
+        coVerify(exactly = 0) { repo.updateIssue(any(), any(), any()) }
+    }
+
+    @Test
     fun updateTicket_resolvesAssigneeByName() = runTest {
         val repo = mockk<MeshaRepository>()
         coEvery { repo.getIssues(any(), any(), any()) } returns Result.success(listOf(issueMes1))
