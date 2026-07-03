@@ -2,7 +2,7 @@ package com.mesha.mobile.data.remote.dto
 
 import kotlinx.serialization.Serializable
 
-/** Prompt body for the per-user AI endpoints (`/api/me/ai/*`). */
+/** Prompt body for the per-user AI endpoints (`/api/me/ai/draft`, `/api/me/ai/complete`). */
 @Serializable
 data class MeAiPromptRequestDto(val prompt: String)
 

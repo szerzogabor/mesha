@@ -9,21 +9,20 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import retrofit2.HttpException
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * A [LocalAiProvider] that generates via the user's own OpenAI/ChatGPT credential by calling
- * the backend (`/api/me/ai/*`), instead of an on-device model. The credential is configured
- * once on the web; this provider just uses it. Despite the interface name, "local" here means
- * "the app's pluggable AI provider" — the interface doc explicitly anticipates a remote one.
+ * the backend (the `/api/me/ai` endpoints), instead of an on-device model. The credential is
+ * configured once on the web; this provider just uses it. Despite the interface name, "local"
+ * here means "the app's pluggable AI provider" — the interface doc anticipates a remote one.
  *
  * HTTP/network failures are translated to [LocalAiException] so the existing UI error handling
  * applies unchanged. A 412 means the user hasn't connected OpenAI.
- *
- * DIAGNOSTIC: temporarily not an @Inject/@Singleton Hilt type and unwired from
- * AiProviderCoordinator to surface the real kotlinc error masked by KSP2's opaque
- * "could not be resolved". To be reverted once the underlying cause is identified.
  */
-class RemoteOpenAiProvider(
+@Singleton
+class RemoteOpenAiProvider @Inject constructor(
     private val meAiApi: MeAiApi,
 ) : LocalAiProvider {
 

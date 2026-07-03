@@ -20,11 +20,10 @@ import javax.inject.Singleton
 @Singleton
 class AiProviderCoordinator @Inject constructor(
     private val localRouter: LocalAiProviderRouter,
+    private val remote: RemoteOpenAiProvider,
     private val modelStorageManager: ModelStorageManager,
     private val prefs: AiProviderPreferences,
 ) {
-    // DIAGNOSTIC: RemoteOpenAiProvider temporarily unwired to surface the real KSP2-masked error.
-    private val remote: RemoteOpenAiProvider? = null
 
     private val _options = MutableStateFlow<List<AiProviderChoice>>(emptyList())
     val options: StateFlow<List<AiProviderChoice>> = _options.asStateFlow()
@@ -41,7 +40,7 @@ class AiProviderCoordinator @Inject constructor(
         // Resolve suspend inputs first, then build the list — keep the suspend call out of
         // any builder/inline lambda.
         val installed = modelStorageManager.installedModels()
-        val chatGptAvailable = remote?.isAvailable() ?: false
+        val chatGptAvailable = remote.isAvailable()
 
         val opts = mutableListOf<AiProviderChoice>()
         if (installed.isNotEmpty()) {
@@ -65,5 +64,5 @@ class AiProviderCoordinator @Inject constructor(
 
     /** The provider to run for the current selection (defaults to on-device). */
     fun active(): LocalAiProvider =
-        if (_selected.value?.kind == AiProviderKind.OPENAI && remote != null) remote else localRouter
+        if (_selected.value?.kind == AiProviderKind.OPENAI) remote else localRouter
 }
