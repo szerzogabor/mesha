@@ -517,7 +517,9 @@ private fun CommentsSection(state: IssueDetailUiState, viewModel: IssueDetailVie
 
 @Composable
 private fun CommentCard(comment: CommentDto, depth: Int, viewModel: IssueDetailViewModel) {
-    Card(Modifier.fillMaxWidth().padding(start = (depth * 16).dp)) {
+    // Cap indentation depth so deeply-nested reply chains can't push the card off-screen.
+    val startPadding = minOf(depth, 4) * 12
+    Card(Modifier.fillMaxWidth().padding(start = startPadding.dp)) {
         Column(Modifier.padding(12.dp)) {
             Row(
                 Modifier.fillMaxWidth(),

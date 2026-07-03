@@ -54,6 +54,7 @@ class IssuesViewModel @Inject constructor(
     val state: StateFlow<IssuesUiState> = _state.asStateFlow()
 
     private var searchJob: Job? = null
+    private var issuesJob: Job? = null
 
     init { load() }
 
@@ -144,11 +145,13 @@ class IssuesViewModel @Inject constructor(
     private fun loadIssues(projectId: String, reset: Boolean) {
         val s = _state.value
         val page = if (reset) 0 else s.page + 1
+        // A new query/filter supersedes any in-flight load so stale results can't overwrite it.
+        if (reset) issuesJob?.cancel()
         _state.update {
             if (reset) it.copy(loading = true, error = null)
             else it.copy(loadingMore = true)
         }
-        viewModelScope.launch {
+        issuesJob = viewModelScope.launch {
             meshaRepository.getIssuesPaged(
                 projectId = projectId,
                 status = s.statusFilter,

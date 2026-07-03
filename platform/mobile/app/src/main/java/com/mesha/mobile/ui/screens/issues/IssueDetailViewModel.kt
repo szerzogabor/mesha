@@ -15,6 +15,7 @@ import com.mesha.mobile.data.remote.dto.WorkspaceMemberDto
 import com.mesha.mobile.data.repository.MeshaRepository
 import com.mesha.mobile.data.repository.SelectionStore
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -88,13 +89,23 @@ class IssueDetailViewModel @Inject constructor(
         this.issueId = issueId
         _state.update { it.copy(loading = true, error = null) }
         viewModelScope.launch {
-            val issue = meshaRepository.getIssue(projectId, issueId).getOrNull()
-            val comments = meshaRepository.getComments(issueId).getOrNull().orEmpty()
-            val statuses = meshaRepository.getProjectStatuses(projectId).getOrNull().orEmpty()
-                .sortedBy { it.position ?: 0 }
-            val activity = meshaRepository.getIssueActivity(projectId, issueId).getOrNull().orEmpty()
-            val issueAgents = meshaRepository.getIssueAgents(projectId, issueId).getOrNull().orEmpty()
-            val blocksSessions = meshaRepository.getBlocksSessions(projectId, issueId).getOrNull().orEmpty()
+            // Independent reads run concurrently — the issue is required, the rest are best-effort.
+            val issueDeferred = async { meshaRepository.getIssue(projectId, issueId).getOrNull() }
+            val commentsDeferred = async { meshaRepository.getComments(issueId).getOrNull().orEmpty() }
+            val statusesDeferred = async {
+                meshaRepository.getProjectStatuses(projectId).getOrNull().orEmpty()
+                    .sortedBy { it.position ?: 0 }
+            }
+            val activityDeferred = async { meshaRepository.getIssueActivity(projectId, issueId).getOrNull().orEmpty() }
+            val issueAgentsDeferred = async { meshaRepository.getIssueAgents(projectId, issueId).getOrNull().orEmpty() }
+            val blocksSessionsDeferred = async { meshaRepository.getBlocksSessions(projectId, issueId).getOrNull().orEmpty() }
+
+            val issue = issueDeferred.await()
+            val comments = commentsDeferred.await()
+            val statuses = statusesDeferred.await()
+            val activity = activityDeferred.await()
+            val issueAgents = issueAgentsDeferred.await()
+            val blocksSessions = blocksSessionsDeferred.await()
             if (issue == null) {
                 _state.update { it.copy(loading = false, error = "Issue not found") }
             } else {
@@ -135,14 +146,17 @@ class IssueDetailViewModel @Inject constructor(
         viewModelScope.launch {
             meshaRepository.addComment(issueId, body, parentId).fold(
                 onSuccess = {
-                    // Re-fetch to get the correctly-threaded tree from the server.
-                    val comments = meshaRepository.getComments(issueId).getOrNull().orEmpty()
+                    // Re-fetch to get the correctly-threaded tree from the server. Keep the
+                    // existing comments (plus the just-sent one is included server-side) if the
+                    // refetch fails, rather than wiping the list.
+                    val commentsResult = meshaRepository.getComments(issueId)
                     _state.update {
                         it.copy(
                             sendingComment = false,
                             commentInput = "",
                             replyingToId = null,
-                            comments = comments,
+                            comments = commentsResult.getOrNull() ?: it.comments,
+                            updateError = commentsResult.exceptionOrNull()?.message,
                         )
                     }
                 },
@@ -157,8 +171,13 @@ class IssueDetailViewModel @Inject constructor(
         viewModelScope.launch {
             meshaRepository.deleteComment(issueId, commentId).fold(
                 onSuccess = {
-                    val comments = meshaRepository.getComments(issueId).getOrNull().orEmpty()
-                    _state.update { it.copy(comments = comments) }
+                    val commentsResult = meshaRepository.getComments(issueId)
+                    _state.update {
+                        it.copy(
+                            comments = commentsResult.getOrNull() ?: it.comments,
+                            updateError = commentsResult.exceptionOrNull()?.message,
+                        )
+                    }
                 },
                 onFailure = { e -> _state.update { it.copy(updateError = e.message) } },
             )

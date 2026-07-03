@@ -10,6 +10,7 @@ import com.mesha.mobile.data.remote.dto.WorkspaceMemberDto
 import com.mesha.mobile.data.repository.MeshaRepository
 import com.mesha.mobile.data.repository.SelectionStore
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -59,12 +60,28 @@ class CreateIssueManualViewModel @Inject constructor(
                 _state.update { it.copy(loading = false, error = "No workspace available") }
                 return@launch
             }
-            val projects = meshaRepository.getProjects(wsId).getOrNull().orEmpty()
-            val members = meshaRepository.getWorkspaceMembers(wsId).getOrNull().orEmpty()
-            val labels = meshaRepository.getLabels(wsId).getOrNull().orEmpty()
+            // Fetch the independent option lists concurrently.
+            val projectsDeferred = async { meshaRepository.getProjects(wsId).getOrNull().orEmpty() }
+            val membersDeferred = async { meshaRepository.getWorkspaceMembers(wsId).getOrNull().orEmpty() }
+            val labelsDeferred = async { meshaRepository.getLabels(wsId).getOrNull().orEmpty() }
+
+            val projects = projectsDeferred.await()
+            val members = membersDeferred.await()
+            val labels = labelsDeferred.await()
+
             val selected = selectionStore.projectId.value
                 ?.takeIf { id -> projects.any { it.id == id } }
                 ?: projects.firstOrNull()?.id
+
+            // Resolve statuses before we drop the loading state so the Status field doesn't
+            // pop in after the form has already rendered.
+            val statuses = if (selected != null) {
+                meshaRepository.getProjectStatuses(selected).getOrNull().orEmpty()
+                    .sortedBy { it.position ?: 0 }
+            } else {
+                emptyList()
+            }
+
             _state.update {
                 it.copy(
                     loading = false,
@@ -72,9 +89,10 @@ class CreateIssueManualViewModel @Inject constructor(
                     members = members,
                     labels = labels,
                     selectedProjectId = selected,
+                    statuses = statuses,
+                    status = it.status ?: statuses.firstOrNull()?.name,
                 )
             }
-            selected?.let { loadStatuses(it) }
         }
     }
 
@@ -112,6 +130,7 @@ class CreateIssueManualViewModel @Inject constructor(
 
     fun submit() {
         val s = _state.value
+        if (s.submitting) return
         val projectId = s.selectedProjectId
         if (projectId == null) {
             _state.update { it.copy(error = "Select a project") }
