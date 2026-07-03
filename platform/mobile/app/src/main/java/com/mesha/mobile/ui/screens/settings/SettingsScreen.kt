@@ -29,6 +29,8 @@ import com.mesha.mobile.update.UpdateStatus
 @Composable
 fun SettingsScreen(
     onOpenAgents: () -> Unit,
+    onOpenAgentConfig: () -> Unit,
+    onOpenRules: () -> Unit,
     onOpenLocalAi: () -> Unit,
     onSignOut: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
@@ -103,6 +105,13 @@ fun SettingsScreen(
 
             HorizontalDivider()
 
+            Text("Workspace", fontWeight = FontWeight.SemiBold)
+            OutlinedButton(onClick = onOpenAgentConfig, modifier = Modifier.fillMaxWidth()) {
+                Text("Custom AI agents")
+            }
+            OutlinedButton(onClick = onOpenRules, modifier = Modifier.fillMaxWidth()) {
+                Text("Automations & ticket rules")
+            }
             OutlinedButton(onClick = onOpenAgents, modifier = Modifier.fillMaxWidth()) {
                 Text("Agent monitoring")
             }

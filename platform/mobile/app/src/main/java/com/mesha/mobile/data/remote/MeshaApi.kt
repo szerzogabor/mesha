@@ -1,17 +1,22 @@
 package com.mesha.mobile.data.remote
 
 import com.mesha.mobile.data.remote.dto.ActivityEventDto
+import com.mesha.mobile.data.remote.dto.AgentDefinitionDto
 import com.mesha.mobile.data.remote.dto.AgentSessionDto
 import com.mesha.mobile.data.remote.dto.AgentSessionMessageDto
 import com.mesha.mobile.data.remote.dto.AppReleaseDto
 import com.mesha.mobile.data.remote.dto.AssignAgentRequestDto
 import com.mesha.mobile.data.remote.dto.AssignableAgentDto
+import com.mesha.mobile.data.remote.dto.AutomationRuleDto
 import com.mesha.mobile.data.remote.dto.BlocksMessageDto
 import com.mesha.mobile.data.remote.dto.BlocksSessionDto
 import com.mesha.mobile.data.remote.dto.CommentDto
+import com.mesha.mobile.data.remote.dto.CreateAgentDefinitionRequestDto
+import com.mesha.mobile.data.remote.dto.CreateAutomationRuleRequestDto
 import com.mesha.mobile.data.remote.dto.CreateCommentRequestDto
 import com.mesha.mobile.data.remote.dto.CreateIssueRequestDto
 import com.mesha.mobile.data.remote.dto.CreateLabelRequestDto
+import com.mesha.mobile.data.remote.dto.CreateTicketRuleRequestDto
 import com.mesha.mobile.data.remote.dto.IssueAgentDto
 import com.mesha.mobile.data.remote.dto.IssueDto
 import com.mesha.mobile.data.remote.dto.LabelDto
@@ -22,6 +27,10 @@ import com.mesha.mobile.data.remote.dto.ProjectStatusDto
 import com.mesha.mobile.data.remote.dto.SendMessageRequestDto
 import com.mesha.mobile.data.remote.dto.StartSessionRequestDto
 import com.mesha.mobile.data.remote.dto.SyncUserRequestDto
+import com.mesha.mobile.data.remote.dto.TicketRuleDto
+import com.mesha.mobile.data.remote.dto.UpdateAgentDefinitionRequestDto
+import com.mesha.mobile.data.remote.dto.UpdateAutomationRuleRequestDto
+import com.mesha.mobile.data.remote.dto.UpdateTicketRuleRequestDto
 import com.mesha.mobile.data.remote.dto.WorkspaceDto
 import com.mesha.mobile.data.remote.dto.WorkspaceMemberDto
 import retrofit2.http.Body
@@ -29,6 +38,7 @@ import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -177,6 +187,81 @@ interface MeshaApi {
     // --- Agents (assignable agents = definitions + connector agents) ---
     @GET("api/workspaces/{workspaceId}/agents/active")
     suspend fun getActiveAgents(@Path("workspaceId") workspaceId: String): List<AssignableAgentDto>
+
+    // --- Agent definitions (workspace-scoped custom AI agent config) ---
+    @GET("api/workspaces/{workspaceId}/agents")
+    suspend fun getAgentDefinitions(
+        @Path("workspaceId") workspaceId: String,
+    ): List<AgentDefinitionDto>
+
+    @POST("api/workspaces/{workspaceId}/agents")
+    suspend fun createAgentDefinition(
+        @Path("workspaceId") workspaceId: String,
+        @Body body: CreateAgentDefinitionRequestDto,
+    ): AgentDefinitionDto
+
+    @PUT("api/workspaces/{workspaceId}/agents/{agentId}")
+    suspend fun updateAgentDefinition(
+        @Path("workspaceId") workspaceId: String,
+        @Path("agentId") agentId: String,
+        @Body body: UpdateAgentDefinitionRequestDto,
+    ): AgentDefinitionDto
+
+    @DELETE("api/workspaces/{workspaceId}/agents/{agentId}")
+    suspend fun deleteAgentDefinition(
+        @Path("workspaceId") workspaceId: String,
+        @Path("agentId") agentId: String,
+    ): Unit
+
+    // --- Automation rules (project-scoped: trigger -> actions) ---
+    @GET("api/projects/{projectId}/automations")
+    suspend fun getAutomationRules(
+        @Path("projectId") projectId: String,
+    ): List<AutomationRuleDto>
+
+    @POST("api/projects/{projectId}/automations")
+    suspend fun createAutomationRule(
+        @Path("projectId") projectId: String,
+        @Body body: CreateAutomationRuleRequestDto,
+    ): AutomationRuleDto
+
+    @PATCH("api/projects/{projectId}/automations/{ruleId}")
+    suspend fun updateAutomationRule(
+        @Path("projectId") projectId: String,
+        @Path("ruleId") ruleId: String,
+        @Body body: UpdateAutomationRuleRequestDto,
+    ): AutomationRuleDto
+
+    @DELETE("api/projects/{projectId}/automations/{ruleId}")
+    suspend fun deleteAutomationRule(
+        @Path("projectId") projectId: String,
+        @Path("ruleId") ruleId: String,
+    ): Unit
+
+    // --- Ticket rules (project-scoped guardrails: conditions -> restrictions) ---
+    @GET("api/projects/{projectId}/ticket-rules")
+    suspend fun getTicketRules(
+        @Path("projectId") projectId: String,
+    ): List<TicketRuleDto>
+
+    @POST("api/projects/{projectId}/ticket-rules")
+    suspend fun createTicketRule(
+        @Path("projectId") projectId: String,
+        @Body body: CreateTicketRuleRequestDto,
+    ): TicketRuleDto
+
+    @PATCH("api/projects/{projectId}/ticket-rules/{ruleId}")
+    suspend fun updateTicketRule(
+        @Path("projectId") projectId: String,
+        @Path("ruleId") ruleId: String,
+        @Body body: UpdateTicketRuleRequestDto,
+    ): TicketRuleDto
+
+    @DELETE("api/projects/{projectId}/ticket-rules/{ruleId}")
+    suspend fun deleteTicketRule(
+        @Path("projectId") projectId: String,
+        @Path("ruleId") ruleId: String,
+    ): Unit
 
     // --- Sessions (connector agent sessions) ---
     @GET("api/agent-sessions")

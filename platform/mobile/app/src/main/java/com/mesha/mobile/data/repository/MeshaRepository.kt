@@ -2,20 +2,29 @@ package com.mesha.mobile.data.repository
 
 import com.mesha.mobile.data.remote.MeshaApi
 import com.mesha.mobile.data.remote.dto.ActivityEventDto
+import com.mesha.mobile.data.remote.dto.AgentDefinitionDto
 import com.mesha.mobile.data.remote.dto.AgentSessionDto
 import com.mesha.mobile.data.remote.dto.AgentSessionMessageDto
 import com.mesha.mobile.data.remote.dto.AssignAgentRequestDto
 import com.mesha.mobile.data.remote.dto.AssignableAgentDto
+import com.mesha.mobile.data.remote.dto.AutomationRuleDto
 import com.mesha.mobile.data.remote.dto.BlocksSessionDto
 import com.mesha.mobile.data.remote.dto.CommentDto
+import com.mesha.mobile.data.remote.dto.CreateAgentDefinitionRequestDto
+import com.mesha.mobile.data.remote.dto.CreateAutomationRuleRequestDto
 import com.mesha.mobile.data.remote.dto.CreateCommentRequestDto
 import com.mesha.mobile.data.remote.dto.CreateIssueRequestDto
 import com.mesha.mobile.data.remote.dto.CreateLabelRequestDto
+import com.mesha.mobile.data.remote.dto.CreateTicketRuleRequestDto
 import com.mesha.mobile.data.remote.dto.IssueAgentDto
 import com.mesha.mobile.data.remote.dto.IssueDto
 import com.mesha.mobile.data.remote.dto.PagedResponseDto
 import com.mesha.mobile.data.remote.dto.StartSessionRequestDto
+import com.mesha.mobile.data.remote.dto.TicketRuleDto
+import com.mesha.mobile.data.remote.dto.UpdateAgentDefinitionRequestDto
+import com.mesha.mobile.data.remote.dto.UpdateAutomationRuleRequestDto
 import com.mesha.mobile.data.remote.dto.UpdateIssueRequestDto
+import com.mesha.mobile.data.remote.dto.UpdateTicketRuleRequestDto
 import com.mesha.mobile.data.remote.dto.LabelDto
 import com.mesha.mobile.data.remote.dto.ProjectDto
 import com.mesha.mobile.data.remote.dto.ProjectStatusDto
@@ -117,6 +126,69 @@ class MeshaRepository @Inject constructor(
 
     suspend fun getActiveAgents(workspaceId: String): Result<List<AssignableAgentDto>> =
         io { api.getActiveAgents(workspaceId) }
+
+    // --- Agent definitions (custom AI agent config) ---
+
+    suspend fun getAgentDefinitions(workspaceId: String): Result<List<AgentDefinitionDto>> =
+        io { api.getAgentDefinitions(workspaceId) }
+
+    suspend fun createAgentDefinition(
+        workspaceId: String,
+        body: CreateAgentDefinitionRequestDto,
+    ): Result<AgentDefinitionDto> =
+        io { api.createAgentDefinition(workspaceId, body) }
+
+    suspend fun updateAgentDefinition(
+        workspaceId: String,
+        agentId: String,
+        body: UpdateAgentDefinitionRequestDto,
+    ): Result<AgentDefinitionDto> =
+        io { api.updateAgentDefinition(workspaceId, agentId, body) }
+
+    suspend fun deleteAgentDefinition(workspaceId: String, agentId: String): Result<Unit> =
+        io { api.deleteAgentDefinition(workspaceId, agentId) }
+
+    // --- Automation rules ---
+
+    suspend fun getAutomationRules(projectId: String): Result<List<AutomationRuleDto>> =
+        io { api.getAutomationRules(projectId) }
+
+    suspend fun createAutomationRule(
+        projectId: String,
+        body: CreateAutomationRuleRequestDto,
+    ): Result<AutomationRuleDto> =
+        io { api.createAutomationRule(projectId, body) }
+
+    suspend fun updateAutomationRule(
+        projectId: String,
+        ruleId: String,
+        body: UpdateAutomationRuleRequestDto,
+    ): Result<AutomationRuleDto> =
+        io { api.updateAutomationRule(projectId, ruleId, body) }
+
+    suspend fun deleteAutomationRule(projectId: String, ruleId: String): Result<Unit> =
+        io { api.deleteAutomationRule(projectId, ruleId) }
+
+    // --- Ticket rules ---
+
+    suspend fun getTicketRules(projectId: String): Result<List<TicketRuleDto>> =
+        io { api.getTicketRules(projectId) }
+
+    suspend fun createTicketRule(
+        projectId: String,
+        body: CreateTicketRuleRequestDto,
+    ): Result<TicketRuleDto> =
+        io { api.createTicketRule(projectId, body) }
+
+    suspend fun updateTicketRule(
+        projectId: String,
+        ruleId: String,
+        body: UpdateTicketRuleRequestDto,
+    ): Result<TicketRuleDto> =
+        io { api.updateTicketRule(projectId, ruleId, body) }
+
+    suspend fun deleteTicketRule(projectId: String, ruleId: String): Result<Unit> =
+        io { api.deleteTicketRule(projectId, ruleId) }
 
     suspend fun getSessions(): Result<List<AgentSessionDto>> =
         io { api.getSessions() }

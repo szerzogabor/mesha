@@ -1,6 +1,11 @@
 package com.mesha.mobile.data.remote.dto
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 
 /** Spring `PagedResponse<T>` mirror. */
 @Serializable
@@ -263,6 +268,184 @@ data class UpdateIssueRequestDto(
     val agentType: String? = null,
     val agentLlm: String? = null,
     val clearAgentAssignee: Boolean? = null,
+)
+
+// --- Agent definitions (workspace-scoped, custom AI agent config) ---
+
+/** Mirrors backend `AgentDefinitionDto`. `providerParameters` is a free-form JSON object. */
+@Serializable
+data class AgentDefinitionDto(
+    val id: String,
+    val workspaceId: String? = null,
+    val name: String,
+    val title: String,
+    val description: String? = null,
+    val providerType: String,
+    val systemPrompt: String? = null,
+    val providerParameters: JsonObject? = null,
+    val blocksAgentName: String? = null,
+    val active: Boolean = true,
+    val createdAt: String? = null,
+    val updatedAt: String? = null,
+) {
+    /** The one provider parameter the app manages: startup commands run when a session begins. */
+    val startupCommands: List<String>
+        get() = providerParameters.startupCommands()
+}
+
+@Serializable
+data class CreateAgentDefinitionRequestDto(
+    val title: String,
+    val name: String,
+    val description: String? = null,
+    val providerType: String,
+    val systemPrompt: String,
+    val providerParameters: JsonObject? = null,
+    val blocksAgentName: String? = null,
+    val active: Boolean? = null,
+)
+
+@Serializable
+data class UpdateAgentDefinitionRequestDto(
+    val title: String? = null,
+    val name: String? = null,
+    val description: String? = null,
+    val providerType: String? = null,
+    val systemPrompt: String? = null,
+    val providerParameters: JsonObject? = null,
+    val blocksAgentName: String? = null,
+    val active: Boolean? = null,
+)
+
+/**
+ * Read `startupCommands` (a `List<String>`) out of a provider-parameters JSON object.
+ * Uses safe casts so an unexpected shape (e.g. `null` or a non-array value) yields an
+ * empty list instead of throwing.
+ */
+fun JsonObject?.startupCommands(): List<String> =
+    (this?.get("startupCommands") as? JsonArray)
+        ?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+        ?: emptyList()
+
+/**
+ * Return a copy of this provider-parameters object with `startupCommands` set to [commands],
+ * preserving any other keys the server may carry (called on `null` for a fresh object).
+ */
+fun JsonObject?.withStartupCommands(commands: List<String>): JsonObject = buildJsonObject {
+    this@withStartupCommands?.forEach { (k, v) -> if (k != "startupCommands") put(k, v) }
+    put("startupCommands", JsonArray(commands.map { JsonPrimitive(it) }))
+}
+
+// --- Automation rules (project-scoped: trigger -> actions) ---
+
+@Serializable
+data class AutomationRuleDto(
+    val id: String,
+    val projectId: String? = null,
+    val triggerType: String,
+    val triggerValue: String? = null,
+    val actions: List<AutomationActionDto> = emptyList(),
+    val enabled: Boolean = true,
+    val createdAt: String? = null,
+    val updatedAt: String? = null,
+)
+
+@Serializable
+data class AutomationActionDto(
+    val actionType: String,
+    val actionValue: String? = null,
+    val conditions: List<AutomationActionConditionDto> = emptyList(),
+)
+
+@Serializable
+data class AutomationActionConditionDto(
+    val conditionType: String,
+    val conditionValue: String? = null,
+)
+
+@Serializable
+data class CreateAutomationRuleRequestDto(
+    val triggerType: String,
+    val triggerValue: String? = null,
+    val actions: List<AutomationActionRequestDto>,
+)
+
+@Serializable
+data class AutomationActionRequestDto(
+    val actionType: String,
+    val actionValue: String? = null,
+    val conditions: List<AutomationActionConditionRequestDto>? = null,
+)
+
+@Serializable
+data class AutomationActionConditionRequestDto(
+    val conditionType: String,
+    val conditionValue: String? = null,
+)
+
+@Serializable
+data class UpdateAutomationRuleRequestDto(
+    val triggerType: String? = null,
+    val triggerValue: String? = null,
+    val actions: List<AutomationActionRequestDto>? = null,
+    val enabled: Boolean? = null,
+)
+
+// --- Ticket rules (project-scoped guardrails: conditions -> restrictions) ---
+
+@Serializable
+data class TicketRuleDto(
+    val id: String,
+    val projectId: String? = null,
+    val name: String,
+    val enabled: Boolean = true,
+    val conditions: List<TicketRuleConditionDto> = emptyList(),
+    val restrictions: List<TicketRuleRestrictionDto> = emptyList(),
+    val createdAt: String? = null,
+    val updatedAt: String? = null,
+)
+
+@Serializable
+data class TicketRuleConditionDto(
+    val id: String? = null,
+    val conditionType: String,
+    val conditionValue: String? = null,
+    val position: Int = 0,
+)
+
+@Serializable
+data class TicketRuleRestrictionDto(
+    val id: String? = null,
+    val restrictionType: String,
+    val restrictionValue: String? = null,
+    val position: Int = 0,
+)
+
+@Serializable
+data class CreateTicketRuleRequestDto(
+    val name: String,
+    val conditions: List<TicketRuleConditionRequestDto>,
+    val restrictions: List<TicketRuleRestrictionRequestDto>,
+)
+
+@Serializable
+data class TicketRuleConditionRequestDto(
+    val conditionType: String,
+    val conditionValue: String? = null,
+)
+
+@Serializable
+data class TicketRuleRestrictionRequestDto(
+    val restrictionType: String,
+    val restrictionValue: String? = null,
+)
+
+@Serializable
+data class UpdateTicketRuleRequestDto(
+    val name: String? = null,
+    val enabled: Boolean? = null,
+    val conditions: List<TicketRuleConditionRequestDto>? = null,
+    val restrictions: List<TicketRuleRestrictionRequestDto>? = null,
 )
 
 /** Mirrors backend `AppReleaseDto` for the in-app update check. */
