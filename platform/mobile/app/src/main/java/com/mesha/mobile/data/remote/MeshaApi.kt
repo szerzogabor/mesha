@@ -18,6 +18,7 @@ import com.mesha.mobile.data.remote.dto.CreateIssueRequestDto
 import com.mesha.mobile.data.remote.dto.CreateLabelRequestDto
 import com.mesha.mobile.data.remote.dto.CreateTicketRuleRequestDto
 import com.mesha.mobile.data.remote.dto.IssueAgentDto
+import com.mesha.mobile.data.remote.dto.IssueAttachmentDto
 import com.mesha.mobile.data.remote.dto.IssueDto
 import com.mesha.mobile.data.remote.dto.LabelDto
 import com.mesha.mobile.data.remote.dto.UpdateIssueRequestDto
@@ -167,6 +168,13 @@ interface MeshaApi {
         @Path("issueId") issueId: String,
         @Path("sessionId") sessionId: String,
     ): BlocksSessionDto
+
+    // --- Attachments (issue-scoped files, e.g. screenshots, PDFs) ---
+    @GET("api/projects/{projectId}/issues/{issueId}/attachments")
+    suspend fun getAttachments(
+        @Path("projectId") projectId: String,
+        @Path("issueId") issueId: String,
+    ): List<IssueAttachmentDto>
 
     // --- Comments ---
     @GET("api/issues/{issueId}/comments")

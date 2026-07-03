@@ -129,7 +129,7 @@ real-time SSE (11.1). These remain tracked in the tables below.
 |---|---------|--------------|----------------|
 | 7.1 | **Delete ticket** | detail Danger Zone, `useDeleteIssue` | ❌ Missing |
 | 7.2 | **Issue links / sub-issues** (DEPENDS_ON, BLOCKS, DUPLICATE_OF, PARENT_OF/CHILD_OF) | `components/issues/IssueLinksPanel.tsx`, `hooks/useIssueLinks.ts` | ❌ Missing — no DTOs, no UI |
-| 7.3 | **Attachments** (upload/download/delete, ≤10 MB) | `components/issues/IssueAttachmentsPanel.tsx` | ❌ Missing |
+| 7.3 | **Attachments** (upload/download/delete, ≤10 MB) | `components/issues/IssueAttachmentsPanel.tsx` | ⚠️ Partial — issue detail lists attachments and PR links; tapping an attachment downloads (via authed client) and opens it, and PRs open directly in the browser. Upload/delete still web-only |
 | 7.4 | **Activity feed / timeline** (status/priority/assignee/label/AI events) | `components/activity/ActivityFeed.tsx` | ❌ Missing |
 | 7.5 | **Comment threading / replies** (`parentId`) | `components/comments/CommentThread.tsx` | ⚠️ Partial — `parentId` in DTO/repo, but UI is flat (no reply/nest) |
 | 7.6 | **Delete comment** | `hooks/useComments.ts` | ❌ Missing |

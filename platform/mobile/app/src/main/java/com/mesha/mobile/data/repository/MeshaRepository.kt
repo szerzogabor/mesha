@@ -17,6 +17,7 @@ import com.mesha.mobile.data.remote.dto.CreateIssueRequestDto
 import com.mesha.mobile.data.remote.dto.CreateLabelRequestDto
 import com.mesha.mobile.data.remote.dto.CreateTicketRuleRequestDto
 import com.mesha.mobile.data.remote.dto.IssueAgentDto
+import com.mesha.mobile.data.remote.dto.IssueAttachmentDto
 import com.mesha.mobile.data.remote.dto.IssueDto
 import com.mesha.mobile.data.remote.dto.PagedResponseDto
 import com.mesha.mobile.data.remote.dto.StartSessionRequestDto
@@ -114,6 +115,11 @@ class MeshaRepository @Inject constructor(
 
     suspend fun cancelBlocksSession(projectId: String, issueId: String, sessionId: String): Result<BlocksSessionDto> =
         io { api.cancelBlocksSession(projectId, issueId, sessionId) }
+
+    // --- Attachments ---
+
+    suspend fun getIssueAttachments(projectId: String, issueId: String): Result<List<IssueAttachmentDto>> =
+        io { api.getAttachments(projectId, issueId) }
 
     suspend fun getComments(issueId: String): Result<List<CommentDto>> =
         io { api.getComments(issueId) }
