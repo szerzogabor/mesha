@@ -37,14 +37,16 @@ public class OpenAiAIDraftGenerator {
     private final OpenAiProperties properties;
     private final DraftPromptSupport prompts;
     private final ObjectMapper objectMapper;
-    private final RestClient restClient = RestClient.create();
+    private final RestClient restClient;
 
     public OpenAiAIDraftGenerator(OpenAiProperties properties,
                                   DraftPromptSupport prompts,
-                                  ObjectMapper objectMapper) {
+                                  ObjectMapper objectMapper,
+                                  RestClient.Builder restClientBuilder) {
         this.properties = properties;
         this.prompts = prompts;
         this.objectMapper = objectMapper;
+        this.restClient = restClientBuilder.build();
     }
 
     public AIDraftContent generate(String prompt, OpenAiCredential credential) {

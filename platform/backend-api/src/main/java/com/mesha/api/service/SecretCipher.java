@@ -26,15 +26,15 @@ public class SecretCipher {
     private static final String ALGORITHM = "AES/CBC/PKCS5Padding";
     private static final String INSECURE_DEFAULT_SECRET = "default-insecure-key-change-me!!";
 
-    private final BlocksEncryptionProperties encryptionProps;
+    // The secret is static for the app's lifetime, so derive the AES key once.
+    private final byte[] derivedKey;
 
     public SecretCipher(BlocksEncryptionProperties encryptionProps) {
-        this.encryptionProps = encryptionProps;
+        this.derivedKey = deriveKey(encryptionProps.getSecret());
     }
 
-    private byte[] deriveKey() {
+    private static byte[] deriveKey(String secret) {
         try {
-            String secret = encryptionProps.getSecret();
             if (secret == null || secret.isBlank()) {
                 secret = INSECURE_DEFAULT_SECRET;
             }
@@ -47,12 +47,11 @@ public class SecretCipher {
 
     public String encrypt(String plaintext) {
         try {
-            byte[] key = deriveKey();
             byte[] iv = new byte[16];
             new SecureRandom().nextBytes(iv);
 
             Cipher cipher = Cipher.getInstance(ALGORITHM);
-            cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"), new IvParameterSpec(iv));
+            cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(derivedKey, "AES"), new IvParameterSpec(iv));
             byte[] encrypted = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
 
             byte[] combined = new byte[iv.length + encrypted.length];
@@ -71,9 +70,8 @@ public class SecretCipher {
             byte[] iv = Arrays.copyOfRange(combined, 0, 16);
             byte[] encrypted = Arrays.copyOfRange(combined, 16, combined.length);
 
-            byte[] key = deriveKey();
             Cipher cipher = Cipher.getInstance(ALGORITHM);
-            cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "AES"), new IvParameterSpec(iv));
+            cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(derivedKey, "AES"), new IvParameterSpec(iv));
 
             return new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8);
         } catch (Exception e) {

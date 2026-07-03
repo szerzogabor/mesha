@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { logger } from "@/lib/logger";
@@ -77,6 +77,14 @@ export function AIDraftModal({ open, projectId, onClose }: AIDraftModalProps) {
   const openAiAvailable = !!openAiConfig;
   // Only offer an explicit picker when the user has a real alternative to the default.
   const showProviderPicker = openAiAvailable || blocksAvailable;
+
+  // Keep editStatus in sync once project statuses load (they may arrive after a
+  // draft is populated), so we never submit an empty status.
+  useEffect(() => {
+    if (!editStatus && projectStatuses.length > 0) {
+      setEditStatus(projectStatuses[0].name);
+    }
+  }, [editStatus, projectStatuses]);
 
   const loading = generate.isPending || approve.isPending || reject.isPending || regenerate.isPending;
 

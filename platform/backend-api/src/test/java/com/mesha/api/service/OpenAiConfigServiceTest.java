@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
@@ -29,6 +31,7 @@ import static org.mockito.Mockito.*;
 class OpenAiConfigServiceTest {
 
     @Mock private UserOpenAiConfigRepository configRepository;
+    @Mock private PlatformTransactionManager transactionManager;
 
     private SecretCipher secretCipher;
     private OpenAiConfigService service;
@@ -41,7 +44,8 @@ class OpenAiConfigServiceTest {
         BlocksEncryptionProperties props = new BlocksEncryptionProperties();
         props.setSecret("test-secret-for-openai-config");
         secretCipher = new SecretCipher(props);
-        service = new OpenAiConfigService(configRepository, secretCipher, new OpenAiProperties(), new ObjectMapper());
+        service = new OpenAiConfigService(configRepository, secretCipher, new OpenAiProperties(),
+                new ObjectMapper(), RestClient.builder(), transactionManager);
 
         userId = UUID.randomUUID();
         user = new User();

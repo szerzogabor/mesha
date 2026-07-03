@@ -14,7 +14,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -40,16 +42,21 @@ public class OpenAiConfigService {
     private final SecretCipher secretCipher;
     private final OpenAiProperties properties;
     private final ObjectMapper objectMapper;
-    private final RestClient restClient = RestClient.create();
+    private final RestClient restClient;
+    private final TransactionTemplate transactionTemplate;
 
     public OpenAiConfigService(UserOpenAiConfigRepository configRepository,
                                SecretCipher secretCipher,
                                OpenAiProperties properties,
-                               ObjectMapper objectMapper) {
+                               ObjectMapper objectMapper,
+                               RestClient.Builder restClientBuilder,
+                               PlatformTransactionManager transactionManager) {
         this.configRepository = configRepository;
         this.secretCipher = secretCipher;
         this.properties = properties;
         this.objectMapper = objectMapper;
+        this.restClient = restClientBuilder.build();
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     public Optional<OpenAiConfigDto> getConfig(UUID userId) {
@@ -77,28 +84,37 @@ public class OpenAiConfigService {
         config.setModel(blankToNull(req.model()));
         config.setStatus("connected");
 
+        // On update, a blank secret field means "keep the existing one" — so the user
+        // can change non-secret fields (model, accountId) without re-entering credentials.
+        // Switching modes still clears the other mode's fields.
+        boolean modeChanged = config.getId() != null && config.getAuthMode() != req.authMode();
         if (req.authMode() == OpenAiAuthMode.API_KEY) {
-            if (isBlank(req.apiKey())) {
+            if (!isBlank(req.apiKey())) {
+                config.setApiKeyEnc(secretCipher.encrypt(req.apiKey().trim()));
+            } else if (modeChanged || config.getApiKeyEnc() == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "apiKey is required for API_KEY mode");
             }
-            config.setApiKeyEnc(secretCipher.encrypt(req.apiKey().trim()));
             // Clear any ChatGPT-token fields from a previous mode.
             config.setAccessTokenEnc(null);
             config.setRefreshTokenEnc(null);
             config.setAccountId(null);
             config.setAccessTokenExpiresAt(null);
         } else { // CHATGPT_TOKEN
-            if (isBlank(req.accessToken())) {
+            if (!isBlank(req.accessToken())) {
+                config.setAccessTokenEnc(secretCipher.encrypt(req.accessToken().trim()));
+                // We can't read the JWT expiry reliably here; assume expired so the first
+                // use refreshes if a refresh token is present, otherwise uses it as-is.
+                config.setAccessTokenExpiresAt(Instant.now());
+            } else if (modeChanged || config.getAccessTokenEnc() == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "accessToken is required for CHATGPT_TOKEN mode");
             }
-            config.setAccessTokenEnc(secretCipher.encrypt(req.accessToken().trim()));
-            config.setRefreshTokenEnc(isBlank(req.refreshToken())
-                    ? null : secretCipher.encrypt(req.refreshToken().trim()));
-            config.setAccountId(blankToNull(req.accountId()));
-            // We can't read the JWT expiry reliably here; assume expired so the first
-            // use refreshes if a refresh token is present, otherwise uses it as-is.
-            config.setAccessTokenExpiresAt(Instant.now());
+            if (!isBlank(req.refreshToken())) {
+                config.setRefreshTokenEnc(secretCipher.encrypt(req.refreshToken().trim()));
+            }
+            if (!isBlank(req.accountId())) {
+                config.setAccountId(req.accountId().trim());
+            }
             config.setApiKeyEnc(null);
         }
 
@@ -119,10 +135,14 @@ public class OpenAiConfigService {
     /**
      * Decrypt and return a usable credential, refreshing an expired ChatGPT access
      * token when a refresh token is available. Throws 412 if not connected.
+     *
+     * <p>Not {@code @Transactional}: the OAuth refresh makes an external network call,
+     * which must not hold a DB connection open. Reads/writes use short
+     * {@link TransactionTemplate} blocks around that call instead.
      */
-    @Transactional
     public OpenAiCredential resolveCredential(UUID userId) {
-        UserOpenAiConfig config = configRepository.findByUserId(userId)
+        UserOpenAiConfig config = transactionTemplate
+                .execute(status -> configRepository.findByUserId(userId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.PRECONDITION_FAILED,
                         "OpenAI is not connected for this user. Connect your account in settings."));
 
@@ -131,12 +151,12 @@ public class OpenAiConfigService {
                     secretCipher.decrypt(config.getApiKeyEnc()), null, null, config.getModel());
         }
 
-        String accessToken = maybeRefresh(config);
+        String accessToken = maybeRefresh(userId, config);
         return new OpenAiCredential(OpenAiAuthMode.CHATGPT_TOKEN,
                 null, accessToken, config.getAccountId(), config.getModel());
     }
 
-    private String maybeRefresh(UserOpenAiConfig config) {
+    private String maybeRefresh(UUID userId, UserOpenAiConfig config) {
         boolean expired = config.getAccessTokenExpiresAt() == null
                 || config.getAccessTokenExpiresAt().isBefore(Instant.now().plusSeconds(REFRESH_SKEW_SECONDS));
 
@@ -153,6 +173,7 @@ public class OpenAiConfigService {
                     "refresh_token", refreshToken,
                     "scope", "openid profile email"
             );
+            // External call happens OUTSIDE any transaction.
             String response = restClient.post()
                     .uri(properties.getOauthTokenUrl())
                     .header("Content-Type", "application/json")
@@ -168,21 +189,27 @@ public class OpenAiConfigService {
             String newRefresh = json.path("refresh_token").asText(null);
             long expiresIn = json.path("expires_in").asLong(0);
 
-            config.setAccessTokenEnc(secretCipher.encrypt(newAccess));
-            if (newRefresh != null && !newRefresh.isBlank()) {
-                config.setRefreshTokenEnc(secretCipher.encrypt(newRefresh));
-            }
-            config.setAccessTokenExpiresAt(expiresIn > 0
-                    ? Instant.now().plusSeconds(expiresIn)
-                    : Instant.now().plus(1, ChronoUnit.HOURS));
-            config.setStatus("connected");
-            configRepository.save(config);
-            log.info("OpenAI ChatGPT token refreshed userId={}", config.getUser().getId());
+            transactionTemplate.executeWithoutResult(status ->
+                configRepository.findByUserId(userId).ifPresent(current -> {
+                    current.setAccessTokenEnc(secretCipher.encrypt(newAccess));
+                    if (newRefresh != null && !newRefresh.isBlank()) {
+                        current.setRefreshTokenEnc(secretCipher.encrypt(newRefresh));
+                    }
+                    current.setAccessTokenExpiresAt(expiresIn > 0
+                            ? Instant.now().plusSeconds(expiresIn)
+                            : Instant.now().plus(1, ChronoUnit.HOURS));
+                    current.setStatus("connected");
+                    configRepository.save(current);
+                }));
+            log.info("OpenAI ChatGPT token refreshed userId={}", userId);
             return newAccess;
         } catch (Exception e) {
-            log.error("OpenAI ChatGPT token refresh failed userId={} error={}", config.getUser().getId(), e.getMessage());
-            config.setStatus("expired");
-            configRepository.save(config);
+            log.error("OpenAI ChatGPT token refresh failed userId={} error={}", userId, e.getMessage());
+            transactionTemplate.executeWithoutResult(status ->
+                configRepository.findByUserId(userId).ifPresent(current -> {
+                    current.setStatus("expired");
+                    configRepository.save(current);
+                }));
             throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED,
                     "Your ChatGPT token has expired and could not be refreshed. "
                     + "Re-paste it from ~/.codex/auth.json in settings.");
