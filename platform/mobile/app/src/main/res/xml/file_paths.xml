@@ -2,5 +2,7 @@
 <paths>
     <!-- Where downloaded APK updates are cached before handing to the installer. -->
     <cache-path name="updates" path="updates/" />
+    <!-- Where downloaded issue attachments are cached before handing to a viewer. -->
+    <cache-path name="attachments" path="attachments/" />
     <external-cache-path name="external_updates" path="updates/" />
 </paths>

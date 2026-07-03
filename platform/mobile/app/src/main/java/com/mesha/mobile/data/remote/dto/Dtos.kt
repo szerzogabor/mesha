@@ -87,6 +87,18 @@ data class GitHubPullRequestDto(
     val linkedSessionId: String? = null,
 )
 
+/** A file attached to an issue (mirrors backend `IssueAttachmentDto`). */
+@Serializable
+data class IssueAttachmentDto(
+    val id: String,
+    val issueId: String? = null,
+    val fileName: String,
+    val contentType: String? = null,
+    val fileSize: Long = 0,
+    val uploadedByName: String? = null,
+    val createdAt: String? = null,
+)
+
 /** Per-project custom workflow status (mirrors backend `ProjectStatusDto`). */
 @Serializable
 data class ProjectStatusDto(

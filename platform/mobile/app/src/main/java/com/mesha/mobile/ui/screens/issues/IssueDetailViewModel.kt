@@ -5,8 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.mesha.mobile.data.remote.dto.ActivityEventDto
 import com.mesha.mobile.data.remote.dto.AssignableAgentDto
 import com.mesha.mobile.data.remote.dto.BlocksSessionDto
+import com.mesha.mobile.BuildConfig
+import com.mesha.mobile.data.remote.AttachmentOpener
 import com.mesha.mobile.data.remote.dto.CommentDto
 import com.mesha.mobile.data.remote.dto.IssueAgentDto
+import com.mesha.mobile.data.remote.dto.IssueAttachmentDto
 import com.mesha.mobile.data.remote.dto.IssueDto
 import com.mesha.mobile.data.remote.dto.LabelDto
 import com.mesha.mobile.data.remote.dto.ProjectStatusDto
@@ -39,6 +42,9 @@ data class IssueDetailUiState(
     val issueAgents: List<IssueAgentDto> = emptyList(),
     val activeAgents: List<AssignableAgentDto> = emptyList(),
     val blocksSessions: List<BlocksSessionDto> = emptyList(),
+    val attachments: List<IssueAttachmentDto> = emptyList(),
+    // Id of the attachment currently being downloaded/opened (null when idle).
+    val openingAttachmentId: String? = null,
     // Comment input
     val commentInput: String = "",
     val sendingComment: Boolean = false,
@@ -76,6 +82,7 @@ data class IssueDetailUiState(
 class IssueDetailViewModel @Inject constructor(
     private val meshaRepository: MeshaRepository,
     private val selectionStore: SelectionStore,
+    private val attachmentOpener: AttachmentOpener,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(IssueDetailUiState())
@@ -99,6 +106,7 @@ class IssueDetailViewModel @Inject constructor(
             val activityDeferred = async { meshaRepository.getIssueActivity(projectId, issueId).getOrNull().orEmpty() }
             val issueAgentsDeferred = async { meshaRepository.getIssueAgents(projectId, issueId).getOrNull().orEmpty() }
             val blocksSessionsDeferred = async { meshaRepository.getBlocksSessions(projectId, issueId).getOrNull().orEmpty() }
+            val attachmentsDeferred = async { meshaRepository.getIssueAttachments(projectId, issueId).getOrNull().orEmpty() }
 
             val issue = issueDeferred.await()
             val comments = commentsDeferred.await()
@@ -106,6 +114,7 @@ class IssueDetailViewModel @Inject constructor(
             val activity = activityDeferred.await()
             val issueAgents = issueAgentsDeferred.await()
             val blocksSessions = blocksSessionsDeferred.await()
+            val attachments = attachmentsDeferred.await()
             if (issue == null) {
                 _state.update { it.copy(loading = false, error = "Issue not found") }
             } else {
@@ -118,6 +127,7 @@ class IssueDetailViewModel @Inject constructor(
                         activity = activity,
                         issueAgents = issueAgents,
                         blocksSessions = blocksSessions,
+                        attachments = attachments,
                     )
                 }
             }
@@ -129,6 +139,33 @@ class IssueDetailViewModel @Inject constructor(
         selectionStore.workspaceId.value
             ?: meshaRepository.getWorkspaces().getOrNull()?.firstOrNull()?.id
                 ?.also { selectionStore.selectWorkspace(it) }
+
+    // --- Attachments ---
+
+    /**
+     * Download the attachment through the authenticated client and hand it to a system
+     * viewer. The content endpoint requires the bearer token, so it can't simply be opened
+     * in an external browser.
+     */
+    fun openAttachment(attachment: IssueAttachmentDto) {
+        if (_state.value.openingAttachmentId != null) return
+        _state.update { it.copy(openingAttachmentId = attachment.id) }
+        viewModelScope.launch {
+            val base = BuildConfig.API_BASE_URL.trimEnd('/')
+            val url = "$base/api/projects/$projectId/issues/$issueId/attachments/${attachment.id}/content"
+            val result = runCatching {
+                attachmentOpener.open(url, attachment.fileName, attachment.contentType)
+            }
+            _state.update {
+                it.copy(
+                    openingAttachmentId = null,
+                    updateError = result.exceptionOrNull()?.let { e ->
+                        "Couldn't open ${attachment.fileName}: ${e.message ?: "download failed"}"
+                    },
+                )
+            }
+        }
+    }
 
     // --- Comment ---
 
