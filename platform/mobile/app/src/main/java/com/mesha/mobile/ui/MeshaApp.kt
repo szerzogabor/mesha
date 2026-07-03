@@ -27,6 +27,7 @@ import com.mesha.mobile.R
 import com.mesha.mobile.data.repository.AuthState
 import com.mesha.mobile.ui.navigation.Routes
 import com.mesha.mobile.ui.navigation.TopLevelDestination
+import com.mesha.mobile.ui.screens.agentconfig.AgentConfigScreen
 import com.mesha.mobile.ui.screens.agents.AgentsScreen
 import com.mesha.mobile.ui.screens.createissue.CreateIssueAiScreen
 import com.mesha.mobile.ui.screens.createissue.CreateIssueManualScreen
@@ -36,6 +37,7 @@ import com.mesha.mobile.ui.screens.issues.IssueDetailScreen
 import com.mesha.mobile.ui.screens.issues.IssuesScreen
 import com.mesha.mobile.ui.screens.login.LoginScreen
 import com.mesha.mobile.ui.screens.projects.ProjectsScreen
+import com.mesha.mobile.ui.screens.rules.RulesScreen
 import com.mesha.mobile.ui.screens.chat.LocalLlmChatScreen
 import com.mesha.mobile.ui.screens.sessions.SessionDetailScreen
 import com.mesha.mobile.ui.screens.sessions.SessionsScreen
@@ -146,11 +148,19 @@ fun MeshaApp() {
             composable(Routes.SETTINGS) {
                 SettingsScreen(
                     onOpenAgents = { navController.navigate("agents") },
+                    onOpenAgentConfig = { navController.navigate(Routes.AGENT_CONFIG) },
+                    onOpenRules = { navController.navigate(Routes.RULES) },
                     onOpenLocalAi = { navController.navigate(Routes.LOCAL_AI) },
                     onSignOut = { appViewModel.signOut() },
                 )
             }
             composable("agents") { AgentsScreen(onBack = { navController.popBackStack() }) }
+            composable(Routes.AGENT_CONFIG) {
+                AgentConfigScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.RULES) {
+                RulesScreen(onBack = { navController.popBackStack() })
+            }
             composable(Routes.LOCAL_AI) {
                 LocalAiScreen(onBack = { navController.popBackStack() })
             }

@@ -33,9 +33,25 @@ backed by an existing REST endpoint — no backend changes were required.
 | 8.1, 8.2, 8.3, 8.4 | **Start / cancel a Blocks AI session from the issue**, execution-state badges, PR + CI status | issue detail AI Sessions panel |
 | 11.2 | **PR badge with CI status** on list cards | `IssuesScreen.kt` |
 
-Still open (not in this change): Kanban/board drag-to-move (1.1), attachments (7.3),
-issue links / sub-issues (7.2), agent-definition & connector-agent CRUD (8.7, 8.8),
-automation & ticket rules (9.x), GitHub/Blocks integration config (10.1–10.3), and
+### Second wave (2026-07-03) — board & governance
+
+| Ref | Feature | Where |
+|-----|---------|-------|
+| 1.1, 1.2 | **Board / Kanban view** — status columns grouped from `/statuses`, per-card **tap-to-move** status action (optimistic, reverts on rule violation), **List/Board view switcher** in the top bar | `IssuesScreen.kt` (`BoardView`/`BoardColumn`/`BoardCard`) / `IssuesViewModel.kt` |
+| 8.7 | **AI Agent definitions CRUD** — list / create / edit / delete custom agents (title, name, provider, Blocks agent name, system prompt, startup commands, active toggle) | `ui/screens/agentconfig/AgentConfigScreen.kt` + `AgentConfigViewModel.kt` |
+| 9.1 | **Automation rules** — view / create / enable-disable / delete `trigger → action(s)` rules (status & label values picked from project statuses / workspace labels) | `ui/screens/rules/RulesScreen.kt` + `RulesViewModel.kt` |
+| 9.2 | **Ticket rules / guardrails** — view / create / enable-disable / delete `conditions → restrictions` rules | `ui/screens/rules/RulesScreen.kt` + `RulesViewModel.kt` |
+| 9.3 | **Rule-violation surfacing** on a blocked board move (rejected status change shows the server message and reverts the card) | `IssuesScreen.kt` move dialog / `IssuesViewModel.moveIssueStatus` |
+
+The rules & agent-config screens are reachable from **Settings → Workspace**
+("Custom AI agents", "Automations & ticket rules").
+
+Still open (not in this change): true **drag-and-drop** board moves (Android uses
+tap-to-move instead), attachments (7.3), issue links / sub-issues (7.2),
+connector-agent / token CRUD (8.8), per-action **conditions** in the automation
+editor (rules are created without conditions; existing conditions are shown when
+listing), a dedicated rule-violation dialog on the **issue-detail** status change
+(9.3, board moves are covered), GitHub/Blocks integration config (10.1–10.3), and
 real-time SSE (11.1). These remain tracked in the tables below.
 
 ---
