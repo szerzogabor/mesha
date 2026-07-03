@@ -267,6 +267,19 @@ export function Sidebar({ workspace, projects, onCreateProject, isCollapsed, onT
                 Blocks
               </Link>
             </li>
+            <li>
+              <Link
+                href={`/workspaces/${workspace.id}/openai`}
+                className={cn(
+                  "block px-3 py-2 rounded-lg text-sm truncate transition-colors",
+                  pathname.startsWith(`/workspaces/${workspace.id}/openai`)
+                    ? "bg-sidebar-item-active text-white"
+                    : "text-sidebar-text hover:bg-sidebar-item-hover hover:text-sidebar-text-active"
+                )}
+              >
+                OpenAI
+              </Link>
+            </li>
           </ul>
 
           <div className="px-4 py-3 border-t border-sidebar-border mt-auto">
