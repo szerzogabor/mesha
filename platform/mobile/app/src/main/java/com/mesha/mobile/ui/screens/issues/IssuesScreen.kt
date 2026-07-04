@@ -1,10 +1,14 @@
 package com.mesha.mobile.ui.screens.issues
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,16 +21,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.DragIndicator
+import androidx.compose.material.icons.filled.OpenWith
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ViewColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Badge
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -34,12 +40,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -51,11 +55,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.LaunchedEffect
+import com.mesha.mobile.data.remote.dto.GitHubPullRequestDto
 import com.mesha.mobile.data.remote.dto.IssueDto
 import com.mesha.mobile.data.remote.dto.ProjectStatusDto
 import com.mesha.mobile.ui.components.EmptyState
@@ -63,7 +75,9 @@ import com.mesha.mobile.ui.components.ErrorState
 import com.mesha.mobile.ui.components.LoadingState
 import com.mesha.mobile.ui.components.MeshaCard
 import com.mesha.mobile.ui.components.MeshaTopAppBar
+import com.mesha.mobile.ui.components.formatRelativeTime
 import com.mesha.mobile.ui.components.parseHexColor
+import com.mesha.mobile.ui.theme.Mesha
 
 private val PRIORITIES = listOf("URGENT", "HIGH", "MEDIUM", "LOW")
 
@@ -95,24 +109,11 @@ fun IssuesScreen(
             MeshaTopAppBar(
                 title = "Issues",
                 actions = {
-                    IconButton(onClick = { viewModel.setViewMode(IssueViewMode.LIST) }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ListAlt,
-                            contentDescription = "List view",
-                            tint = if (state.viewMode == IssueViewMode.LIST)
-                                MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    IconButton(onClick = { viewModel.setViewMode(IssueViewMode.BOARD) }) {
-                        Icon(
-                            Icons.Filled.ViewColumn,
-                            contentDescription = "Board view",
-                            tint = if (state.viewMode == IssueViewMode.BOARD)
-                                MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                    ViewModeSwitcher(
+                        mode = state.viewMode,
+                        onSelect = viewModel::setViewMode,
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
                 },
             )
         },
@@ -145,6 +146,17 @@ fun IssuesScreen(
                 }
             }
 
+            // Only the board loads every issue at once; the list is paginated, so its
+            // in-memory size would understate the real total and grow as you scroll.
+            if (state.viewMode == IssueViewMode.BOARD && state.issues.isNotEmpty()) {
+                Text(
+                    "${state.issues.size} total",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Mesha.colors.textTertiary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
+
             FilterBar(state = state, viewModel = viewModel)
 
             when {
@@ -156,6 +168,7 @@ fun IssuesScreen(
                     state = state,
                     onOpenIssue = onOpenIssue,
                     onMove = viewModel::moveIssueStatus,
+                    onCreateIssue = onCreateIssueManual,
                 )
                 else -> LazyColumn(
                     state = listState,
@@ -203,6 +216,7 @@ private fun BoardView(
     state: IssuesUiState,
     onOpenIssue: (projectId: String, issueId: String) -> Unit,
     onMove: (issueId: String, newStatus: String) -> Unit,
+    onCreateIssue: () -> Unit,
 ) {
     // The board can hold up to a few hundred issues, so keep these O(N) groupings out of
     // the recomposition path — recompute only when the statuses or issues actually change.
@@ -236,6 +250,7 @@ private fun BoardView(
                 allStatusNames = allStatusNames,
                 onOpenIssue = onOpenIssue,
                 onMove = onMove,
+                onCreateIssue = onCreateIssue,
             )
         }
     }
@@ -249,60 +264,106 @@ private fun BoardColumn(
     allStatusNames: List<String>,
     onOpenIssue: (projectId: String, issueId: String) -> Unit,
     onMove: (issueId: String, newStatus: String) -> Unit,
+    onCreateIssue: () -> Unit,
 ) {
+    val accent = parseHexColor(color, Mesha.colors.accent)
     Column(
         Modifier
-            .width(288.dp)
+            .width(300.dp)
             .fillMaxHeight(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        // Column header: drag handle · status dot · UPPERCASE name · count pill
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            StatusDot(color)
-            Text(
-                statusName,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f),
+            Icon(
+                Icons.Filled.DragIndicator,
+                contentDescription = null,
+                tint = Mesha.colors.textTertiary,
+                modifier = Modifier.size(16.dp),
             )
-            Badge { Text(issues.size.toString()) }
+            Box(Modifier.size(8.dp).clip(CircleShape).background(accent))
+            Text(
+                statusName.replace('_', ' ').uppercase(),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = Mesha.colors.textPrimary,
+                letterSpacing = 0.5.sp,
+            )
+            CountPill(count = issues.size, color = accent)
         }
-        if (issues.isEmpty()) {
-            Surface(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = MaterialTheme.shapes.medium,
-            ) {
-                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+
+        // Column body — a tinted drop-zone surface holding the cards.
+        Box(
+            Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .clip(MaterialTheme.shapes.large)
+                .background(Mesha.colors.surfaceHover)
+                .padding(8.dp),
+        ) {
+            if (issues.isEmpty()) {
+                Box(Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
                     Text(
                         "No issues",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = Mesha.colors.textTertiary,
                     )
                 }
-            }
-        } else {
-            LazyColumn(
-                Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(issues, key = { it.id }) { issue ->
-                    BoardCard(
-                        issue = issue,
-                        moveTargets = allStatusNames.filter { it != issue.status },
-                        onClick = { onOpenIssue(issue.projectId, issue.id) },
-                        onMove = { target -> onMove(issue.id, target) },
-                    )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(issues, key = { it.id }) { issue ->
+                        BoardCard(
+                            issue = issue,
+                            moveTargets = allStatusNames.filter { it != issue.status },
+                            onClick = { onOpenIssue(issue.projectId, issue.id) },
+                            onMove = { target -> onMove(issue.id, target) },
+                        )
+                    }
                 }
             }
+        }
+
+        // Add-issue affordance
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(MaterialTheme.shapes.small)
+                .clickable(onClick = onCreateIssue)
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = null, tint = Mesha.colors.textTertiary, modifier = Modifier.size(16.dp))
+            Text("Add issue", style = MaterialTheme.typography.labelMedium, color = Mesha.colors.textTertiary)
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CountPill(count: Int, color: Color) {
+    Box(
+        Modifier
+            .clip(CircleShape)
+            .background(color.copy(alpha = 0.15f))
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+    ) {
+        Text(
+            count.toString(),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = color,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun BoardCard(
     issue: IssueDto,
@@ -310,57 +371,244 @@ private fun BoardCard(
     onClick: () -> Unit,
     onMove: (String) -> Unit,
 ) {
+    var moveExpanded by remember { mutableStateOf(false) }
     MeshaCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                issue.identifier?.let {
-                    Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                }
-                issue.priority?.let {
-                    Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                issue.lastPullRequest?.let { pr -> PrBadge(state = pr.state, checks = pr.checksStatus) }
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Identifier + drag handle
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    issue.identifier ?: "",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontFamily = FontFamily.Monospace,
+                    color = Mesha.colors.textTertiary,
+                )
+                Icon(
+                    Icons.Filled.DragIndicator,
+                    contentDescription = null,
+                    tint = Mesha.colors.textTertiary,
+                    modifier = Modifier.size(16.dp),
+                )
             }
-            Text(issue.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-            if (issue.labels.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    issue.labels.take(3).forEach { LabelChip(it.name, it.color) }
+
+            Text(
+                issue.title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = Mesha.colors.textPrimary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            // Priority + labels
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                PriorityTag(issue.priority)
+                issue.labels.take(3).forEach { LabelChip(it.name, it.color) }
+            }
+
+            // Meta: relative time · PR badge · assignee avatar
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    formatRelativeTime(issue.updatedAt ?: issue.createdAt) ?: "",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Mesha.colors.textTertiary,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    issue.lastPullRequest?.let { pr ->
+                        Text(
+                            prLabel(pr),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = prColor(pr),
+                        )
+                    }
+                    AssigneeAvatar(issue.assignee?.name ?: issue.assignee?.email)
                 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                issue.assignee?.name?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-                } ?: Box(Modifier.weight(1f))
-                MoveMenu(targets = moveTargets, onMove = onMove)
+
+            // Move (tap-to-move; Compose touch drag across scrollable columns is unreliable)
+            Box {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.small)
+                        .background(Mesha.colors.surfaceHover)
+                        .clickable(enabled = moveTargets.isNotEmpty()) { moveExpanded = true }
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Filled.OpenWith, contentDescription = null, tint = Mesha.colors.textSecondary, modifier = Modifier.size(14.dp))
+                    Text(
+                        "  Move",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = Mesha.colors.textSecondary,
+                    )
+                }
+                DropdownMenu(expanded = moveExpanded, onDismissRequest = { moveExpanded = false }) {
+                    moveTargets.forEach { target ->
+                        DropdownMenuItem(
+                            text = { Text(target.replace('_', ' ')) },
+                            onClick = {
+                                moveExpanded = false
+                                onMove(target)
+                            },
+                        )
+                    }
+                }
             }
         }
     }
 }
 
+/** Priority as the web renders it on cards: a direction glyph + capitalized label, color-coded. */
 @Composable
-private fun MoveMenu(targets: List<String>, onMove: (String) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        TextButton(onClick = { expanded = true }, enabled = targets.isNotEmpty()) {
-            Text("Move")
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            targets.forEach { target ->
-                DropdownMenuItem(
-                    text = { Text(target) },
-                    onClick = {
-                        expanded = false
-                        onMove(target)
-                    },
-                )
-            }
+private fun PriorityTag(priority: String?) {
+    if (priority.isNullOrBlank()) return
+    // Theme-aware semantic colors (not raw hex) so contrast holds in light and dark modes.
+    val (glyph, color) = when (priority.uppercase()) {
+        "URGENT" -> "⚡" to Mesha.colors.destructive
+        "HIGH" -> "↑" to Mesha.colors.warning
+        "MEDIUM" -> "→" to Mesha.colors.accent
+        "LOW" -> "↓" to Mesha.colors.textTertiary
+        else -> "•" to Mesha.colors.textTertiary
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(glyph, style = MaterialTheme.typography.labelMedium, color = color)
+        Text(
+            priority.lowercase().replaceFirstChar { it.uppercase() },
+            style = MaterialTheme.typography.labelMedium,
+            color = color,
+            fontWeight = if (priority.uppercase() == "URGENT") FontWeight.SemiBold else FontWeight.Normal,
+        )
+    }
+}
+
+/** Small circular assignee avatar (initial), or a dashed ring when unassigned — matches the web. */
+@Composable
+private fun AssigneeAvatar(name: String?) {
+    val initial = name?.trim()?.firstOrNull()?.uppercaseChar()
+    if (initial == null) {
+        val ring = Mesha.colors.borderStrong
+        Box(
+            Modifier
+                .size(24.dp)
+                .drawBehind {
+                    drawCircle(
+                        color = ring,
+                        radius = size.minDimension / 2 - 1.dp.toPx(),
+                        style = Stroke(
+                            width = 1.dp.toPx(),
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f)),
+                        ),
+                    )
+                },
+        )
+    } else {
+        Box(
+            Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(Mesha.colors.accentMuted),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                initial.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = Mesha.colors.accentMutedText,
+            )
         }
     }
 }
+
+/** Segmented list/board toggle mirroring the web view switcher. */
+@Composable
+private fun ViewModeSwitcher(
+    mode: IssueViewMode,
+    onSelect: (IssueViewMode) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Mesha.colors.surfaceHover)
+            .border(1.dp, Mesha.colors.border, RoundedCornerShape(8.dp))
+            .padding(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        SwitcherSegment(
+            selected = mode == IssueViewMode.LIST,
+            icon = Icons.AutoMirrored.Filled.ListAlt,
+            description = "List view",
+            onClick = { onSelect(IssueViewMode.LIST) },
+        )
+        SwitcherSegment(
+            selected = mode == IssueViewMode.BOARD,
+            icon = Icons.Filled.ViewColumn,
+            description = "Board view",
+            onClick = { onSelect(IssueViewMode.BOARD) },
+        )
+    }
+}
+
+@Composable
+private fun SwitcherSegment(
+    selected: Boolean,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    description: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(if (selected) Mesha.colors.accent else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            icon,
+            contentDescription = description,
+            tint = if (selected) Color.White else Mesha.colors.textTertiary,
+            modifier = Modifier.size(18.dp),
+        )
+    }
+}
+
+private fun prLabel(pr: GitHubPullRequestDto): String {
+    val num = pr.githubPrNumber?.let { "#$it" } ?: "PR"
+    return when {
+        pr.mergedAt != null -> "$num merged"
+        pr.state == "closed" -> "$num closed"
+        else -> "$num open"
+    }
+}
+
+@Composable
+private fun prColor(pr: GitHubPullRequestDto): Color = when {
+    pr.mergedAt != null -> PriorityPurple
+    pr.state == "closed" -> Mesha.colors.destructive
+    else -> Mesha.colors.success
+}
+
+// GitHub "merged" purple has no semantic equivalent in the palette, so keep it explicit.
+private val PriorityPurple = Color(0xFF8B5CF6)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
