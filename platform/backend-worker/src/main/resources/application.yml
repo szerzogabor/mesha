@@ -75,6 +75,11 @@ github:
     webhook-secret: ${GITHUB_APP_WEBHOOK_SECRET:}
     app-name: ${GITHUB_APP_NAME:mesha-github-app}
 
+# Firebase Cloud Messaging — push notifications for automation-driven status changes.
+# Supply the service-account JSON as a single-line env var. Empty = disabled/no-op.
+firebase:
+  credentials-json: ${FIREBASE_CREDENTIALS_JSON:}
+
 management:
   endpoints:
     web:

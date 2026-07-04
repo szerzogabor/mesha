@@ -36,6 +36,7 @@ public class IssueService {
     private final AutomationService automationService;
     private final IssueSseService issueSseService;
     private final TicketRuleService ticketRuleService;
+    private final PushNotificationService pushNotificationService;
 
     public IssueService(IssueRepository issueRepository,
                         ProjectRepository projectRepository,
@@ -46,7 +47,8 @@ public class IssueService {
                         ProjectStatusRepository projectStatusRepository,
                         AutomationService automationService,
                         IssueSseService issueSseService,
-                        TicketRuleService ticketRuleService) {
+                        TicketRuleService ticketRuleService,
+                        PushNotificationService pushNotificationService) {
         this.issueRepository = issueRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
@@ -57,6 +59,7 @@ public class IssueService {
         this.automationService = automationService;
         this.issueSseService = issueSseService;
         this.ticketRuleService = ticketRuleService;
+        this.pushNotificationService = pushNotificationService;
     }
 
     @Transactional
@@ -206,6 +209,8 @@ public class IssueService {
         log.debug("Issue updated issueId={} actorId={}", issueId, actor.getId());
 
         if (statusChangedTo != null) {
+            pushNotificationService.notifyStatusChanged(
+                PushNotificationService.StatusChange.from(saved, statusChangedTo, actor));
             automationService.executeFor(AutomationTriggerType.STATUS_UPDATED, saved, statusChangedTo);
         }
         if (addedLabelIds != null) {

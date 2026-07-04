@@ -30,6 +30,14 @@ android {
 
         testInstrumentationRunner = "com.mesha.mobile.HiltTestRunner"
         vectorDrawables { useSupportLibrary = true }
+
+        // Firebase Cloud Messaging config. Sourced from gradle.properties (or CI -P flags)
+        // rather than a committed google-services.json, so no secrets live in the repo and
+        // the build succeeds even when unset — FCM simply stays dormant (see MeshaApplication).
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${prop("mesha.firebase.projectId", "")}\"")
+        buildConfigField("String", "FIREBASE_APPLICATION_ID", "\"${prop("mesha.firebase.applicationId", "")}\"")
+        buildConfigField("String", "FIREBASE_API_KEY", "\"${prop("mesha.firebase.apiKey", "")}\"")
+        buildConfigField("String", "FIREBASE_SENDER_ID", "\"${prop("mesha.firebase.senderId", "")}\"")
     }
 
     // Every debug build (local or CI) signs with this committed keystore so every
@@ -152,6 +160,11 @@ dependencies {
     implementation(libs.clerk.android.ui)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.coil.compose)
+
+    // Firebase Cloud Messaging for push notifications (manually initialised — no
+    // google-services plugin needed).
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     // On-device Gemma via Google AI Edge / MediaPipe LLM Inference.
     implementation(libs.mediapipe.tasks.genai)

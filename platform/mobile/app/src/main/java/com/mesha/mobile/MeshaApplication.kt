@@ -6,6 +6,10 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.clerk.api.Clerk
 import com.clerk.api.ClerkConfigurationOptions
+import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseOptions
+import com.mesha.mobile.notifications.FirebaseBootstrap
+import com.mesha.mobile.notifications.TicketNotifications
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -34,6 +38,40 @@ class MeshaApplication : Application(), Configuration.Provider {
             ClerkBootstrap.isReady = true
         }.onFailure { e ->
             Log.e(TAG, "Clerk.initialize failed", e)
+        }
+
+        TicketNotifications.ensureChannel(this)
+        initFirebase()
+    }
+
+    /**
+     * Initialise Firebase manually from BuildConfig instead of a committed
+     * google-services.json, so no Firebase secrets live in the repo. When the config is
+     * absent (empty BuildConfig fields) Firebase stays uninitialised and every FCM code
+     * path no-ops via [FirebaseBootstrap.isReady].
+     */
+    private fun initFirebase() {
+        val projectId = BuildConfig.FIREBASE_PROJECT_ID
+        val appId = BuildConfig.FIREBASE_APPLICATION_ID
+        val apiKey = BuildConfig.FIREBASE_API_KEY
+        val senderId = BuildConfig.FIREBASE_SENDER_ID
+        if (projectId.isBlank() || appId.isBlank() || apiKey.isBlank()) {
+            Log.i(TAG, "Firebase not configured — push notifications disabled")
+            return
+        }
+        runCatching {
+            if (FirebaseApp.getApps(this).isEmpty()) {
+                val options = FirebaseOptions.Builder()
+                    .setProjectId(projectId)
+                    .setApplicationId(appId)
+                    .setApiKey(apiKey)
+                    .apply { if (senderId.isNotBlank()) setGcmSenderId(senderId) }
+                    .build()
+                FirebaseApp.initializeApp(this, options)
+            }
+            FirebaseBootstrap.isReady = true
+        }.onFailure { e ->
+            Log.e(TAG, "FirebaseApp.initializeApp failed", e)
         }
     }
 

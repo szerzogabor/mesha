@@ -25,6 +25,7 @@ import com.mesha.mobile.data.remote.dto.UpdateIssueRequestDto
 import com.mesha.mobile.data.remote.dto.PagedResponseDto
 import com.mesha.mobile.data.remote.dto.ProjectDto
 import com.mesha.mobile.data.remote.dto.ProjectStatusDto
+import com.mesha.mobile.data.remote.dto.RegisterDeviceRequestDto
 import com.mesha.mobile.data.remote.dto.SendMessageRequestDto
 import com.mesha.mobile.data.remote.dto.StartSessionRequestDto
 import com.mesha.mobile.data.remote.dto.SyncUserRequestDto
@@ -53,6 +54,13 @@ interface MeshaApi {
     // --- Auth: sync the Clerk user into Mesha after login ---
     @POST("api/auth/sync")
     suspend fun syncUser(@Body body: SyncUserRequestDto): Unit
+
+    // --- Push notification device tokens ---
+    @POST("api/devices")
+    suspend fun registerDevice(@Body body: RegisterDeviceRequestDto): Unit
+
+    @DELETE("api/devices")
+    suspend fun unregisterDevice(@Query("fcmToken") fcmToken: String): Unit
 
     // --- Workspaces ---
     @GET("api/workspaces")

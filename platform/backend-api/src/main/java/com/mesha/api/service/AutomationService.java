@@ -49,6 +49,7 @@ public class AutomationService {
     private final IssueRepository issueRepository;
     private final ActivityService activityService;
     private final IssueSseService issueSseService;
+    private final PushNotificationService pushNotificationService;
     private final TransactionTemplate ruleTransactionTemplate;
     private BlocksSessionService blocksSessionService;
 
@@ -59,6 +60,7 @@ public class AutomationService {
                              IssueRepository issueRepository,
                              ActivityService activityService,
                              IssueSseService issueSseService,
+                             PushNotificationService pushNotificationService,
                              PlatformTransactionManager transactionManager) {
         this.ruleRepository = ruleRepository;
         this.projectRepository = projectRepository;
@@ -67,6 +69,7 @@ public class AutomationService {
         this.issueRepository = issueRepository;
         this.activityService = activityService;
         this.issueSseService = issueSseService;
+        this.pushNotificationService = pushNotificationService;
         this.ruleTransactionTemplate = new TransactionTemplate(transactionManager);
         this.ruleTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
@@ -286,6 +289,9 @@ public class AutomationService {
         issueRepository.save(issue);
         activityService.record(issue, null, ActivityEventType.STATUS_CHANGED, oldStatus, newStatus);
         issueSseService.broadcastUpdate(issue);
+        // Automated change (no human actor) — notify all workspace members.
+        pushNotificationService.notifyStatusChanged(
+                PushNotificationService.StatusChange.from(issue, newStatus, null));
         log.info("automation_status_applied ruleId={} issueId={} from={} to={}",
                 rule.getId(), issue.getId(), oldStatus, newStatus);
     }

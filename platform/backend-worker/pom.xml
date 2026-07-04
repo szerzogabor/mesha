@@ -111,6 +111,13 @@
             <version>1.78.1</version>
         </dependency>
 
+        <!-- Firebase Admin SDK: sends FCM push notifications when automation moves a ticket's status -->
+        <dependency>
+            <groupId>com.google.firebase</groupId>
+            <artifactId>firebase-admin</artifactId>
+            <version>9.4.3</version>
+        </dependency>
+
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-tracing-bridge-otel</artifactId>

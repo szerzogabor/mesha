@@ -31,6 +31,20 @@
             </intent-filter>
         </activity>
 
+        <!-- Firebase Cloud Messaging: receives ticket status-change push notifications. -->
+        <service
+            android:name=".notifications.MeshaFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- Channel FCM falls back to for any notification-type message without one. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="ticket_status" />
+
         <!-- Lets us hand a downloaded APK to the system installer via a content:// URI. -->
         <provider
             android:name="androidx.core.content.FileProvider"
