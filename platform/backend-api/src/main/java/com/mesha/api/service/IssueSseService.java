@@ -5,11 +5,15 @@ import com.mesha.api.dto.IssueDto;
 import com.mesha.api.model.Issue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -24,9 +28,11 @@ public class IssueSseService {
 
     private final Map<UUID, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper;
+    private final ObjectProvider<IssueSseService> self;
 
-    public IssueSseService(ObjectMapper objectMapper) {
+    public IssueSseService(ObjectMapper objectMapper, ObjectProvider<IssueSseService> self) {
         this.objectMapper = objectMapper;
+        this.self = self;
     }
 
     public SseEmitter subscribe(UUID projectId) {
@@ -48,21 +54,59 @@ public class IssueSseService {
         return emitter;
     }
 
-    @Async
+    /**
+     * Broadcasts an {@code issue-updated} event to every subscriber of the issue's
+     * project so open boards refresh without a manual reload.
+     *
+     * <p>The {@link IssueDto} is built <em>synchronously on the caller's thread</em> —
+     * i.e. while the request's persistence context is still open — so lazy
+     * associations ({@code project}, {@code assignee}, {@code labels}) initialize
+     * safely. Serializing off-thread previously threw {@code LazyInitializationException}
+     * (silently swallowed by the async executor), which dropped the event entirely
+     * for status-only updates and left the Kanban board stale.
+     *
+     * <p>When a transaction is active the push is deferred until after commit, so a
+     * subscriber's refetch cannot race ahead of the committed data.
+     */
     public void broadcastUpdate(Issue issue) {
         UUID projectId = issue.getProject().getId();
         List<SseEmitter> projectEmitters = emitters.get(projectId);
         if (projectEmitters == null || projectEmitters.isEmpty()) return;
 
         IssueDto dto = IssueDto.from(issue);
-        List<SseEmitter> dead = new CopyOnWriteArrayList<>();
 
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    self.getObject().sendToSubscribers(projectId, dto);
+                }
+            });
+        } else {
+            self.getObject().sendToSubscribers(projectId, dto);
+        }
+    }
+
+    @Async
+    public void sendToSubscribers(UUID projectId, IssueDto dto) {
+        List<SseEmitter> projectEmitters = emitters.get(projectId);
+        if (projectEmitters == null || projectEmitters.isEmpty()) return;
+
+        String payload;
+        try {
+            payload = objectMapper.writeValueAsString(dto);
+        } catch (IOException e) {
+            log.warn("Failed to serialize issue-updated event issueId={}", dto.id(), e);
+            return;
+        }
+
+        List<SseEmitter> dead = new ArrayList<>();
         for (SseEmitter emitter : projectEmitters) {
             try {
                 emitter.send(SseEmitter.event()
                         .name("issue-updated")
-                        .data(objectMapper.writeValueAsString(dto)));
-            } catch (IOException e) {
+                        .data(payload));
+            } catch (IOException | IllegalStateException e) {
                 dead.add(emitter);
             }
         }
@@ -70,7 +114,7 @@ public class IssueSseService {
         if (!dead.isEmpty()) {
             projectEmitters.removeAll(dead);
         }
-        log.debug("Broadcast issue-updated issueId={} to {} subscribers", issue.getId(), projectEmitters.size());
+        log.debug("Broadcast issue-updated issueId={} to {} subscribers", dto.id(), projectEmitters.size());
     }
 
     private void removeEmitter(UUID projectId, SseEmitter emitter) {
