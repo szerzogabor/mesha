@@ -1,6 +1,8 @@
 package com.mesha.mobile.ui.theme
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -106,11 +108,15 @@ fun MeshaTheme(
         SideEffect {
             // Edge-to-edge (enabled in MainActivity) already makes the system bars
             // transparent; here we just drive icon contrast off the active theme so the
-            // status/nav icons stay legible over the app's surface color.
-            val window = (view.context as Activity).window
-            val insetsController = WindowCompat.getInsetsController(window, view)
-            insetsController.isAppearanceLightStatusBars = !darkTheme
-            insetsController.isAppearanceLightNavigationBars = !darkTheme
+            // status/nav icons stay legible over the app's surface color. Walk the context
+            // chain to the hosting Activity — a plain cast can hit a ContextWrapper (e.g.
+            // ContextThemeWrapper, or a Dialog/Popup context) and throw.
+            val activity = view.context.findActivity()
+            if (activity != null) {
+                val insetsController = WindowCompat.getInsetsController(activity.window, view)
+                insetsController.isAppearanceLightStatusBars = !darkTheme
+                insetsController.isAppearanceLightNavigationBars = !darkTheme
+            }
         }
     }
 
@@ -122,4 +128,11 @@ fun MeshaTheme(
             content = content,
         )
     }
+}
+
+/** Walk a wrapped [Context] chain to the hosting [Activity], or null if there isn't one. */
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

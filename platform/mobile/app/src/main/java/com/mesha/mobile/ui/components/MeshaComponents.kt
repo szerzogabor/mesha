@@ -42,6 +42,8 @@ fun MeshaCard(
     onClick: (() -> Unit)? = null,
     shape: Shape = MaterialTheme.shapes.medium,
     contentPadding: PaddingValues = PaddingValues(16.dp),
+    verticalArrangement: Arrangement.Vertical = Arrangement.Top,
+    horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
     val colors: CardColors = CardDefaults.cardColors(
@@ -51,6 +53,16 @@ fun MeshaCard(
     val border = BorderStroke(1.dp, Mesha.colors.border)
     val elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
 
+    // Column arrangement/alignment are surfaced here so call sites can lay out card
+    // content directly instead of nesting another Column.
+    val cardBody: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit = {
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier.padding(contentPadding),
+            verticalArrangement = verticalArrangement,
+            horizontalAlignment = horizontalAlignment,
+        ) { content() }
+    }
+
     if (onClick != null) {
         Card(
             onClick = onClick,
@@ -59,9 +71,8 @@ fun MeshaCard(
             colors = colors,
             elevation = elevation,
             border = border,
-        ) {
-            androidx.compose.foundation.layout.Column(Modifier.padding(contentPadding)) { content() }
-        }
+            content = cardBody,
+        )
     } else {
         Card(
             modifier = modifier,
@@ -69,9 +80,8 @@ fun MeshaCard(
             colors = colors,
             elevation = elevation,
             border = border,
-        ) {
-            androidx.compose.foundation.layout.Column(Modifier.padding(contentPadding)) { content() }
-        }
+            content = cardBody,
+        )
     }
 }
 

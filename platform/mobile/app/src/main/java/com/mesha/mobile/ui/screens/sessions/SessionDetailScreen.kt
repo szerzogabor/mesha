@@ -98,7 +98,7 @@ fun SessionDetailScreen(
                     state.messages.forEach { msg ->
                         MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                             Column(Modifier.padding(12.dp)) {
-                                Text(msg.role.uppercase(), style = MaterialTheme.typography.labelSmall,
+                                Text(msg.role.uppercase(java.util.Locale.US), style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary)
                                 Text(msg.content, style = MaterialTheme.typography.bodyMedium)
                             }

@@ -80,7 +80,7 @@ fun SessionsScreen(
 @Composable
 fun StatusBadge(status: String?, modifier: Modifier = Modifier) {
     val label = status ?: "UNKNOWN"
-    val tone = when (label.uppercase()) {
+    val tone = when (label.uppercase(java.util.Locale.US)) {
         "COMPLETED" -> BadgeTone.Success
         "FAILED", "CANCELLED", "CANCELED" -> BadgeTone.Destructive
         "IN_PROGRESS", "RUNNING", "STARTED" -> BadgeTone.Accent
