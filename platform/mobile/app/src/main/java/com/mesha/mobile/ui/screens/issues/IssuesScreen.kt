@@ -3,6 +3,8 @@ package com.mesha.mobile.ui.screens.issues
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -49,6 +52,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -56,14 +60,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.LaunchedEffect
@@ -205,11 +224,22 @@ fun IssuesScreen(
     }
 }
 
+/** A card being dragged across the board. Positions are in window coordinates. */
+private data class BoardDrag(
+    val issue: IssueDto,
+    val pointer: Offset,
+    val grab: Offset,
+    val cardSize: IntSize,
+)
+
 /**
  * Board (Kanban) view: one horizontally-scrollable column per project status. Issues are
  * grouped into their status column; any status present on issues but not in the project's
- * configured statuses becomes a trailing column so nothing is hidden. Moving a card is a
- * tap action (Compose drag-and-drop across scrollable columns is unreliable on touch).
+ * configured statuses becomes a trailing column so nothing is hidden.
+ *
+ * A card is moved to another column by long-pressing it and dragging onto the target
+ * column (the board auto-scrolls horizontally when the card nears an edge), or via the
+ * card's "Move" menu as a fallback. Both routes call [onMove].
  */
 @Composable
 private fun BoardView(
@@ -235,22 +265,106 @@ private fun BoardView(
         return
     }
 
-    Row(
+    val density = LocalDensity.current
+    val scrollState = rememberScrollState()
+    // Window-space bounds of each status column, kept current as the board scrolls, so a
+    // dragged card can be matched to whichever column sits under the finger.
+    val columnBounds = remember { mutableStateMapOf<String, Rect>() }
+    var boardOrigin by remember { mutableStateOf(Offset.Zero) }
+    var boardSize by remember { mutableStateOf(IntSize.Zero) }
+    var drag by remember { mutableStateOf<BoardDrag?>(null) }
+
+    // The column currently under the drag point — null when over nothing or over the card's
+    // own column. Recomputes as the finger moves AND as columns scroll beneath a held card.
+    val dropTarget by remember {
+        derivedStateOf {
+            val d = drag ?: return@derivedStateOf null
+            columnBounds.entries
+                .firstOrNull { (_, r) -> d.pointer.x >= r.left && d.pointer.x <= r.right }
+                ?.key
+                ?.takeIf { it != d.issue.status }
+        }
+    }
+
+    // Auto-scroll the board horizontally while a dragged card hovers near either edge, so
+    // off-screen columns on a narrow phone remain reachable.
+    val autoScroll by remember {
+        derivedStateOf {
+            val d = drag ?: return@derivedStateOf 0f
+            val edge = with(density) { 56.dp.toPx() }
+            val left = boardOrigin.x
+            val right = boardOrigin.x + boardSize.width
+            when {
+                d.pointer.x > right - edge -> 1f
+                d.pointer.x < left + edge -> -1f
+                else -> 0f
+            }
+        }
+    }
+    LaunchedEffect(autoScroll) {
+        if (autoScroll != 0f) {
+            val step = with(density) { 12.dp.toPx() }
+            while (isActive) {
+                scrollState.scrollBy(autoScroll * step)
+                delay(16)
+            }
+        }
+    }
+
+    Box(
         Modifier
             .fillMaxSize()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .onGloballyPositioned {
+                boardOrigin = it.positionInWindow()
+                boardSize = it.size
+            },
     ) {
-        columns.forEach { (statusName, color) ->
-            BoardColumn(
-                statusName = statusName,
-                color = color,
-                issues = issuesByStatus[statusName].orEmpty(),
-                allStatusNames = allStatusNames,
-                onOpenIssue = onOpenIssue,
-                onMove = onMove,
-                onCreateIssue = onCreateIssue,
+        Row(
+            Modifier
+                .fillMaxSize()
+                .horizontalScroll(scrollState)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            columns.forEach { (statusName, color) ->
+                BoardColumn(
+                    statusName = statusName,
+                    color = color,
+                    issues = issuesByStatus[statusName].orEmpty(),
+                    allStatusNames = allStatusNames,
+                    isDropTarget = dropTarget == statusName,
+                    draggingIssueId = drag?.issue?.id,
+                    onBoundsChanged = { rect -> columnBounds[statusName] = rect },
+                    onOpenIssue = onOpenIssue,
+                    onMove = onMove,
+                    onCreateIssue = onCreateIssue,
+                    onDragStart = { issue, cardOrigin, cardSize, grab ->
+                        drag = BoardDrag(issue, cardOrigin + grab, grab, cardSize)
+                    },
+                    onDragMove = { pointer -> drag = drag?.copy(pointer = pointer) },
+                    onDragEnd = {
+                        val d = drag
+                        val target = dropTarget
+                        if (d != null && target != null) onMove(d.issue.id, target)
+                        drag = null
+                    },
+                    onDragCancel = { drag = null },
+                )
+            }
+        }
+
+        // Floating copy of the card that tracks the finger during a drag.
+        drag?.let { d ->
+            DraggingCardOverlay(
+                issue = d.issue,
+                widthPx = d.cardSize.width,
+                density = density,
+                offset = {
+                    IntOffset(
+                        (d.pointer.x - boardOrigin.x - d.grab.x).roundToInt(),
+                        (d.pointer.y - boardOrigin.y - d.grab.y).roundToInt(),
+                    )
+                },
             )
         }
     }
@@ -262,15 +376,23 @@ private fun BoardColumn(
     color: String?,
     issues: List<IssueDto>,
     allStatusNames: List<String>,
+    isDropTarget: Boolean,
+    draggingIssueId: String?,
+    onBoundsChanged: (Rect) -> Unit,
     onOpenIssue: (projectId: String, issueId: String) -> Unit,
     onMove: (issueId: String, newStatus: String) -> Unit,
     onCreateIssue: () -> Unit,
+    onDragStart: (issue: IssueDto, cardOrigin: Offset, cardSize: IntSize, grab: Offset) -> Unit,
+    onDragMove: (pointer: Offset) -> Unit,
+    onDragEnd: () -> Unit,
+    onDragCancel: () -> Unit,
 ) {
     val accent = parseHexColor(color, Mesha.colors.accent)
     Column(
         Modifier
             .width(300.dp)
-            .fillMaxHeight(),
+            .fillMaxHeight()
+            .onGloballyPositioned { onBoundsChanged(it.boundsInWindow()) },
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         // Column header: drag handle · status dot · UPPERCASE name · count pill
@@ -296,21 +418,26 @@ private fun BoardColumn(
             CountPill(count = issues.size, color = accent)
         }
 
-        // Column body — a tinted drop-zone surface holding the cards.
+        // Column body — a tinted drop-zone surface holding the cards. Highlights while a
+        // dragged card hovers over it.
         Box(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .clip(MaterialTheme.shapes.large)
-                .background(Mesha.colors.surfaceHover)
+                .background(if (isDropTarget) accent.copy(alpha = 0.14f) else Mesha.colors.surfaceHover)
+                .then(
+                    if (isDropTarget) Modifier.border(1.dp, accent.copy(alpha = 0.6f), MaterialTheme.shapes.large)
+                    else Modifier,
+                )
                 .padding(8.dp),
         ) {
             if (issues.isEmpty()) {
                 Box(Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
                     Text(
-                        "No issues",
+                        if (isDropTarget) "Drop here" else "No issues",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Mesha.colors.textTertiary,
+                        color = if (isDropTarget) accent else Mesha.colors.textTertiary,
                     )
                 }
             } else {
@@ -322,8 +449,13 @@ private fun BoardColumn(
                         BoardCard(
                             issue = issue,
                             moveTargets = allStatusNames.filter { it != issue.status },
+                            isDragging = issue.id == draggingIssueId,
                             onClick = { onOpenIssue(issue.projectId, issue.id) },
                             onMove = { target -> onMove(issue.id, target) },
+                            onDragStart = onDragStart,
+                            onDragMove = onDragMove,
+                            onDragEnd = onDragEnd,
+                            onDragCancel = onDragCancel,
                         )
                     }
                 }
@@ -368,13 +500,35 @@ private fun CountPill(count: Int, color: Color) {
 private fun BoardCard(
     issue: IssueDto,
     moveTargets: List<String>,
+    isDragging: Boolean,
     onClick: () -> Unit,
     onMove: (String) -> Unit,
+    onDragStart: (issue: IssueDto, cardOrigin: Offset, cardSize: IntSize, grab: Offset) -> Unit,
+    onDragMove: (pointer: Offset) -> Unit,
+    onDragEnd: () -> Unit,
+    onDragCancel: () -> Unit,
 ) {
     var moveExpanded by remember { mutableStateOf(false) }
+    // The card's own top-left in window coordinates, kept current so a drag can be reported
+    // in the same coordinate space as the columns.
+    var cardOrigin by remember { mutableStateOf(Offset.Zero) }
     MeshaCard(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { cardOrigin = it.positionInWindow() }
+            .graphicsLayer { alpha = if (isDragging) 0.3f else 1f }
+            .pointerInput(issue.id) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { grab -> onDragStart(issue, cardOrigin, size, grab) },
+                    onDrag = { change, _ ->
+                        change.consume()
+                        onDragMove(cardOrigin + change.position)
+                    },
+                    onDragEnd = { onDragEnd() },
+                    onDragCancel = { onDragCancel() },
+                )
+            },
         contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -440,7 +594,7 @@ private fun BoardCard(
                 }
             }
 
-            // Move (tap-to-move; Compose touch drag across scrollable columns is unreliable)
+            // Move menu — a fallback for the long-press drag (and for accessibility).
             Box {
                 Row(
                     Modifier
@@ -472,6 +626,47 @@ private fun BoardCard(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * A lightweight, elevated copy of a card rendered on top of the board and positioned under
+ * the finger while dragging. The real card is dimmed in place; this is what the user sees move.
+ */
+@Composable
+private fun DraggingCardOverlay(
+    issue: IssueDto,
+    widthPx: Int,
+    density: Density,
+    offset: Density.() -> IntOffset,
+) {
+    val widthDp = with(density) { widthPx.toDp() }
+    Box(
+        Modifier
+            .offset(offset)
+            .width(widthDp)
+            .shadow(12.dp, MaterialTheme.shapes.medium)
+            .clip(MaterialTheme.shapes.medium)
+            .background(Mesha.colors.surface)
+            .border(1.dp, Mesha.colors.accent, MaterialTheme.shapes.medium)
+            .padding(12.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                issue.identifier ?: "",
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = FontFamily.Monospace,
+                color = Mesha.colors.textTertiary,
+            )
+            Text(
+                issue.title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = Mesha.colors.textPrimary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
