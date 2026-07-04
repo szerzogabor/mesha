@@ -8,6 +8,8 @@ import { useLabels } from "@/hooks/useLabels";
 import { statusLabel } from "@/lib/utils";
 import { useAllIssues } from "@/hooks/useIssues";
 import { apiClient } from "@/lib/api-client";
+import { AssigneeSelector } from "@/components/issues/AssigneeSelector";
+import { useWorkspaceMembers } from "@/hooks/useWorkspaceMembers";
 
 const inputClass =
   "w-full border border-input-border rounded-lg px-3 py-2 text-sm bg-input-bg text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-2 focus:ring-accent";
@@ -51,6 +53,7 @@ interface CreateIssueModalProps {
     status: IssueStatus;
     priority: IssuePriority;
     labelIds?: string[];
+    assigneeId?: string;
   }) => Promise<{ id: string }>;
 }
 
@@ -74,6 +77,7 @@ export function CreateIssueModal({ open, onClose, workspaceId, projectId, projec
   }, [projectStatuses]);
 
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
+  const [assigneeId, setAssigneeId] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,6 +87,7 @@ export function CreateIssueModal({ open, onClose, workspaceId, projectId, projec
   const [selectedLinkType, setSelectedLinkType] = useState<IssueLinkType>("DEPENDS_ON");
 
   const { data: labels = [] } = useLabels(workspaceId);
+  const { data: members = [] } = useWorkspaceMembers(workspaceId);
 
   const { data: issueSearchResult } = useAllIssues(
     projectId,
@@ -129,6 +134,7 @@ export function CreateIssueModal({ open, onClose, workspaceId, projectId, projec
         status,
         priority,
         labelIds: selectedLabelIds.length > 0 ? selectedLabelIds : undefined,
+        assigneeId,
       });
 
       if (pendingLinks.length > 0) {
@@ -147,6 +153,7 @@ export function CreateIssueModal({ open, onClose, workspaceId, projectId, projec
       setStatus(projectStatuses?.[0]?.name ?? "");
       setPriority("MEDIUM");
       setSelectedLabelIds([]);
+      setAssigneeId(undefined);
       setPendingLinks([]);
       setShowLinkAdd(false);
       setLinkSearch("");
@@ -215,6 +222,20 @@ export function CreateIssueModal({ open, onClose, workspaceId, projectId, projec
               <option value="URGENT">Urgent</option>
             </select>
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-2">Assignee</label>
+          <AssigneeSelector
+            assignee={(() => {
+              const m = members.find((m) => m.userId === assigneeId);
+              return m ? { id: m.userId, email: m.email, name: m.name, createdAt: "" } : undefined;
+            })()}
+            members={members}
+            onSelect={(selection) => {
+              setAssigneeId(selection.type === "human" ? selection.userId : undefined);
+            }}
+          />
         </div>
 
         {labels.length > 0 && (
