@@ -30,7 +30,7 @@
 
 import http from "node:http";
 import crypto from "node:crypto";
-import { exec } from "node:child_process";
+import { spawn } from "node:child_process";
 
 // --- OAuth constants (env-overridable; verify against current Codex source) --------
 const ISSUER = process.env.OPENAI_OAUTH_ISSUER || "https://auth.openai.com";
@@ -56,9 +56,10 @@ function parseArgs(argv) {
 }
 
 const args = parseArgs(process.argv);
-const connectorToken = args.token || process.env.MESHA_CONNECTOR_TOKEN;
-const apiUrl = (args["api-url"] || DEFAULT_API_URL).replace(/\/$/, "");
-const model = args.model || process.env.OPENAI_CHATGPT_MODEL || "gpt-5";
+const connectorToken = typeof args.token === "string" ? args.token : process.env.MESHA_CONNECTOR_TOKEN;
+const rawApiUrl = typeof args["api-url"] === "string" ? args["api-url"] : DEFAULT_API_URL;
+const apiUrl = rawApiUrl.replace(/\/$/, "");
+const model = typeof args.model === "string" ? args.model : process.env.OPENAI_CHATGPT_MODEL || "gpt-5";
 
 if (!connectorToken) {
   console.error(
@@ -98,14 +99,13 @@ function buildAuthorizeUrl() {
 
 function openBrowser(url) {
   const platform = process.platform;
-  const cmd =
-    platform === "darwin" ? `open "${url}"`
-    : platform === "win32" ? `start "" "${url}"`
-    : `xdg-open "${url}"`;
-  exec(cmd, (err) => {
-    if (err) {
-      /* Non-fatal: the URL is also printed for manual opening. */
-    }
+  // spawn (no shell) instead of exec — avoids any shell metacharacter handling of the URL.
+  const child =
+    platform === "darwin" ? spawn("open", [url])
+    : platform === "win32" ? spawn("cmd", ["/c", "start", "", url])
+    : spawn("xdg-open", [url]);
+  child.on("error", () => {
+    /* Non-fatal (e.g. command not found): the URL is also printed for manual opening. */
   });
 }
 
@@ -114,7 +114,7 @@ function decodeJwtPayload(jwt) {
   try {
     const part = jwt.split(".")[1];
     if (!part) return null;
-    const json = Buffer.from(part.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
+    const json = Buffer.from(part, "base64url").toString("utf8");
     return JSON.parse(json);
   } catch {
     return null;
@@ -185,6 +185,12 @@ function waitForCode() {
       const code = url.searchParams.get("code");
       const returnedState = url.searchParams.get("state");
       const error = url.searchParams.get("error");
+      // Ignore stray hits (browser pre-fetch, extensions, double-clicks) so we don't
+      // tear the server down before the real redirect arrives.
+      if (!code && !error) {
+        res.writeHead(400).end("Bad Request: missing code or error");
+        return;
+      }
       res.writeHead(200, { "Content-Type": "text/html" });
       res.end(
         `<html><body style="font-family:sans-serif;padding:2rem">` +
