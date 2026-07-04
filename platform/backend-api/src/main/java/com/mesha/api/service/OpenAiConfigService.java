@@ -10,6 +10,7 @@ import com.mesha.api.model.OpenAiAuthMode;
 import com.mesha.api.model.User;
 import com.mesha.api.model.UserOpenAiConfig;
 import com.mesha.api.repository.UserOpenAiConfigRepository;
+import com.mesha.api.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -39,6 +40,7 @@ public class OpenAiConfigService {
     private static final long REFRESH_SKEW_SECONDS = 120;
 
     private final UserOpenAiConfigRepository configRepository;
+    private final UserRepository userRepository;
     private final SecretCipher secretCipher;
     private final OpenAiProperties properties;
     private final ObjectMapper objectMapper;
@@ -46,17 +48,32 @@ public class OpenAiConfigService {
     private final TransactionTemplate transactionTemplate;
 
     public OpenAiConfigService(UserOpenAiConfigRepository configRepository,
+                               UserRepository userRepository,
                                SecretCipher secretCipher,
                                OpenAiProperties properties,
                                ObjectMapper objectMapper,
                                RestClient.Builder restClientBuilder,
                                PlatformTransactionManager transactionManager) {
         this.configRepository = configRepository;
+        this.userRepository = userRepository;
         this.secretCipher = secretCipher;
         this.properties = properties;
         this.objectMapper = objectMapper;
         this.restClient = restClientBuilder.build();
         this.transactionTemplate = new TransactionTemplate(transactionManager);
+    }
+
+    /**
+     * Save by user id — used by the connector-authenticated endpoint (the local
+     * "Sign in with ChatGPT" helper pushes tokens with a connector token, which
+     * resolves to a user id rather than a Clerk {@code User}). Loads the user and
+     * delegates to {@link #saveConfig(User, SaveOpenAiConfigRequest)}.
+     */
+    @Transactional
+    public OpenAiConfigDto saveConfig(UUID userId, SaveOpenAiConfigRequest req) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        return saveConfig(user, req);
     }
 
     public Optional<OpenAiConfigDto> getConfig(UUID userId) {

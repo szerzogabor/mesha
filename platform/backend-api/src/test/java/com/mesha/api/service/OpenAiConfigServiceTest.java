@@ -10,6 +10,7 @@ import com.mesha.api.model.OpenAiAuthMode;
 import com.mesha.api.model.User;
 import com.mesha.api.model.UserOpenAiConfig;
 import com.mesha.api.repository.UserOpenAiConfigRepository;
+import com.mesha.api.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -31,6 +32,7 @@ import static org.mockito.Mockito.*;
 class OpenAiConfigServiceTest {
 
     @Mock private UserOpenAiConfigRepository configRepository;
+    @Mock private UserRepository userRepository;
     @Mock private PlatformTransactionManager transactionManager;
 
     private SecretCipher secretCipher;
@@ -44,7 +46,7 @@ class OpenAiConfigServiceTest {
         BlocksEncryptionProperties props = new BlocksEncryptionProperties();
         props.setSecret("test-secret-for-openai-config");
         secretCipher = new SecretCipher(props);
-        service = new OpenAiConfigService(configRepository, secretCipher, new OpenAiProperties(),
+        service = new OpenAiConfigService(configRepository, userRepository, secretCipher, new OpenAiProperties(),
                 new ObjectMapper(), RestClient.builder(), transactionManager);
 
         userId = UUID.randomUUID();
