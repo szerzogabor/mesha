@@ -23,7 +23,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,6 +36,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mesha.mobile.ui.components.ErrorState
 import com.mesha.mobile.ui.components.LoadingState
+import com.mesha.mobile.ui.components.MeshaTopAppBar
 
 private val PRIORITIES = listOf("LOW", "MEDIUM", "HIGH", "URGENT")
 
@@ -54,8 +54,8 @@ fun CreateIssueManualScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("New Issue") },
+            MeshaTopAppBar(
+                title = "New Issue",
                 navigationIcon = { TextButton(onClick = onClose) { Text("Cancel") } },
             )
         },

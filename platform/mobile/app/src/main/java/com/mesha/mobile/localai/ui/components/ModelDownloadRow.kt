@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -20,6 +19,7 @@ import com.mesha.mobile.localai.model.CatalogEntry
 import com.mesha.mobile.localai.model.DownloadState
 import com.mesha.mobile.localai.model.ModelStatus
 import com.mesha.mobile.localai.util.formatBytes
+import com.mesha.mobile.ui.components.MeshaCard
 
 /**
  * One model row: title, size/version, requirements, and a state-dependent action area
@@ -37,7 +37,7 @@ fun ModelDownloadRow(
     onDismissError: () -> Unit,
 ) {
     val model = entry.model
-    Card(Modifier.fillMaxWidth()) {
+    MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(model.name, fontWeight = FontWeight.SemiBold)

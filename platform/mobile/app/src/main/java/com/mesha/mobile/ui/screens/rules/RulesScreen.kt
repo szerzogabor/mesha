@@ -18,7 +18,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,7 +35,6 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +53,8 @@ import com.mesha.mobile.data.remote.dto.TicketRuleDto
 import com.mesha.mobile.ui.components.EmptyState
 import com.mesha.mobile.ui.components.ErrorState
 import com.mesha.mobile.ui.components.LoadingState
+import com.mesha.mobile.ui.components.MeshaCard
+import com.mesha.mobile.ui.components.MeshaTopAppBar
 
 private enum class ValueKind { NONE, STATUS, LABEL }
 
@@ -117,8 +117,8 @@ private fun RulesList(
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Project rules") },
+            MeshaTopAppBar(
+                title = "Project rules",
                 navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
             )
         },
@@ -186,7 +186,7 @@ private fun AutomationsList(state: RulesUiState, viewModel: RulesViewModel) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(state.automations, key = { it.id }) { rule ->
-            Card(Modifier.fillMaxWidth()) {
+            MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -233,7 +233,7 @@ private fun TicketRulesList(state: RulesUiState, viewModel: RulesViewModel) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(state.ticketRules, key = { it.id }) { rule ->
-            Card(Modifier.fillMaxWidth()) {
+            MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -297,7 +297,7 @@ private fun AutomationEditor(state: RulesUiState, viewModel: RulesViewModel) {
         HorizontalDivider()
         Text("Actions", style = MaterialTheme.typography.labelLarge)
         form.actions.forEachIndexed { index, action ->
-            Card(Modifier.fillMaxWidth()) {
+            MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Action ${index + 1}", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
@@ -369,7 +369,7 @@ private fun TicketRuleEditor(state: RulesUiState, viewModel: RulesViewModel) {
         HorizontalDivider()
         Text("Conditions (if all match)", style = MaterialTheme.typography.labelLarge)
         form.conditions.forEachIndexed { index, cond ->
-            Card(Modifier.fillMaxWidth()) {
+            MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Condition ${index + 1}", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
@@ -416,7 +416,7 @@ private fun TicketRuleEditor(state: RulesUiState, viewModel: RulesViewModel) {
         HorizontalDivider()
         Text("Restrictions (then block)", style = MaterialTheme.typography.labelLarge)
         form.restrictions.forEachIndexed { index, restriction ->
-            Card(Modifier.fillMaxWidth()) {
+            MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Restriction ${index + 1}", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
@@ -478,8 +478,8 @@ private fun EditorScaffold(
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(title) },
+            MeshaTopAppBar(
+                title = title,
                 navigationIcon = { TextButton(onClick = onCancel) { Text("Cancel") } },
             )
         },

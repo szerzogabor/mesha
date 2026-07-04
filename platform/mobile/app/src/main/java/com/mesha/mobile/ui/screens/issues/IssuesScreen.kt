@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.ViewColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Badge
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -43,7 +42,6 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -63,6 +61,8 @@ import com.mesha.mobile.data.remote.dto.ProjectStatusDto
 import com.mesha.mobile.ui.components.EmptyState
 import com.mesha.mobile.ui.components.ErrorState
 import com.mesha.mobile.ui.components.LoadingState
+import com.mesha.mobile.ui.components.MeshaCard
+import com.mesha.mobile.ui.components.MeshaTopAppBar
 import com.mesha.mobile.ui.components.parseHexColor
 
 private val PRIORITIES = listOf("URGENT", "HIGH", "MEDIUM", "LOW")
@@ -90,9 +90,10 @@ fun IssuesScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = { Text("Issues") },
+            MeshaTopAppBar(
+                title = "Issues",
                 actions = {
                     IconButton(onClick = { viewModel.setViewMode(IssueViewMode.LIST) }) {
                         Icon(
@@ -309,8 +310,12 @@ private fun BoardCard(
     onClick: () -> Unit,
     onMove: (String) -> Unit,
 ) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    MeshaCard(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 issue.identifier?.let {
                     Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
@@ -453,8 +458,8 @@ private fun IssueRow(
     statuses: List<ProjectStatusDto>,
     onClick: () -> Unit,
 ) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    MeshaCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 issue.identifier?.let {
                     Text(it, style = MaterialTheme.typography.labelMedium,

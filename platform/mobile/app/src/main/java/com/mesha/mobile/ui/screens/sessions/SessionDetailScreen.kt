@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -17,7 +16,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,6 +26,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mesha.mobile.ui.components.ErrorState
 import com.mesha.mobile.ui.components.LoadingState
+import com.mesha.mobile.ui.components.MeshaCard
+import com.mesha.mobile.ui.components.MeshaTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,8 +41,8 @@ fun SessionDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(state.session?.issueIdentifier ?: "Session") },
+            MeshaTopAppBar(
+                title = state.session?.issueIdentifier ?: "Session",
                 navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
             )
         },
@@ -67,7 +67,7 @@ fun SessionDetailScreen(
                     StatusBadge(session?.status)
 
                     // Status / logs
-                    Card(Modifier.fillMaxWidth()) {
+                    MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text("Details", fontWeight = FontWeight.SemiBold)
                             session?.branchName?.let { Detail("Branch", it) }
@@ -78,7 +78,7 @@ fun SessionDetailScreen(
 
                     // Pull request
                     session?.prUrl?.let { url ->
-                        Card(Modifier.fillMaxWidth()) {
+                        MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                             Column(Modifier.padding(16.dp)) {
                                 Text("Pull request", fontWeight = FontWeight.SemiBold)
                                 Text(session.prTitle ?: "PR #${session.prNumber ?: ""}",
@@ -96,7 +96,7 @@ fun SessionDetailScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     state.messages.forEach { msg ->
-                        Card(Modifier.fillMaxWidth()) {
+                        MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                             Column(Modifier.padding(12.dp)) {
                                 Text(msg.role.uppercase(), style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary)

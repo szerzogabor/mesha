@@ -28,7 +28,6 @@ import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -44,7 +43,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -65,6 +63,8 @@ import com.mesha.mobile.data.remote.dto.CommentDto
 import com.mesha.mobile.data.remote.dto.GitHubPullRequestDto
 import com.mesha.mobile.ui.components.ErrorState
 import com.mesha.mobile.ui.components.LoadingState
+import com.mesha.mobile.ui.components.MeshaCard
+import com.mesha.mobile.ui.components.MeshaTopAppBar
 
 private val PRIORITIES = listOf("LOW", "MEDIUM", "HIGH", "URGENT")
 private val ACTIVE_SESSION_STATES = setOf("CREATED", "DISPATCHING", "PLANNING", "EXECUTING", "WAITING_REVIEW", "PR_OPENED")
@@ -95,8 +95,8 @@ fun IssueDetailScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text(state.issue?.identifier ?: "Issue") },
+            MeshaTopAppBar(
+                title = state.issue?.identifier ?: "Issue",
                 navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
                 actions = {
                     if (!state.editMode && state.issue != null) {
@@ -143,7 +143,7 @@ fun IssueDetailScreen(
                         DetailsCard(state = state, viewModel = viewModel)
 
                         issue?.description?.takeIf { it.isNotBlank() }?.let { description ->
-                            Card(Modifier.fillMaxWidth()) {
+                            MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                                 Column(Modifier.padding(16.dp)) {
                                     Text("Description", fontWeight = FontWeight.SemiBold)
                                     Text(
@@ -288,7 +288,7 @@ private fun PriorityChip(state: IssueDetailUiState, viewModel: IssueDetailViewMo
 @Composable
 private fun DetailsCard(state: IssueDetailUiState, viewModel: IssueDetailViewModel) {
     val issue = state.issue
-    Card(Modifier.fillMaxWidth()) {
+    MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Details", fontWeight = FontWeight.SemiBold)
 
@@ -361,7 +361,7 @@ private fun PullRequestsCard(state: IssueDetailUiState) {
     val prs = collectPullRequests(state)
     if (prs.isEmpty()) return
     val uriHandler = LocalUriHandler.current
-    Card(Modifier.fillMaxWidth()) {
+    MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Pull Requests", fontWeight = FontWeight.SemiBold)
             prs.forEach { pr ->
@@ -417,7 +417,7 @@ private fun PullRequestsCard(state: IssueDetailUiState) {
 @Composable
 private fun AttachmentsCard(state: IssueDetailUiState, viewModel: IssueDetailViewModel) {
     if (state.attachments.isEmpty()) return
-    Card(Modifier.fillMaxWidth()) {
+    MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Attachments", fontWeight = FontWeight.SemiBold)
             state.attachments.forEach { attachment ->
@@ -464,7 +464,7 @@ private fun formatBytes(bytes: Long): String = when {
 
 @Composable
 private fun AiAgentsCard(state: IssueDetailUiState, viewModel: IssueDetailViewModel) {
-    Card(Modifier.fillMaxWidth()) {
+    MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
@@ -510,7 +510,7 @@ private fun AiAgentsCard(state: IssueDetailUiState, viewModel: IssueDetailViewMo
 
 @Composable
 private fun AiSessionsCard(state: IssueDetailUiState, viewModel: IssueDetailViewModel) {
-    Card(Modifier.fillMaxWidth()) {
+    MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
@@ -597,7 +597,7 @@ private fun ExecutionStateBadge(stateRaw: String?) {
 @Composable
 private fun ActivityCard(state: IssueDetailUiState) {
     if (state.activity.isEmpty()) return
-    Card(Modifier.fillMaxWidth()) {
+    MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Activity", fontWeight = FontWeight.SemiBold)
             state.activity.take(30).forEach { event ->
@@ -666,7 +666,7 @@ private fun CommentsSection(state: IssueDetailUiState, viewModel: IssueDetailVie
 private fun CommentCard(comment: CommentDto, depth: Int, viewModel: IssueDetailViewModel) {
     // Cap indentation depth so deeply-nested reply chains can't push the card off-screen.
     val startPadding = minOf(depth, 4) * 12
-    Card(Modifier.fillMaxWidth().padding(start = startPadding.dp)) {
+    MeshaCard(Modifier.fillMaxWidth().padding(start = startPadding.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
         Column(Modifier.padding(12.dp)) {
             Row(
                 Modifier.fillMaxWidth(),

@@ -29,7 +29,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -42,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
 import android.content.pm.PackageManager
 import com.mesha.mobile.domain.ai.IssuePriority
+import com.mesha.mobile.ui.components.MeshaTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,8 +58,8 @@ fun CreateIssueAiScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Create Issue with AI") },
+            MeshaTopAppBar(
+                title = "Create Issue with AI",
                 navigationIcon = { TextButton(onClick = onClose) { Text("Close") } },
             )
         },
