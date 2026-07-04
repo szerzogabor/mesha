@@ -70,6 +70,7 @@ class PushNotificationManager @Inject constructor(
         return suspendCancellableCoroutine { cont ->
             FirebaseMessaging.getInstance().token
                 .addOnCompleteListener { task ->
+                    if (!cont.isActive) return@addOnCompleteListener
                     if (task.isSuccessful) {
                         cont.resume(task.result)
                     } else {

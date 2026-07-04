@@ -7,8 +7,8 @@ CREATE TABLE user_devices (
     user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     fcm_token   TEXT NOT NULL,
     platform    VARCHAR(20) NOT NULL DEFAULT 'ANDROID',
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_at  TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMP NOT NULL DEFAULT now(),
     CONSTRAINT uq_user_devices_token UNIQUE (fcm_token)
 );
 

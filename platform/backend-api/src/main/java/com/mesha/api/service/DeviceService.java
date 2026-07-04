@@ -44,10 +44,13 @@ public class DeviceService {
         log.info("device_registered userId={} platform={}", user.getId(), normalizedPlatform);
     }
 
-    /** Remove a device token (idempotent). */
+    /**
+     * Remove a device token (idempotent). Scoped to the calling user so one user cannot
+     * unregister another user's device by presenting its token.
+     */
     @Transactional
     public void unregister(User user, String fcmToken) {
-        userDeviceRepository.deleteByFcmToken(fcmToken);
+        userDeviceRepository.deleteByFcmTokenAndUserId(fcmToken, user.getId());
         log.info("device_unregistered userId={}", user.getId());
     }
 }

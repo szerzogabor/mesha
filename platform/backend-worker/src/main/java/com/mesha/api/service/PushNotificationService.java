@@ -132,9 +132,8 @@ public class PushNotificationService {
             return;
         }
         try {
-            List<UserDevice> devices = userDeviceRepository.findAllForWorkspace(change.workspaceId()).stream()
-                .filter(d -> change.actorId() == null || !d.getUser().getId().equals(change.actorId()))
-                .toList();
+            List<UserDevice> devices =
+                userDeviceRepository.findAllForWorkspace(change.workspaceId(), change.actorId());
             if (devices.isEmpty()) {
                 return;
             }

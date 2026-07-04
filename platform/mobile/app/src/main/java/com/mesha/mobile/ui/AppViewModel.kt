@@ -6,7 +6,6 @@ import com.mesha.mobile.data.repository.AuthRepository
 import com.mesha.mobile.data.repository.AuthState
 import com.mesha.mobile.notifications.PushNotificationManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -21,8 +20,9 @@ class AppViewModel @Inject constructor(
         // Once signed in, make sure this device's push token is registered with the
         // backend (no-op if the user turned notifications off). Registration needs the
         // Clerk bearer token, which only exists after authentication.
+        // StateFlow is already conflated/distinct, so collect it directly.
         viewModelScope.launch {
-            authState.distinctUntilChanged().collect { state ->
+            authState.collect { state ->
                 if (state == AuthState.Authenticated) {
                     pushNotificationManager.syncRegistration()
                 }

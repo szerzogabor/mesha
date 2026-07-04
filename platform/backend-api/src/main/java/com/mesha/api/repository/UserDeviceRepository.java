@@ -14,18 +14,26 @@ public interface UserDeviceRepository extends JpaRepository<UserDevice, UUID> {
 
     Optional<UserDevice> findByFcmToken(String fcmToken);
 
+    /** System-level prune of a dead token (used when FCM reports it unregistered). */
     @Transactional
     void deleteByFcmToken(String fcmToken);
 
+    /** User-scoped removal for the unregister endpoint — only deletes the caller's own token. */
+    @Transactional
+    void deleteByFcmTokenAndUserId(String fcmToken, UUID userId);
+
     /**
-     * All device tokens belonging to members of the given workspace. Used to fan out a
-     * ticket status-change notification to everyone who can see the ticket.
+     * Device tokens belonging to members of the given workspace, excluding the actor's own
+     * devices when {@code actorId} is non-null. Used to fan out a ticket status-change
+     * notification. Filtering the actor in the query (rather than in memory) avoids touching
+     * the lazy {@code user} association from the async, session-less send.
      */
     @Query("""
         SELECT d FROM UserDevice d
         WHERE d.user.id IN (
             SELECT m.user.id FROM WorkspaceMember m WHERE m.workspace.id = :workspaceId
-        )
+        ) AND (:actorId IS NULL OR d.user.id <> :actorId)
         """)
-    List<UserDevice> findAllForWorkspace(@Param("workspaceId") UUID workspaceId);
+    List<UserDevice> findAllForWorkspace(@Param("workspaceId") UUID workspaceId,
+                                         @Param("actorId") UUID actorId);
 }
