@@ -289,9 +289,16 @@ public class AutomationService {
         issueRepository.save(issue);
         activityService.record(issue, null, ActivityEventType.STATUS_CHANGED, oldStatus, newStatus);
         issueSseService.broadcastUpdate(issue);
-        // Automated change (no human actor) — notify all workspace members.
-        pushNotificationService.notifyStatusChanged(
-                PushNotificationService.StatusChange.from(issue, newStatus, null));
+        // Automated change (no human actor) — notify all workspace members. This is best-effort:
+        // a failure building or dispatching the push must never propagate and roll back the status
+        // change the rule just applied (e.g. leaving a PR_MERGED ticket stuck in its old status).
+        try {
+            pushNotificationService.notifyStatusChanged(
+                    PushNotificationService.StatusChange.from(issue, newStatus, null));
+        } catch (Exception e) {
+            log.warn("automation_status_push_failed ruleId={} issueId={} error={}",
+                    rule.getId(), issue.getId(), e.getMessage());
+        }
         log.info("automation_status_applied ruleId={} issueId={} from={} to={}",
                 rule.getId(), issue.getId(), oldStatus, newStatus);
     }

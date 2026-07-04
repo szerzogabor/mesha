@@ -58,7 +58,12 @@ class PrSyncSchedulerTest {
     void syncAllRepositories_continuesAfterSingleRepoFailure() {
         UUID repoId1 = UUID.randomUUID();
         UUID repoId2 = UUID.randomUUID();
-        when(repositoryRepo.findAllByConnectedTrue()).thenReturn(List.of(repoWithId(repoId1), repoWithId(repoId2)));
+        // Build the mocks before opening the outer stubbing: calling repoWithId() (which itself
+        // stubs) inside when(...).thenReturn(...) leaves that outer stubbing unfinished and trips
+        // Mockito's UnfinishedStubbingException.
+        GitHubRepository repo1 = repoWithId(repoId1);
+        GitHubRepository repo2 = repoWithId(repoId2);
+        when(repositoryRepo.findAllByConnectedTrue()).thenReturn(List.of(repo1, repo2));
         doThrow(new ResponseStatusException(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR))
                 .when(prService).syncPullRequests(repoId1);
 
