@@ -146,7 +146,9 @@ fun IssuesScreen(
                 }
             }
 
-            if (state.issues.isNotEmpty()) {
+            // Only the board loads every issue at once; the list is paginated, so its
+            // in-memory size would understate the real total and grow as you scroll.
+            if (state.viewMode == IssueViewMode.BOARD && state.issues.isNotEmpty()) {
                 Text(
                     "${state.issues.size} total",
                     style = MaterialTheme.typography.labelMedium,
@@ -312,7 +314,10 @@ private fun BoardColumn(
                     )
                 }
             } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     items(issues, key = { it.id }) { issue ->
                         BoardCard(
                             issue = issue,
@@ -475,10 +480,11 @@ private fun BoardCard(
 @Composable
 private fun PriorityTag(priority: String?) {
     if (priority.isNullOrBlank()) return
+    // Theme-aware semantic colors (not raw hex) so contrast holds in light and dark modes.
     val (glyph, color) = when (priority.uppercase()) {
-        "URGENT" -> "⚡" to PriorityRed
-        "HIGH" -> "↑" to PriorityOrange
-        "MEDIUM" -> "→" to PriorityBlue
+        "URGENT" -> "⚡" to Mesha.colors.destructive
+        "HIGH" -> "↑" to Mesha.colors.warning
+        "MEDIUM" -> "→" to Mesha.colors.accent
         "LOW" -> "↓" to Mesha.colors.textTertiary
         else -> "•" to Mesha.colors.textTertiary
     }
@@ -601,9 +607,7 @@ private fun prColor(pr: GitHubPullRequestDto): Color = when {
     else -> Mesha.colors.success
 }
 
-private val PriorityBlue = Color(0xFF3B82F6)
-private val PriorityOrange = Color(0xFFF59E0B)
-private val PriorityRed = Color(0xFFEF4444)
+// GitHub "merged" purple has no semantic equivalent in the palette, so keep it explicit.
 private val PriorityPurple = Color(0xFF8B5CF6)
 
 @OptIn(ExperimentalMaterial3Api::class)
