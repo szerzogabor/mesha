@@ -21,8 +21,10 @@ public interface AutomationRuleRepository extends JpaRepository<AutomationRule, 
     @Query("SELECT DISTINCT r FROM AutomationRule r "
             + "LEFT JOIN FETCH r.actions a "
             + "LEFT JOIN FETCH a.conditions "
-            + "WHERE r.id = :ruleId")
-    Optional<AutomationRule> findByIdWithActions(@Param("ruleId") UUID ruleId);
+            + "WHERE r.id = :ruleId AND r.project.id = :projectId")
+    Optional<AutomationRule> findByProjectIdAndIdWithActions(
+            @Param("projectId") UUID projectId,
+            @Param("ruleId") UUID ruleId);
 
     @Query("SELECT DISTINCT r FROM AutomationRule r "
             + "LEFT JOIN FETCH r.actions a "

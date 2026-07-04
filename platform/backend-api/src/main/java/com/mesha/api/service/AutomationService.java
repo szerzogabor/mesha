@@ -456,8 +456,9 @@ public class AutomationService {
         // Fetch actions and their conditions eagerly: the caller maps the rule to a DTO after the
         // transaction commits, and with open-in-view disabled a lazy collection would otherwise throw
         // LazyInitializationException during serialization (e.g. a plain enable/disable toggle).
-        return ruleRepository.findByIdWithActions(ruleId)
-            .filter(r -> r.getProject().getId().equals(projectId))
+        // Scoping by projectId in the query also avoids initializing the lazy Project proxy just to
+        // read its id (the entity uses field-based access, so getProject().getId() would force a load).
+        return ruleRepository.findByProjectIdAndIdWithActions(projectId, ruleId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Automation rule not found"));
     }
 }

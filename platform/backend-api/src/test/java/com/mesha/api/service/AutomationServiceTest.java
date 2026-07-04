@@ -412,7 +412,7 @@ class AutomationServiceTest {
         AutomationRule rule = rule(AutomationActionType.SET_STATUS, "REVIEW");
         rule.setEnabled(true);
         UUID ruleId = rule.getId();
-        when(ruleRepository.findByIdWithActions(ruleId)).thenReturn(Optional.of(rule));
+        when(ruleRepository.findByProjectIdAndIdWithActions(projectId, ruleId)).thenReturn(Optional.of(rule));
         when(ruleRepository.save(any(AutomationRule.class))).thenAnswer(inv -> inv.getArgument(0));
 
         AutomationRule saved = service.update(projectId, ruleId,
@@ -420,7 +420,7 @@ class AutomationServiceTest {
 
         // Must load via the join-fetch query so actions/conditions are initialized before the
         // caller maps the entity to a DTO after the transaction commits (open-in-view is disabled).
-        verify(ruleRepository).findByIdWithActions(ruleId);
+        verify(ruleRepository).findByProjectIdAndIdWithActions(projectId, ruleId);
         verify(ruleRepository, never()).findById(any());
         assertThat(saved.isEnabled()).isFalse();
     }
