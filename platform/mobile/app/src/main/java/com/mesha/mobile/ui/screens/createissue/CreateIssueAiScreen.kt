@@ -85,6 +85,7 @@ fun CreateIssueAiScreen(
                     },
                     onGenerate = viewModel::generate,
                     onSelectProject = viewModel::selectProject,
+                    onSelectProvider = viewModel::onSelectProvider,
                 )
 
                 CreateStep.GENERATING -> GeneratingStep()
@@ -112,19 +113,33 @@ private fun InputStep(
     onMic: () -> Unit,
     onGenerate: () -> Unit,
     onSelectProject: (String) -> Unit,
+    onSelectProvider: (String) -> Unit,
 ) {
     Text(
-        "Describe the task in plain language. An on-device Gemma model will draft the issue.",
+        "Describe the task in plain language and the selected AI will draft the issue.",
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 
     if (!state.modelAvailable) {
         Text(
-            "⚠ On-device model not installed — drafts can't be generated until you add it in Settings.",
+            "⚠ No AI provider available — install an on-device model in Settings, or connect ChatGPT in the web app.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
         )
+    }
+
+    if (state.providerOptions.size > 1) {
+        Text("AI provider", style = MaterialTheme.typography.labelLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            state.providerOptions.forEach { option ->
+                FilterChip(
+                    selected = option.key == state.selectedProviderKey,
+                    onClick = { onSelectProvider(option.key) },
+                    label = { Text(option.label) },
+                )
+            }
+        }
     }
 
     OutlinedTextField(
@@ -176,7 +191,7 @@ private fun GeneratingStep() {
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         CircularProgressIndicator()
-        Text("Generating on-device…", style = MaterialTheme.typography.bodyMedium)
+        Text("Generating…", style = MaterialTheme.typography.bodyMedium)
     }
 }
 

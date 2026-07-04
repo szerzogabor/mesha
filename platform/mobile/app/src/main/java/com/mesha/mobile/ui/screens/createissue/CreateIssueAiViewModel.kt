@@ -8,11 +8,12 @@ import com.mesha.mobile.data.repository.DraftRepository
 import com.mesha.mobile.data.repository.MeshaRepository
 import com.mesha.mobile.data.repository.SelectionStore
 import com.mesha.mobile.data.sync.DraftSyncWorker
+import com.mesha.mobile.domain.ai.AiProviderChoice
+import com.mesha.mobile.domain.ai.AiProviderCoordinator
 import com.mesha.mobile.domain.ai.GenerateIssueRequest
 import com.mesha.mobile.domain.ai.IssueDraft
 import com.mesha.mobile.domain.ai.IssuePriority
 import com.mesha.mobile.domain.ai.LocalAiException
-import com.mesha.mobile.domain.ai.LocalAiProvider
 import com.mesha.mobile.domain.speech.SpeechEvent
 import com.mesha.mobile.domain.speech.SpeechInputProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,6 +23,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -34,6 +36,8 @@ data class CreateIssueUiState(
     val listening: Boolean = false,
     val modelAvailable: Boolean = true,
     val speechAvailable: Boolean = true,
+    val providerOptions: List<AiProviderChoice> = emptyList(),
+    val selectedProviderKey: String? = null,
     val projects: List<ProjectDto> = emptyList(),
     val selectedProjectId: String? = null,
     // Editable review fields
@@ -58,7 +62,7 @@ data class CreateIssueUiState(
 @HiltViewModel
 class CreateIssueAiViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
-    private val localAi: LocalAiProvider,
+    private val coordinator: AiProviderCoordinator,
     private val speech: SpeechInputProvider,
     private val meshaRepository: MeshaRepository,
     private val draftRepository: DraftRepository,
@@ -72,11 +76,23 @@ class CreateIssueAiViewModel @Inject constructor(
 
     init {
         _state.update { it.copy(speechAvailable = speech.isAvailable()) }
+        viewModelScope.launch { coordinator.refresh() }
         viewModelScope.launch {
-            _state.update { it.copy(modelAvailable = localAi.isAvailable()) }
+            combine(coordinator.options, coordinator.selected) { opts, sel -> opts to sel }
+                .collect { (opts, sel) ->
+                    _state.update {
+                        it.copy(
+                            providerOptions = opts,
+                            selectedProviderKey = sel?.key,
+                            modelAvailable = opts.isNotEmpty(),
+                        )
+                    }
+                }
         }
         loadProjects()
     }
+
+    fun onSelectProvider(key: String) = coordinator.select(key)
 
     private fun loadProjects() {
         val workspaceId = selectionStore.workspaceId.value
@@ -146,7 +162,7 @@ class CreateIssueAiViewModel @Inject constructor(
         _state.update { it.copy(step = CreateStep.GENERATING, error = null) }
         viewModelScope.launch {
             try {
-                val draft = localAi.generateIssueDraft(GenerateIssueRequest(prompt))
+                val draft = coordinator.active().generateIssueDraft(GenerateIssueRequest(prompt))
                 applyDraft(draft)
             } catch (e: LocalAiException) {
                 _state.update {
@@ -236,11 +252,11 @@ class CreateIssueAiViewModel @Inject constructor(
 
     private fun friendlyMessage(e: LocalAiException): String = when (e) {
         is LocalAiException.ModelNotAvailable ->
-            "On-device Gemma model isn't installed yet. Add it in Settings to generate drafts."
+            e.message ?: "No AI provider available. Install an on-device model in Settings, or connect ChatGPT on the web."
         is LocalAiException.InvalidOutput ->
             "The model returned an unexpected response. Try rephrasing your request."
         is LocalAiException.InferenceFailed ->
-            "On-device generation failed. ${e.message ?: ""}".trim()
+            e.message ?: "Generation failed."
         is LocalAiException.UnsupportedModel ->
             "This on-device model isn't supported. Try a different model from Settings."
     }

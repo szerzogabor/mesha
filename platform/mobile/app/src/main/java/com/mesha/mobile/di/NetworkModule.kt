@@ -3,6 +3,7 @@ package com.mesha.mobile.di
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.mesha.mobile.BuildConfig
 import com.mesha.mobile.data.remote.AuthInterceptor
+import com.mesha.mobile.data.remote.MeAiApi
 import com.mesha.mobile.data.remote.MeshaApi
 import dagger.Module
 import dagger.Provides
@@ -57,4 +58,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideMeshaApi(retrofit: Retrofit): MeshaApi = retrofit.create(MeshaApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideMeAiApi(retrofit: Retrofit): MeAiApi = retrofit.create(MeAiApi::class.java)
 }

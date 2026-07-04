@@ -1,6 +1,7 @@
 package com.mesha.mobile.domain.ai.agent
 
 import com.mesha.mobile.data.repository.SelectionStore
+import com.mesha.mobile.domain.ai.AiProviderCoordinator
 import com.mesha.mobile.domain.ai.GenerateIssueRequest
 import com.mesha.mobile.domain.ai.IssueDraft
 import com.mesha.mobile.domain.ai.LocalAiProvider
@@ -50,6 +51,13 @@ class TicketAgentTest {
         selectProject("p")
     }
 
+    /** Wraps a provider in a coordinator whose active() returns it — the agent only calls active(). */
+    private fun coordinatorFor(provider: LocalAiProvider): AiProviderCoordinator {
+        val coordinator = mockk<AiProviderCoordinator>()
+        every { coordinator.active() } returns provider
+        return coordinator
+    }
+
     private fun registryWith(vararg tools: AgentTool): AgentToolRegistry {
         val registry = mockk<AgentToolRegistry>()
         every { registry.tools } returns tools.toList()
@@ -71,7 +79,7 @@ class TicketAgentTest {
                 """{"final":"You have 2 tickets."}""",
             ),
         )
-        val agent = TicketAgent(provider, registryWith(tool), selection())
+        val agent = TicketAgent(coordinatorFor(provider), registryWith(tool), selection())
 
         val steps = mutableListOf<AgentStep>()
         val reply = agent.run(history("what's open?")) { steps.add(it) }
@@ -86,7 +94,7 @@ class TicketAgentTest {
     fun plain_prose_answer_ends_immediately_without_tools() = runTest {
         val tool = RecordingTool("list_tickets", "unused")
         val provider = ScriptedProvider(listOf("Hello! How can I help with your tickets?"))
-        val agent = TicketAgent(provider, registryWith(tool), selection())
+        val agent = TicketAgent(coordinatorFor(provider), registryWith(tool), selection())
 
         val reply = agent.run(history("hi"))
 
@@ -103,7 +111,7 @@ class TicketAgentTest {
                 """{"final":"I can't do that, but you have 1 ticket."}""",
             ),
         )
-        val agent = TicketAgent(provider, registryWith(tool), selection())
+        val agent = TicketAgent(coordinatorFor(provider), registryWith(tool), selection())
 
         val steps = mutableListOf<AgentStep>()
         val reply = agent.run(history("nuke it")) { steps.add(it) }
@@ -119,7 +127,7 @@ class TicketAgentTest {
         val tool = RecordingTool("list_tickets", "still working")
         // Always calls a tool, never finalizes.
         val provider = ScriptedProvider(listOf("""{"tool":"list_tickets","arguments":{}}"""))
-        val agent = TicketAgent(provider, registryWith(tool), selection())
+        val agent = TicketAgent(coordinatorFor(provider), registryWith(tool), selection())
 
         val reply = agent.run(history("loop forever"))
 

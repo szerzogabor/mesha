@@ -2,14 +2,21 @@ package com.mesha.mobile.ui.screens.chat
 
 import app.cash.turbine.test
 import com.mesha.mobile.data.local.chat.ChatRepository
+import com.mesha.mobile.domain.ai.AiProviderChoice
+import com.mesha.mobile.domain.ai.AiProviderCoordinator
+import com.mesha.mobile.domain.ai.AiProviderKeys
+import com.mesha.mobile.domain.ai.AiProviderKind
 import com.mesha.mobile.domain.ai.LocalAiException
-import com.mesha.mobile.domain.ai.LocalAiProvider
 import com.mesha.mobile.domain.ai.LocalChatMessage
 import com.mesha.mobile.domain.ai.agent.AgentStep
 import com.mesha.mobile.domain.ai.agent.TicketAgent
+import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -38,10 +45,21 @@ class LocalLlmChatViewModelTest {
         return agent
     }
 
-    private fun availableProvider(available: Boolean = true): LocalAiProvider {
-        val provider = mockk<LocalAiProvider>(relaxed = true)
-        coEvery { provider.isAvailable() } returns available
-        return provider
+    /**
+     * A coordinator whose options are non-empty when [available], driving the ViewModel's
+     * `modelAvailable`. The ViewModel observes options/selected and calls refresh() on init.
+     */
+    private fun availableProvider(available: Boolean = true): AiProviderCoordinator {
+        val coordinator = mockk<AiProviderCoordinator>(relaxed = true)
+        val opts = if (available) {
+            listOf(AiProviderChoice(AiProviderKeys.LOCAL, "On-device", AiProviderKind.LOCAL))
+        } else {
+            emptyList()
+        }
+        every { coordinator.options } returns MutableStateFlow(opts)
+        every { coordinator.selected } returns MutableStateFlow(opts.firstOrNull())
+        coEvery { coordinator.refresh() } just Runs
+        return coordinator
     }
 
     private fun emptyChatRepository(): ChatRepository {

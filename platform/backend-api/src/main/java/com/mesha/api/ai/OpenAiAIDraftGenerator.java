@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -49,28 +50,49 @@ public class OpenAiAIDraftGenerator {
         this.restClient = restClientBuilder.build();
     }
 
+    /**
+     * Generate a structured ticket draft ({@link AIDraftContent}) — uses the draft
+     * system prompt and JSON output mode.
+     */
     public AIDraftContent generate(String prompt, OpenAiCredential credential) {
         log.info("openai_ai_draft_start authMode={} prompt_length={}", credential.authMode(), prompt.length());
         String text = credential.authMode() == OpenAiAuthMode.API_KEY
-                ? generateViaApiKey(prompt, credential)
-                : generateViaChatGptToken(prompt, credential);
+                ? generateViaApiKey(prompts.systemPrompt(), prompts.userMessage(prompt), true, credential)
+                : generateViaChatGptToken(prompts.systemPrompt(), prompts.userMessage(prompt), credential);
         AIDraftContent content = prompts.parseContent(text);
         log.info("openai_ai_draft_completed authMode={}", credential.authMode());
         return content;
     }
 
+    /**
+     * Raw text completion — the caller owns the entire prompt (no draft system prompt,
+     * no forced JSON). Used by the mobile chat agent's prompt-driven ReAct loop.
+     */
+    public String complete(String prompt, OpenAiCredential credential) {
+        log.info("openai_ai_complete_start authMode={} prompt_length={}", credential.authMode(), prompt.length());
+        String text = credential.authMode() == OpenAiAuthMode.API_KEY
+                ? generateViaApiKey(null, prompt, false, credential)
+                : generateViaChatGptToken(null, prompt, credential);
+        log.info("openai_ai_complete_completed authMode={}", credential.authMode());
+        return text;
+    }
+
     // --- API_KEY: standard Chat Completions -------------------------------------
 
-    private String generateViaApiKey(String prompt, OpenAiCredential credential) {
+    private String generateViaApiKey(String systemPrompt, String userText, boolean jsonMode, OpenAiCredential credential) {
         String model = credential.model() != null ? credential.model() : properties.getApiModel();
-        Map<String, Object> body = Map.of(
-                "model", model,
-                "messages", List.of(
-                        Map.of("role", "system", "content", prompts.systemPrompt()),
-                        Map.of("role", "user", "content", prompts.userMessage(prompt))
-                ),
-                "response_format", Map.of("type", "json_object")
-        );
+        List<Map<String, Object>> messages = new ArrayList<>();
+        if (systemPrompt != null && !systemPrompt.isBlank()) {
+            messages.add(Map.of("role", "system", "content", systemPrompt));
+        }
+        messages.add(Map.of("role", "user", "content", userText));
+
+        Map<String, Object> body = new java.util.HashMap<>();
+        body.put("model", model);
+        body.put("messages", messages);
+        if (jsonMode) {
+            body.put("response_format", Map.of("type", "json_object"));
+        }
         try {
             String response = restClient.post()
                     .uri(properties.getApiBaseUrl() + "/v1/chat/completions")
@@ -96,18 +118,19 @@ public class OpenAiAIDraftGenerator {
 
     // --- CHATGPT_TOKEN: ChatGPT backend Responses (Codex) -----------------------
 
-    private String generateViaChatGptToken(String prompt, OpenAiCredential credential) {
+    private String generateViaChatGptToken(String systemPrompt, String userText, OpenAiCredential credential) {
         String model = credential.model() != null ? credential.model() : properties.getChatgptModel();
-        Map<String, Object> body = Map.of(
-                "model", model,
-                "instructions", prompts.systemPrompt(),
-                "input", List.of(Map.of(
-                        "role", "user",
-                        "content", List.of(Map.of("type", "input_text", "text", prompts.userMessage(prompt)))
-                )),
-                "stream", true,
-                "store", false
-        );
+        Map<String, Object> body = new java.util.HashMap<>();
+        body.put("model", model);
+        if (systemPrompt != null && !systemPrompt.isBlank()) {
+            body.put("instructions", systemPrompt);
+        }
+        body.put("input", List.of(Map.of(
+                "role", "user",
+                "content", List.of(Map.of("type", "input_text", "text", userText))
+        )));
+        body.put("stream", true);
+        body.put("store", false);
         try {
             var request = restClient.post()
                     .uri(properties.getChatgptBaseUrl() + "/codex/responses")

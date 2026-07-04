@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,6 +42,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mesha.mobile.domain.ai.AiProviderChoice
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,6 +95,14 @@ fun LocalLlmChatScreen(
         ) {
             if (!state.modelAvailable) {
                 ModelUnavailableBanner()
+            }
+
+            if (state.providerOptions.size > 1) {
+                ProviderSelector(
+                    options = state.providerOptions,
+                    selectedKey = state.selectedProviderKey,
+                    onSelect = viewModel::onSelectProvider,
+                )
             }
 
             state.error?.let { error ->
@@ -265,10 +275,33 @@ private fun ChatInput(
 }
 
 @Composable
+private fun ProviderSelector(
+    options: List<AiProviderChoice>,
+    selectedKey: String?,
+    onSelect: (String) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        options.forEach { option ->
+            FilterChip(
+                selected = option.key == selectedKey,
+                onClick = { onSelect(option.key) },
+                label = { Text(option.label) },
+            )
+        }
+    }
+}
+
+@Composable
 private fun ModelUnavailableBanner() {
     Spacer(modifier = Modifier.size(0.dp))
     Text(
-        "⚠ On-device model not installed — go to Settings › Manage Local AI to download one.",
+        "⚠ No AI provider available — download an on-device model in Settings › Manage Local AI, or connect ChatGPT in the web app.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.error,
         modifier = Modifier
