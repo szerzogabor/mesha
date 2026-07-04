@@ -16,7 +16,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
@@ -27,7 +26,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +41,8 @@ import com.mesha.mobile.data.remote.dto.AgentDefinitionDto
 import com.mesha.mobile.ui.components.EmptyState
 import com.mesha.mobile.ui.components.ErrorState
 import com.mesha.mobile.ui.components.LoadingState
+import com.mesha.mobile.ui.components.MeshaCard
+import com.mesha.mobile.ui.components.MeshaTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,8 +55,8 @@ fun AgentConfigScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(if (editing == null) "Custom AI agents" else if (editing.editingId == null) "New agent" else "Edit agent") },
+            MeshaTopAppBar(
+                title = if (editing == null) "Custom AI agents" else if (editing.editingId == null) "New agent" else "Edit agent",
                 navigationIcon = {
                     TextButton(onClick = { if (editing != null) viewModel.dismissEditor() else onBack() }) {
                         Text(if (editing != null) "Cancel" else "Back")
@@ -115,7 +115,7 @@ private fun AgentCard(
     onDelete: () -> Unit,
 ) {
     var confirmDelete by remember { mutableStateOf(false) }
-    Card(Modifier.fillMaxWidth()) {
+    MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(agent.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))

@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -16,7 +15,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,6 +29,8 @@ import com.mesha.mobile.localai.model.DownloadState
 import com.mesha.mobile.localai.model.ModelStatus
 import com.mesha.mobile.localai.ui.components.ModelDownloadRow
 import com.mesha.mobile.localai.util.formatBytes
+import com.mesha.mobile.ui.components.MeshaCard
+import com.mesha.mobile.ui.components.MeshaTopAppBar
 
 /**
  * Local AI screen: discover, download, update and delete on-device models.
@@ -57,8 +57,8 @@ fun LocalAiScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Local AI") },
+            MeshaTopAppBar(
+                title = "Local AI",
                 navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
                 actions = {
                     TextButton(
@@ -87,7 +87,7 @@ fun LocalAiScreen(
             }
             state.error?.let { error ->
                 item {
-                    Card(Modifier.fillMaxWidth()) {
+                    MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(error, color = MaterialTheme.colorScheme.error)
                             OutlinedButton(onClick = { viewModel.load(forceRefresh = true) }) {
@@ -134,7 +134,7 @@ private fun SectionHeader(text: String) {
 
 @Composable
 private fun StorageSummary(availableBytes: Long, usageBytes: Long) {
-    Card(Modifier.fillMaxWidth()) {
+    MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Device storage", fontWeight = FontWeight.SemiBold)
             Text(

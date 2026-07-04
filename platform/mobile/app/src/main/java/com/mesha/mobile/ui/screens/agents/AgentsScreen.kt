@@ -12,13 +12,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -32,6 +30,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mesha.mobile.ui.components.EmptyState
 import com.mesha.mobile.ui.components.ErrorState
 import com.mesha.mobile.ui.components.LoadingState
+import com.mesha.mobile.ui.components.MeshaCard
+import com.mesha.mobile.ui.components.MeshaTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,8 +43,8 @@ fun AgentsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Agents") },
+            MeshaTopAppBar(
+                title = "Agents",
                 navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
             )
         },
@@ -59,7 +59,7 @@ fun AgentsScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(state.agents, key = { it.id }) { agent ->
-                    Card(Modifier.fillMaxWidth()) {
+                    MeshaCard(Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                         Row(
                             Modifier.padding(16.dp).fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
