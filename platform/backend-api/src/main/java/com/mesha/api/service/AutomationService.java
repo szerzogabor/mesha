@@ -453,7 +453,10 @@ public class AutomationService {
     }
 
     private AutomationRule getById(UUID projectId, UUID ruleId) {
-        return ruleRepository.findById(ruleId)
+        // Fetch actions and their conditions eagerly: the caller maps the rule to a DTO after the
+        // transaction commits, and with open-in-view disabled a lazy collection would otherwise throw
+        // LazyInitializationException during serialization (e.g. a plain enable/disable toggle).
+        return ruleRepository.findByIdWithActions(ruleId)
             .filter(r -> r.getProject().getId().equals(projectId))
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Automation rule not found"));
     }

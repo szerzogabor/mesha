@@ -3,6 +3,7 @@ package com.mesha.api.service;
 import com.mesha.api.dto.AutomationActionConditionRequest;
 import com.mesha.api.dto.AutomationActionRequest;
 import com.mesha.api.dto.CreateAutomationRuleRequest;
+import com.mesha.api.dto.UpdateAutomationRuleRequest;
 import com.mesha.api.model.ActivityEventType;
 import com.mesha.api.model.AutomationActionType;
 import com.mesha.api.model.AutomationRule;
@@ -404,5 +405,23 @@ class AutomationServiceTest {
         verify(ruleRepository).findEnabledByProjectIdAndTriggerTypeAndValueWithActions(
                 projectId, AutomationTriggerType.STATUS_UPDATED, "IN_REVIEW");
         verify(ruleRepository, never()).findEnabledByProjectIdAndTriggerTypeWithActions(any(), any());
+    }
+
+    @Test
+    void updateTogglesEnabledAndFetchesActionsEagerly() {
+        AutomationRule rule = rule(AutomationActionType.SET_STATUS, "REVIEW");
+        rule.setEnabled(true);
+        UUID ruleId = rule.getId();
+        when(ruleRepository.findByIdWithActions(ruleId)).thenReturn(Optional.of(rule));
+        when(ruleRepository.save(any(AutomationRule.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        AutomationRule saved = service.update(projectId, ruleId,
+                new UpdateAutomationRuleRequest(null, null, null, false));
+
+        // Must load via the join-fetch query so actions/conditions are initialized before the
+        // caller maps the entity to a DTO after the transaction commits (open-in-view is disabled).
+        verify(ruleRepository).findByIdWithActions(ruleId);
+        verify(ruleRepository, never()).findById(any());
+        assertThat(saved.isEnabled()).isFalse();
     }
 }

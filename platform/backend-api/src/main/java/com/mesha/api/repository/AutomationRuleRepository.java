@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface AutomationRuleRepository extends JpaRepository<AutomationRule, UUID> {
@@ -16,6 +17,12 @@ public interface AutomationRuleRepository extends JpaRepository<AutomationRule, 
             + "LEFT JOIN FETCH a.conditions "
             + "WHERE r.project.id = :projectId ORDER BY r.createdAt ASC")
     List<AutomationRule> findAllByProjectIdWithActions(@Param("projectId") UUID projectId);
+
+    @Query("SELECT DISTINCT r FROM AutomationRule r "
+            + "LEFT JOIN FETCH r.actions a "
+            + "LEFT JOIN FETCH a.conditions "
+            + "WHERE r.id = :ruleId")
+    Optional<AutomationRule> findByIdWithActions(@Param("ruleId") UUID ruleId);
 
     @Query("SELECT DISTINCT r FROM AutomationRule r "
             + "LEFT JOIN FETCH r.actions a "
