@@ -79,11 +79,27 @@ public class IssueSseService {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    self.getObject().sendToSubscribers(projectId, dto);
+                    dispatch(projectId, dto);
                 }
             });
         } else {
+            dispatch(projectId, dto);
+        }
+    }
+
+    /**
+     * Hands the broadcast off to the {@code @Async} executor via the bean's own
+     * proxy. The dispatch is guarded because it runs inside {@code afterCommit}
+     * (on the request thread, after the DB has already committed): a rejected or
+     * misconfigured executor would otherwise let a {@code TaskRejectedException}
+     * propagate and fail the client's request even though the update succeeded.
+     * A dropped live refresh is non-fatal — clients recover on their next fetch.
+     */
+    private void dispatch(UUID projectId, IssueDto dto) {
+        try {
             self.getObject().sendToSubscribers(projectId, dto);
+        } catch (Exception e) {
+            log.warn("Failed to dispatch issue-updated event projectId={} issueId={}", projectId, dto.id(), e);
         }
     }
 
