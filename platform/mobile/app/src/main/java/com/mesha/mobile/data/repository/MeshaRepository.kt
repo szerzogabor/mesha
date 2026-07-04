@@ -29,6 +29,7 @@ import com.mesha.mobile.data.remote.dto.UpdateTicketRuleRequestDto
 import com.mesha.mobile.data.remote.dto.LabelDto
 import com.mesha.mobile.data.remote.dto.ProjectDto
 import com.mesha.mobile.data.remote.dto.ProjectStatusDto
+import com.mesha.mobile.data.remote.dto.RegisterDeviceRequestDto
 import com.mesha.mobile.data.remote.dto.SendMessageRequestDto
 import com.mesha.mobile.data.remote.dto.WorkspaceDto
 import com.mesha.mobile.data.remote.dto.WorkspaceMemberDto
@@ -46,6 +47,12 @@ import javax.inject.Singleton
 class MeshaRepository @Inject constructor(
     private val api: MeshaApi,
 ) {
+    suspend fun registerDevice(fcmToken: String, platform: String = "ANDROID"): Result<Unit> =
+        io { api.registerDevice(RegisterDeviceRequestDto(fcmToken, platform)) }
+
+    suspend fun unregisterDevice(fcmToken: String): Result<Unit> =
+        io { api.unregisterDevice(fcmToken) }
+
     suspend fun getWorkspaces(): Result<List<WorkspaceDto>> =
         io { api.getWorkspaces() }
 

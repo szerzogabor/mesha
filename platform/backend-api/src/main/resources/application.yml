@@ -132,6 +132,12 @@ github:
     webhook-secret: ${GITHUB_APP_WEBHOOK_SECRET:}
     app-name: ${GITHUB_APP_NAME:mesha-github-app}
 
+# Firebase Cloud Messaging — powers push notifications on ticket status changes.
+# Supply the service-account JSON (Project Settings → Service accounts → Generate key)
+# as a single-line env var. When empty, push notifications are disabled and no-op.
+firebase:
+  credentials-json: ${FIREBASE_CREDENTIALS_JSON:}
+
 # Structured JSON logging — format handled by logback-spring.xml
 logging:
   level:

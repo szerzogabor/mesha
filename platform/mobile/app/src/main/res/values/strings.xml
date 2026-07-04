@@ -7,4 +7,10 @@
     <string name="nav_settings">Settings</string>
     <string name="create_issue_with_ai">Create Issue with AI</string>
     <string name="clerk_configuration_error">This build is missing its Clerk configuration and can\'t sign in.</string>
+
+    <!-- Push notifications -->
+    <string name="notif_channel_ticket_updates">Ticket updates</string>
+    <string name="notif_channel_ticket_updates_desc">Notifications when a ticket\'s status changes.</string>
+    <!-- e.g. "MES-4 moved to In Progress" — first arg carries a trailing space when the identifier is present -->
+    <string name="notif_ticket_status_title">%1$smoved to %2$s</string>
 </resources>

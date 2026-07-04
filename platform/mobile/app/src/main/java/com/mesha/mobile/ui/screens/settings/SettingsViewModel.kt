@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.mesha.mobile.BuildConfig
 import com.mesha.mobile.domain.ai.LocalAiProvider
 import com.mesha.mobile.localai.storage.ModelStorageManager
+import com.mesha.mobile.notifications.PushNotificationManager
 import com.mesha.mobile.update.ApkInstaller
 import com.mesha.mobile.update.UpdateChecker
 import com.mesha.mobile.update.UpdateStatus
@@ -26,6 +27,7 @@ data class SettingsUiState(
     val updateStatus: UpdateStatus = UpdateStatus.UpToDate,
     val checkingUpdate: Boolean = false,
     val downloadingUpdate: Boolean = false,
+    val notificationsEnabled: Boolean = true,
     val message: String? = null,
 )
 
@@ -36,12 +38,24 @@ class SettingsViewModel @Inject constructor(
     private val modelStorageManager: ModelStorageManager,
     private val updateChecker: UpdateChecker,
     private val apkInstaller: ApkInstaller,
+    private val pushNotificationManager: PushNotificationManager,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(SettingsUiState())
+    private val _state = MutableStateFlow(
+        SettingsUiState(notificationsEnabled = pushNotificationManager.isEnabled()),
+    )
     val state: StateFlow<SettingsUiState> = _state.asStateFlow()
 
     init { refreshModelStatus() }
+
+    /**
+     * Toggle ticket push notifications. Persists the choice and registers/unregisters this
+     * device's token with the backend so a disabled device stops receiving pushes.
+     */
+    fun setNotificationsEnabled(enabled: Boolean) {
+        _state.update { it.copy(notificationsEnabled = enabled) }
+        viewModelScope.launch { pushNotificationManager.setEnabled(enabled) }
+    }
 
     fun refreshModelStatus() {
         viewModelScope.launch {

@@ -13,6 +13,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,6 +32,7 @@ import androidx.navigation.compose.rememberNavController
 import com.mesha.mobile.ClerkBootstrap
 import com.mesha.mobile.R
 import com.mesha.mobile.data.repository.AuthState
+import com.mesha.mobile.notifications.TicketNavigator
 import com.mesha.mobile.ui.navigation.Routes
 import com.mesha.mobile.ui.navigation.TopLevelDestination
 import com.mesha.mobile.ui.screens.agentconfig.AgentConfigScreen
@@ -81,6 +83,15 @@ fun MeshaApp() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination
+
+    // Open the ticket a tapped push notification requested, once we're authenticated and
+    // the nav graph exists (see TicketNavigator / MainActivity).
+    val pendingTicket by TicketNavigator.pending.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingTicket) {
+        val ticket = pendingTicket ?: return@LaunchedEffect
+        navController.navigate(Routes.issueDetail(ticket.projectId, ticket.issueId))
+        TicketNavigator.consume()
+    }
 
     val topLevelRoutes = TopLevelDestination.entries.map { it.route }
     val showBottomBar = topLevelRoutes.any { route ->
