@@ -8,17 +8,21 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.AlertDialog
@@ -49,13 +53,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mesha.mobile.data.remote.dto.BlocksSessionDto
 import com.mesha.mobile.data.remote.dto.CommentDto
+import com.mesha.mobile.data.remote.dto.GitHubPullRequestDto
 import com.mesha.mobile.ui.components.ErrorState
 import com.mesha.mobile.ui.components.LoadingState
 
@@ -131,6 +138,8 @@ fun IssueDetailScreen(
                             PriorityChip(state = state, viewModel = viewModel)
                         }
 
+                        PullRequestsCard(state = state)
+
                         DetailsCard(state = state, viewModel = viewModel)
 
                         issue?.description?.takeIf { it.isNotBlank() }?.let { description ->
@@ -146,6 +155,7 @@ fun IssueDetailScreen(
                             }
                         }
 
+                        AttachmentsCard(state = state, viewModel = viewModel)
                         AiAgentsCard(state = state, viewModel = viewModel)
                         AiSessionsCard(state = state, viewModel = viewModel)
                         ActivityCard(state = state)
@@ -323,6 +333,135 @@ private fun DetailsCard(state: IssueDetailUiState, viewModel: IssueDetailViewMod
     }
 }
 
+/**
+ * Collect every pull request associated with the issue: the issue's most-recent PR plus any
+ * PRs surfaced by its AI sessions. Deduplicated by URL (falling back to PR number) so a PR that
+ * appears in both places is shown once. This is what powers the direct "open PR" links.
+ */
+private fun collectPullRequests(state: IssueDetailUiState): List<GitHubPullRequestDto> {
+    val fromSessions = state.blocksSessions.flatMap { session ->
+        session.linkedPullRequests.ifEmpty {
+            if (session.prUrl != null) listOf(
+                GitHubPullRequestDto(
+                    id = session.id,
+                    githubPrNumber = session.prNumber,
+                    htmlUrl = session.prUrl,
+                ),
+            ) else emptyList()
+        }
+    }
+    val all = listOfNotNull(state.issue?.lastPullRequest) + fromSessions
+    return all
+        .filter { it.htmlUrl != null }
+        .distinctBy { it.htmlUrl ?: it.githubPrNumber?.toString() ?: it.id }
+}
+
+@Composable
+private fun PullRequestsCard(state: IssueDetailUiState) {
+    val prs = collectPullRequests(state)
+    if (prs.isEmpty()) return
+    val uriHandler = LocalUriHandler.current
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Pull Requests", fontWeight = FontWeight.SemiBold)
+            prs.forEach { pr ->
+                val url = pr.htmlUrl ?: return@forEach
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { uriHandler.openUri(url) },
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Default.OpenInNew,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Column(Modifier.weight(1f)) {
+                        val heading = buildString {
+                            append("PR")
+                            pr.githubPrNumber?.let { append(" #$it") }
+                            pr.title?.takeIf { it.isNotBlank() }?.let { append(" · $it") }
+                        }
+                        Text(
+                            heading,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            textDecoration = TextDecoration.Underline,
+                        )
+                        val meta = listOfNotNull(
+                            pr.state?.takeIf { it.isNotBlank() },
+                            pr.checksStatus?.let { "checks: $it" },
+                            if (pr.draft == true) "draft" else null,
+                        ).joinToString(" · ")
+                        if (meta.isNotBlank()) {
+                            Text(
+                                meta,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Text(
+                            url,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AttachmentsCard(state: IssueDetailUiState, viewModel: IssueDetailViewModel) {
+    if (state.attachments.isEmpty()) return
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Attachments", fontWeight = FontWeight.SemiBold)
+            state.attachments.forEach { attachment ->
+                val opening = state.openingAttachmentId == attachment.id
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = state.openingAttachmentId == null) {
+                            viewModel.openAttachment(attachment)
+                        },
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (opening) {
+                        CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
+                    } else {
+                        Icon(Icons.Default.AttachFile, contentDescription = null)
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text(attachment.fileName, style = MaterialTheme.typography.bodyMedium)
+                        val meta = listOfNotNull(
+                            formatBytes(attachment.fileSize),
+                            attachment.uploadedByName,
+                        ).joinToString(" · ")
+                        if (meta.isNotBlank()) {
+                            Text(
+                                meta,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun formatBytes(bytes: Long): String = when {
+    bytes < 1024 -> "$bytes B"
+    bytes < 1024 * 1024 -> "%.1f KB".format(bytes / 1024.0)
+    else -> "%.1f MB".format(bytes / (1024.0 * 1024.0))
+}
+
 @Composable
 private fun AiAgentsCard(state: IssueDetailUiState, viewModel: IssueDetailViewModel) {
     Card(Modifier.fillMaxWidth()) {
@@ -413,17 +552,25 @@ private fun SessionRow(session: BlocksSessionDto, onCancel: () -> Unit) {
         session.errorMessage?.let {
             Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
         }
+        val uriHandler = LocalUriHandler.current
         val prs = session.linkedPullRequests.ifEmpty {
             if (session.prUrl != null) listOf(
-                com.mesha.mobile.data.remote.dto.GitHubPullRequestDto(
+                GitHubPullRequestDto(
                     id = session.id, githubPrNumber = session.prNumber, htmlUrl = session.prUrl,
                 ),
             ) else emptyList()
         }
         prs.forEach { pr ->
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            val prModifier = pr.htmlUrl?.let { Modifier.clickable { uriHandler.openUri(it) } } ?: Modifier
+            Row(
+                modifier = prModifier,
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
                 Text("PR #${pr.githubPrNumber ?: ""} ${pr.state ?: ""}".trim(),
-                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    textDecoration = if (pr.htmlUrl != null) TextDecoration.Underline else null)
                 pr.checksStatus?.let { checks ->
                     Text("· checks: $checks", style = MaterialTheme.typography.labelSmall,
                         color = if (checks.equals("success", true)) StatusGreen

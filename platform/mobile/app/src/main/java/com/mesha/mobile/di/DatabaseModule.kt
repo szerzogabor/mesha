@@ -3,6 +3,7 @@ package com.mesha.mobile.di
 import android.content.Context
 import androidx.room.Room
 import com.mesha.mobile.data.local.MeshaDatabase
+import com.mesha.mobile.data.local.chat.ChatMessageDao
 import com.mesha.mobile.data.local.draft.DraftDao
 import dagger.Module
 import dagger.Provides
@@ -24,4 +25,7 @@ object DatabaseModule {
 
     @Provides
     fun provideDraftDao(database: MeshaDatabase): DraftDao = database.draftDao()
+
+    @Provides
+    fun provideChatMessageDao(database: MeshaDatabase): ChatMessageDao = database.chatMessageDao()
 }

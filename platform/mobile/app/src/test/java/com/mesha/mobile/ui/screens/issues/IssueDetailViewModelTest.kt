@@ -1,11 +1,14 @@
 package com.mesha.mobile.ui.screens.issues
 
 import app.cash.turbine.test
+import com.mesha.mobile.data.remote.AttachmentOpener
 import com.mesha.mobile.data.remote.dto.CommentDto
+import com.mesha.mobile.data.remote.dto.IssueAttachmentDto
 import com.mesha.mobile.data.remote.dto.IssueDto
 import com.mesha.mobile.data.repository.MeshaRepository
 import com.mesha.mobile.data.repository.SelectionStore
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -27,6 +30,7 @@ class IssueDetailViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var repository: MeshaRepository
+    private lateinit var attachmentOpener: AttachmentOpener
     private lateinit var viewModel: IssueDetailViewModel
 
     private val projectId = "project-1"
@@ -58,7 +62,9 @@ class IssueDetailViewModelTest {
         coEvery { repository.getIssueActivity(any(), any()) } returns Result.success(emptyList())
         coEvery { repository.getIssueAgents(any(), any()) } returns Result.success(emptyList())
         coEvery { repository.getBlocksSessions(any(), any()) } returns Result.success(emptyList())
-        viewModel = IssueDetailViewModel(repository, SelectionStore())
+        coEvery { repository.getIssueAttachments(any(), any()) } returns Result.success(emptyList())
+        attachmentOpener = mockk(relaxed = true)
+        viewModel = IssueDetailViewModel(repository, SelectionStore(), attachmentOpener)
     }
 
     @After
@@ -115,6 +121,56 @@ class IssueDetailViewModelTest {
 
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `load populates attachments`() = runTest {
+        val attachment = IssueAttachmentDto(
+            id = "att-1",
+            issueId = issueId,
+            fileName = "screenshot.png",
+            contentType = "image/png",
+            fileSize = 2048,
+        )
+        coEvery { repository.getIssue(projectId, issueId) } returns Result.success(issueDto)
+        coEvery { repository.getComments(issueId) } returns Result.success(emptyList())
+        coEvery { repository.getIssueAttachments(projectId, issueId) } returns Result.success(listOf(attachment))
+
+        viewModel.state.test {
+            awaitItem() // initial state
+
+            viewModel.load(projectId, issueId)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val loaded = awaitItem()
+            assertEquals(1, loaded.attachments.size)
+            assertEquals("screenshot.png", loaded.attachments.first().fileName)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `openAttachment downloads through the opener and clears progress`() = runTest {
+        val attachment = IssueAttachmentDto(
+            id = "att-1",
+            issueId = issueId,
+            fileName = "doc.pdf",
+            contentType = "application/pdf",
+            fileSize = 1024,
+        )
+        coEvery { repository.getIssue(projectId, issueId) } returns Result.success(issueDto)
+        coEvery { repository.getComments(issueId) } returns Result.success(emptyList())
+
+        viewModel.load(projectId, issueId)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.openAttachment(attachment)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify { attachmentOpener.open(any(), "doc.pdf", "application/pdf") }
+        assertNull(viewModel.state.value.openingAttachmentId)
+        assertNull(viewModel.state.value.updateError)
     }
 
     @Test

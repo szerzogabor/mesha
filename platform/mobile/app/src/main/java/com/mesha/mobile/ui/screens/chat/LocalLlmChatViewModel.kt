@@ -2,6 +2,7 @@ package com.mesha.mobile.ui.screens.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mesha.mobile.data.local.chat.ChatRepository
 import com.mesha.mobile.domain.ai.AiProviderChoice
 import com.mesha.mobile.domain.ai.AiProviderCoordinator
 import com.mesha.mobile.domain.ai.LocalAiException
@@ -43,13 +44,14 @@ data class LocalLlmChatUiState(
  * reasons. The agent's tool activity is surfaced as [ChatEntry.Tool] rows so the user can see
  * what it's doing; its final answer becomes a [ChatEntry.Assistant] row.
  *
- * [localAi] is retained only to report model availability for the banner/enablement — all
- * generation goes through [agent].
+ * The conversation is persisted via [ChatRepository] so it survives app restarts. Users can
+ * wipe the history at any time with [clearSession].
  */
 @HiltViewModel
 class LocalLlmChatViewModel @Inject constructor(
     private val agent: TicketAgent,
     private val coordinator: AiProviderCoordinator,
+    private val chatRepository: ChatRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LocalLlmChatUiState())
@@ -72,6 +74,19 @@ class LocalLlmChatViewModel @Inject constructor(
                     }
                 }
         }
+        viewModelScope.launch { loadPersistedSession() }
+    }
+
+    private suspend fun loadPersistedSession() {
+        val persisted = chatRepository.loadMessages()
+        conversation.addAll(persisted)
+        val entries = persisted.map { msg ->
+            when (msg.role) {
+                LocalChatMessage.Role.USER -> ChatEntry.User(msg.content)
+                LocalChatMessage.Role.ASSISTANT -> ChatEntry.Assistant(msg.content)
+            }
+        }
+        _state.update { it.copy(entries = entries) }
     }
 
     fun onInputChange(text: String) = _state.update { it.copy(inputText = text, error = null) }
@@ -82,7 +97,8 @@ class LocalLlmChatViewModel @Inject constructor(
         val text = _state.value.inputText.trim()
         if (text.isBlank() || _state.value.isGenerating) return
 
-        conversation.add(LocalChatMessage(LocalChatMessage.Role.USER, text))
+        val userMessage = LocalChatMessage(LocalChatMessage.Role.USER, text)
+        conversation.add(userMessage)
         _state.update {
             it.copy(
                 entries = it.entries + ChatEntry.User(text),
@@ -93,9 +109,12 @@ class LocalLlmChatViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
+            chatRepository.saveMessage(userMessage)
             try {
                 val reply = agent.run(conversation.toList()) { step -> onAgentStep(step) }
-                conversation.add(LocalChatMessage(LocalChatMessage.Role.ASSISTANT, reply))
+                val assistantMessage = LocalChatMessage(LocalChatMessage.Role.ASSISTANT, reply)
+                conversation.add(assistantMessage)
+                chatRepository.saveMessage(assistantMessage)
                 _state.update {
                     it.copy(entries = it.entries + ChatEntry.Assistant(reply), isGenerating = false)
                 }
@@ -108,6 +127,15 @@ class LocalLlmChatViewModel @Inject constructor(
                     it.copy(isGenerating = false, error = "Chat failed: ${e.message ?: "Unknown error"}")
                 }
             }
+        }
+    }
+
+    fun clearSession() {
+        if (_state.value.isGenerating) return
+        viewModelScope.launch {
+            chatRepository.clearSession()
+            conversation.clear()
+            _state.update { it.copy(entries = emptyList(), error = null) }
         }
     }
 
