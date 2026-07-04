@@ -50,11 +50,13 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -224,10 +226,15 @@ fun IssuesScreen(
     }
 }
 
-/** A card being dragged across the board. Positions are in window coordinates. */
+/**
+ * A card being dragged across the board. Positions are in window coordinates. [pointer] is a
+ * [MutableState] so per-pixel moves update it without reassigning [BoardDrag] itself — that
+ * keeps the whole board from recomposing on every drag event; only the derived drop
+ * target/auto-scroll and the overlay's placement react to it.
+ */
 private data class BoardDrag(
     val issue: IssueDto,
-    val pointer: Offset,
+    val pointer: MutableState<Offset>,
     val grab: Offset,
     val cardSize: IntSize,
 )
@@ -279,8 +286,9 @@ private fun BoardView(
     val dropTarget by remember {
         derivedStateOf {
             val d = drag ?: return@derivedStateOf null
+            val p = d.pointer.value
             columnBounds.entries
-                .firstOrNull { (_, r) -> d.pointer.x >= r.left && d.pointer.x <= r.right }
+                .firstOrNull { (_, r) -> p.x >= r.left && p.x <= r.right }
                 ?.key
                 ?.takeIf { it != d.issue.status }
         }
@@ -291,12 +299,13 @@ private fun BoardView(
     val autoScroll by remember {
         derivedStateOf {
             val d = drag ?: return@derivedStateOf 0f
+            val p = d.pointer.value
             val edge = with(density) { 56.dp.toPx() }
             val left = boardOrigin.x
             val right = boardOrigin.x + boardSize.width
             when {
-                d.pointer.x > right - edge -> 1f
-                d.pointer.x < left + edge -> -1f
+                p.x > right - edge -> 1f
+                p.x < left + edge -> -1f
                 else -> 0f
             }
         }
@@ -339,9 +348,9 @@ private fun BoardView(
                     onMove = onMove,
                     onCreateIssue = onCreateIssue,
                     onDragStart = { issue, cardOrigin, cardSize, grab ->
-                        drag = BoardDrag(issue, cardOrigin + grab, grab, cardSize)
+                        drag = BoardDrag(issue, mutableStateOf(cardOrigin + grab), grab, cardSize)
                     },
-                    onDragMove = { pointer -> drag = drag?.copy(pointer = pointer) },
+                    onDragMove = { pointer -> drag?.pointer?.value = pointer },
                     onDragEnd = {
                         val d = drag
                         val target = dropTarget
@@ -360,9 +369,10 @@ private fun BoardView(
                 widthPx = d.cardSize.width,
                 density = density,
                 offset = {
+                    val p = d.pointer.value
                     IntOffset(
-                        (d.pointer.x - boardOrigin.x - d.grab.x).roundToInt(),
-                        (d.pointer.y - boardOrigin.y - d.grab.y).roundToInt(),
+                        (p.x - boardOrigin.x - d.grab.x).roundToInt(),
+                        (p.y - boardOrigin.y - d.grab.y).roundToInt(),
                     )
                 },
             )
@@ -512,6 +522,17 @@ private fun BoardCard(
     // The card's own top-left in window coordinates, kept current so a drag can be reported
     // in the same coordinate space as the columns.
     var cardOrigin by remember { mutableStateOf(Offset.Zero) }
+
+    // pointerInput's block is only restarted when its key (issue.id) changes, so capture the
+    // latest params/callbacks through rememberUpdatedState — otherwise an in-flight drag would
+    // read values from the composition that started the gesture.
+    val currentIssue by rememberUpdatedState(issue)
+    val currentCardOrigin by rememberUpdatedState(cardOrigin)
+    val currentOnDragStart by rememberUpdatedState(onDragStart)
+    val currentOnDragMove by rememberUpdatedState(onDragMove)
+    val currentOnDragEnd by rememberUpdatedState(onDragEnd)
+    val currentOnDragCancel by rememberUpdatedState(onDragCancel)
+
     MeshaCard(
         onClick = onClick,
         modifier = Modifier
@@ -520,13 +541,13 @@ private fun BoardCard(
             .graphicsLayer { alpha = if (isDragging) 0.3f else 1f }
             .pointerInput(issue.id) {
                 detectDragGesturesAfterLongPress(
-                    onDragStart = { grab -> onDragStart(issue, cardOrigin, size, grab) },
+                    onDragStart = { grab -> currentOnDragStart(currentIssue, currentCardOrigin, size, grab) },
                     onDrag = { change, _ ->
                         change.consume()
-                        onDragMove(cardOrigin + change.position)
+                        currentOnDragMove(currentCardOrigin + change.position)
                     },
-                    onDragEnd = { onDragEnd() },
-                    onDragCancel = { onDragCancel() },
+                    onDragEnd = { currentOnDragEnd() },
+                    onDragCancel = { currentOnDragCancel() },
                 )
             },
         contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
