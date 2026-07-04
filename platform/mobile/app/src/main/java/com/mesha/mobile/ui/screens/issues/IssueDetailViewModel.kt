@@ -274,11 +274,19 @@ class IssueDetailViewModel @Inject constructor(
     fun assignTo(userId: String?) {
         _state.update { it.copy(showAssigneePicker = false, updatingAssignee = true) }
         viewModelScope.launch {
+            var unassignError: String? = null
             _state.value.issueAgents.forEach {
                 meshaRepository.unassignIssueAgent(projectId, issueId, it.agentDefinitionId)
+                    .onFailure { e -> unassignError = e.message ?: "Failed to unassign agent" }
             }
             val agents = meshaRepository.getIssueAgents(projectId, issueId).getOrNull().orEmpty()
             _state.update { it.copy(issueAgents = agents) }
+            if (unassignError != null) {
+                // Don't proceed to set the human assignee if clearing the agent failed — that
+                // would leave the issue with two assignees out of sync with the server.
+                _state.update { it.copy(updatingAssignee = false, updateError = unassignError) }
+                return@launch
+            }
             val req = if (userId == null) UpdateIssueRequestDto(clearAssignee = true)
             else UpdateIssueRequestDto(assigneeId = userId)
             patch(req) { it.copy(updatingAssignee = false) }
@@ -360,10 +368,21 @@ class IssueDetailViewModel @Inject constructor(
         }
         viewModelScope.launch {
             // An agent and a human are mutually exclusive assignees (mirrors the web): clear
-            // any existing human assignee before attaching the agent.
+            // any existing human assignee before attaching the agent. Abort if that fails so we
+            // don't end up with both assigned.
             if (_state.value.issue?.assignee != null) {
-                meshaRepository.updateIssue(projectId, issueId, UpdateIssueRequestDto(clearAssignee = true))
-                    .onSuccess { updated -> _state.update { it.copy(issue = updated) } }
+                val cleared = meshaRepository.updateIssue(projectId, issueId, UpdateIssueRequestDto(clearAssignee = true))
+                if (cleared.isFailure) {
+                    _state.update {
+                        it.copy(
+                            updatingAgents = false,
+                            updatingAssignee = false,
+                            updateError = cleared.exceptionOrNull()?.message ?: "Failed to clear assignee",
+                        )
+                    }
+                    return@launch
+                }
+                _state.update { it.copy(issue = cleared.getOrNull() ?: it.issue) }
             }
             meshaRepository.assignIssueAgent(projectId, issueId, agentDefinitionId).fold(
                 onSuccess = {
@@ -456,15 +475,38 @@ class IssueDetailViewModel @Inject constructor(
             _state.update { it.copy(updateError = "Title cannot be empty") }
             return
         }
-        if (trimmed == _state.value.issue?.title) return
-        patch(UpdateIssueRequestDto(title = trimmed)) { it }
+        val previous = _state.value.issue?.title
+        if (trimmed == previous) return
+        // Optimistic update — the inline editor closes immediately, so reflect the new value
+        // right away and revert only if the request fails.
+        _state.update { it.copy(issue = it.issue?.copy(title = trimmed)) }
+        patchField(UpdateIssueRequestDto(title = trimmed)) { it.copy(issue = it.issue?.copy(title = previous ?: "")) }
     }
 
     /** Inline-edit the description. An empty string clears it (matches the web textarea). */
     fun updateDescription(description: String) {
         val trimmed = description.trim()
-        if (trimmed == _state.value.issue?.description.orEmpty()) return
-        patch(UpdateIssueRequestDto(description = trimmed)) { it }
+        val previous = _state.value.issue?.description.orEmpty()
+        if (trimmed == previous) return
+        _state.update { it.copy(issue = it.issue?.copy(description = trimmed)) }
+        patchField(UpdateIssueRequestDto(description = trimmed)) { it.copy(issue = it.issue?.copy(description = previous)) }
+    }
+
+    /**
+     * Apply an issue update whose optimistic value is already reflected in state. On success the
+     * server copy replaces it and the activity feed refreshes; on failure [revert] restores the
+     * pre-edit value and surfaces the error.
+     */
+    private fun patchField(req: UpdateIssueRequestDto, revert: (IssueDetailUiState) -> IssueDetailUiState) {
+        viewModelScope.launch {
+            meshaRepository.updateIssue(projectId, issueId, req).fold(
+                onSuccess = { updated ->
+                    val activity = meshaRepository.getIssueActivity(projectId, issueId).getOrNull()
+                    _state.update { it.copy(issue = updated, activity = activity ?: it.activity) }
+                },
+                onFailure = { e -> _state.update { revert(it).copy(updateError = e.message) } },
+            )
+        }
     }
 
     fun setEditTitle(title: String) = _state.update { it.copy(editTitle = title) }

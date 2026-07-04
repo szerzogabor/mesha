@@ -53,6 +53,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -170,8 +171,8 @@ private fun SectionLabel(text: String, modifier: Modifier = Modifier) {
 @Composable
 private fun TitleHeader(state: IssueDetailUiState, viewModel: IssueDetailViewModel) {
     val issue = state.issue ?: return
-    var editing by remember { mutableStateOf(false) }
-    var draft by remember { mutableStateOf(issue.title) }
+    var editing by rememberSaveable { mutableStateOf(false) }
+    var draft by rememberSaveable { mutableStateOf(issue.title) }
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (editing) {
@@ -240,8 +241,8 @@ private fun IdentifierChip(identifier: String) {
 @Composable
 private fun DescriptionCard(state: IssueDetailUiState, viewModel: IssueDetailViewModel) {
     val issue = state.issue ?: return
-    var editing by remember { mutableStateOf(false) }
-    var draft by remember { mutableStateOf(issue.description.orEmpty()) }
+    var editing by rememberSaveable { mutableStateOf(false) }
+    var draft by rememberSaveable { mutableStateOf(issue.description.orEmpty()) }
 
     MeshaCard(Modifier.fillMaxWidth()) {
         Row(
@@ -290,7 +291,7 @@ private fun DescriptionCard(state: IssueDetailUiState, viewModel: IssueDetailVie
 
 @Composable
 private fun CommentsActivityCard(state: IssueDetailUiState, viewModel: IssueDetailViewModel) {
-    var tab by remember { mutableStateOf(0) }
+    var tab by rememberSaveable { mutableStateOf(0) }
     MeshaCard(Modifier.fillMaxWidth()) {
         Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             TabButton("Comments (${state.comments.size})", tab == 0) { tab = 0 }
@@ -358,7 +359,7 @@ private fun CommentsSection(state: IssueDetailUiState, viewModel: IssueDetailVie
                 placeholder = { Text(if (state.replyingToId != null) "Write a reply…" else "Add a comment…") },
                 enabled = !state.sendingComment,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = { viewModel.sendComment() }),
+                keyboardActions = KeyboardActions(onSend = { if (!state.sendingComment) viewModel.sendComment() }),
             )
             IconButton(
                 onClick = { viewModel.sendComment() },
