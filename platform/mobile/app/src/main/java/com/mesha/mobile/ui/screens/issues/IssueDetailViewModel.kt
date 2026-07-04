@@ -250,9 +250,19 @@ class IssueDetailViewModel @Inject constructor(
         _state.update { it.copy(showAssigneePicker = true) }
         if (_state.value.members.isEmpty()) {
             viewModelScope.launch {
-                val wsId = workspaceId() ?: return@launch
-                meshaRepository.getWorkspaceMembers(wsId).onSuccess { members ->
+                val id = workspaceId() ?: return@launch
+                meshaRepository.getWorkspaceMembers(id).onSuccess { members ->
                     _state.update { it.copy(members = members) }
+                }
+            }
+        }
+        // The assignee picker mirrors the web: a person OR an AI agent can be the assignee,
+        // so load the assignable agents alongside the workspace members.
+        if (_state.value.activeAgents.isEmpty()) {
+            viewModelScope.launch {
+                val id = workspaceId() ?: return@launch
+                meshaRepository.getActiveAgents(id).onSuccess { agents ->
+                    _state.update { it.copy(activeAgents = agents) }
                 }
             }
         }
@@ -260,11 +270,19 @@ class IssueDetailViewModel @Inject constructor(
 
     fun dismissAssigneePicker() = _state.update { it.copy(showAssigneePicker = false) }
 
+    /** Assign a human, clearing any AI-agent assignment so the two stay mutually exclusive. */
     fun assignTo(userId: String?) {
         _state.update { it.copy(showAssigneePicker = false, updatingAssignee = true) }
-        val req = if (userId == null) UpdateIssueRequestDto(clearAssignee = true)
-        else UpdateIssueRequestDto(assigneeId = userId)
-        patch(req) { it.copy(updatingAssignee = false) }
+        viewModelScope.launch {
+            _state.value.issueAgents.forEach {
+                meshaRepository.unassignIssueAgent(projectId, issueId, it.agentDefinitionId)
+            }
+            val agents = meshaRepository.getIssueAgents(projectId, issueId).getOrNull().orEmpty()
+            _state.update { it.copy(issueAgents = agents) }
+            val req = if (userId == null) UpdateIssueRequestDto(clearAssignee = true)
+            else UpdateIssueRequestDto(assigneeId = userId)
+            patch(req) { it.copy(updatingAssignee = false) }
+        }
     }
 
     // --- Labels ---
@@ -337,12 +355,23 @@ class IssueDetailViewModel @Inject constructor(
     fun dismissAgentPicker() = _state.update { it.copy(showAgentPicker = false) }
 
     fun assignAgent(agentDefinitionId: String) {
-        _state.update { it.copy(showAgentPicker = false, updatingAgents = true) }
+        _state.update {
+            it.copy(showAgentPicker = false, showAssigneePicker = false, updatingAgents = true, updatingAssignee = true)
+        }
         viewModelScope.launch {
+            // An agent and a human are mutually exclusive assignees (mirrors the web): clear
+            // any existing human assignee before attaching the agent.
+            if (_state.value.issue?.assignee != null) {
+                meshaRepository.updateIssue(projectId, issueId, UpdateIssueRequestDto(clearAssignee = true))
+                    .onSuccess { updated -> _state.update { it.copy(issue = updated) } }
+            }
             meshaRepository.assignIssueAgent(projectId, issueId, agentDefinitionId).fold(
-                onSuccess = { reloadAgents() },
+                onSuccess = {
+                    reloadAgents()
+                    _state.update { it.copy(updatingAssignee = false) }
+                },
                 onFailure = { e ->
-                    _state.update { it.copy(updatingAgents = false, updateError = e.message) }
+                    _state.update { it.copy(updatingAgents = false, updatingAssignee = false, updateError = e.message) }
                 },
             )
         }
@@ -419,6 +448,24 @@ class IssueDetailViewModel @Inject constructor(
     }
 
     fun cancelEdit() = _state.update { it.copy(editMode = false, updateError = null) }
+
+    /** Inline-edit the title (web parity: the title is edited in place, not via a full form). */
+    fun updateTitle(title: String) {
+        val trimmed = title.trim()
+        if (trimmed.isBlank()) {
+            _state.update { it.copy(updateError = "Title cannot be empty") }
+            return
+        }
+        if (trimmed == _state.value.issue?.title) return
+        patch(UpdateIssueRequestDto(title = trimmed)) { it }
+    }
+
+    /** Inline-edit the description. An empty string clears it (matches the web textarea). */
+    fun updateDescription(description: String) {
+        val trimmed = description.trim()
+        if (trimmed == _state.value.issue?.description.orEmpty()) return
+        patch(UpdateIssueRequestDto(description = trimmed)) { it }
+    }
 
     fun setEditTitle(title: String) = _state.update { it.copy(editTitle = title) }
 

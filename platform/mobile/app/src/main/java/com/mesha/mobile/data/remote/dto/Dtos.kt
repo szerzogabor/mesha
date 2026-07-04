@@ -84,6 +84,8 @@ data class GitHubPullRequestDto(
     val draft: Boolean? = null,
     val reviewState: String? = null,
     val checksStatus: String? = null,
+    val mergedAt: String? = null,
+    val closedAt: String? = null,
     val linkedSessionId: String? = null,
 )
 
